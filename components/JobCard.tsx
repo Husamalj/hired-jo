@@ -2,6 +2,23 @@
 import { useState } from "react";
 import type { Job, MatchResult } from "@/lib/types";
 
+function applyUrl(job: Job): string {
+  const q = encodeURIComponent(job.title);
+  const company = encodeURIComponent(job.company);
+  switch (job.source) {
+    case "Akhtaboot":
+      return `https://www.akhtaboot.com/en/jordan/jobs?q=${q}+${company}`;
+    case "Bayt":
+      return `https://www.bayt.com/en/jordan/jobs/?q=${q}`;
+    case "Wuzzuf":
+      return `https://wuzzuf.net/search/jobs/?q=${q}&a=hpb`;
+    case "Fursa":
+      return `https://www.for9a.com/search?q=${q}`;
+    default:
+      return job.url ?? `https://www.akhtaboot.com/en/jordan/jobs?q=${q}`;
+  }
+}
+
 const seniorityColor: Record<string, string> = {
   Intern: "bg-blue-500/20 text-blue-300",
   Junior: "bg-green-500/20 text-green-300",
@@ -142,17 +159,15 @@ export function JobCard({ job, cv }: { job: Job; cv?: any }) {
           >
             {loading ? "Checking…" : match ? `${match.score}% match ✓` : "Check fit"}
           </button>
-          {job.url && (
-            <a
-              href={job.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="px-3 py-2 text-xs rounded-xl border border-white/20 text-white/70 hover:text-white"
-            >
-              Apply →
-            </a>
-          )}
+          <a
+            href={applyUrl(job)}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="px-3 py-2 text-xs rounded-xl border border-white/20 text-white/70 hover:text-white"
+          >
+            Apply →
+          </a>
         </div>
 
         <p className="text-white/20 text-xs">{job.source} · {job.postedAt}</p>
