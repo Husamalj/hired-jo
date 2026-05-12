@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 
 export async function GET() {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from("leaderboard")
     .select("id, alias, score, top_skill as topSkill, created_at as createdAt")
     .order("score", { ascending: false })
@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     if (!alias || score === undefined)
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
 
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from("leaderboard")
       .insert({ alias, score, top_skill: topSkill ?? "—" })
       .select("id, alias, score, top_skill as topSkill, created_at as createdAt")

@@ -1,8 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 
-const url = process.env.SUPABASE_URL!;
-const key = process.env.SUPABASE_ANON_KEY!;
+type SupabaseClient = ReturnType<typeof createClient>;
+const g = globalThis as unknown as { _supabase?: SupabaseClient };
 
-const g = globalThis as unknown as { _supabase?: ReturnType<typeof createClient> };
-export const supabase = g._supabase ?? createClient(url, key);
-if (process.env.NODE_ENV !== "production") g._supabase = supabase;
+export function getSupabase(): SupabaseClient {
+  if (g._supabase) return g._supabase;
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_ANON_KEY;
+  if (!url || !key) throw new Error("SUPABASE_URL and SUPABASE_ANON_KEY must be set");
+  g._supabase = createClient(url, key);
+  return g._supabase;
+}

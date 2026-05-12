@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 import { embed, cosine } from "@/lib/embeddings";
 
 type CofounderRow = {
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
       const text = `${(body.skills as string[]).join(" ")} ${(body.interests as string[]).join(" ")} ${body.vibe}`;
       const emb = await embed(text);
 
-      const { error } = await supabase.from("cofounder_profiles").insert({
+      const { error } = await getSupabase().from("cofounder_profiles").insert({
         alias: body.alias,
         email: body.email,
         skills: JSON.stringify(body.skills),
