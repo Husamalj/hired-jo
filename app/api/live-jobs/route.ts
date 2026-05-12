@@ -52,11 +52,13 @@ function inferCountry(jobCountry: string, jobCity: string): string {
 }
 
 function mapJSearchJob(j: any, index: number): Job | null {
-  const inferredCountry = inferCountry(j.job_country ?? "", j.job_city ?? "");
+  const jobCity = j.job_city ?? "";
+  const inferredCountry = inferCountry(j.job_country ?? "", jobCity);
   const validCities = CITIES_BY_COUNTRY[inferredCountry];
 
   // Reject jobs where city doesn't match country (e.g., UK jobs appearing in search results)
-  if (!validCities?.some(c => j.job_city?.toLowerCase().includes(c.toLowerCase()))) {
+  const cityLower = jobCity.toLowerCase();
+  if (!validCities?.some(c => cityLower.includes(c.toLowerCase()))) {
     return null;
   }
 
