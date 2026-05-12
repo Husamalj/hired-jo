@@ -65,7 +65,7 @@ export default function HomePage() {
                   <div key={i} className={`w-8 h-8 rounded-full bg-gradient-to-br ${g} border-2`} style={{ borderColor: "var(--ink)" }}></div>
                 ))}
               </div>
-              <span>Job feed: <b className="text-white/80">Akhtaboot · Bayt · Wuzzuf · Fursa</b></span>
+              <span>Job feed: <b className="text-white/80">Akhtaboot · Bayt · Wuzzuf · Fursa · LinkedIn · Indeed · Glassdoor · Naukrigulf · GulfTalent · Tanqeeb</b></span>
               <span className="hidden md:inline">Updated <b className="text-white/80">May 2026</b></span>
             </div>
           </div>
