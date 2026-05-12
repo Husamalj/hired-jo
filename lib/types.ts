@@ -3,11 +3,14 @@ export type CV = {
   email: string;
   phone: string;
   location: string;
+  links?: { label: string; url: string }[];
   summary: string;
   education: Education[];
   experience: Experience[];
   projects: Project[];
   skills: string[];
+  skillCategories?: { category: string; items: string[] }[];
+  achievements?: string[];
   languages: { name: string; level: "Native" | "Fluent" | "Intermediate" | "Basic" }[];
   certifications: string[];
 };
