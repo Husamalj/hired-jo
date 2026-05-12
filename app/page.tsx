@@ -163,6 +163,28 @@ function op(p: number, i0: number, i1: number, o0: number, o1: number) {
 export default function HomePage() {
   return (
     <div className="min-h-screen">
+      {/* Crawler-visible SEO content — visually hidden, fully readable to search engines and AI agents */}
+      <div className="sr-only">
+        <h1>Hired.jo — From graduate to hired. The AI career copilot for Jordanian graduates.</h1>
+        <p>
+          Hired.jo helps Jordanian graduates build an ATS-ready CV in 5 minutes through a friendly AI interview,
+          match against 60+ live Jordan jobs scraped from Akhtaboot, Bayt, Wuzzuf, Fursa, LinkedIn, Indeed,
+          Glassdoor, Naukrigulf, GulfTalent, and Tanqeeb, and get a personalized Hired Score (0–1000) with
+          a learning plan to close the gap to the role you want.
+        </p>
+        <h2>What Hired.jo does</h2>
+        <ul>
+          <li>Build my CV — AI interviews you and writes a clean ATS-ready CV, free PDF download.</li>
+          <li>Find Jobs — live Jordan job board with AI matching against your CV.</li>
+          <li>My Score — Hired Score out of 1000 plus tips to improve it.</li>
+          <li>Roast my CV — brutally honest AI feedback on your resume.</li>
+          <li>Cover Letter — tailored cover letters in 10 seconds.</li>
+          <li>Co-founder — match with complementary founders in Jordan.</li>
+          <li>Leaderboard — see how you rank against other Jordanian graduates.</li>
+          <li>Market Dashboard — live analytics on top skills, salaries, and hiring trends across Jordan.</li>
+        </ul>
+      </div>
+
       <ScrollHero />
 
       {/* STATS STRIP */}
