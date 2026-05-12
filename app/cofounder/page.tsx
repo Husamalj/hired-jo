@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 
 type Match = {
@@ -25,6 +25,17 @@ export default function CofounderPage() {
   const [loading, setLoading] = useState(false);
   const [registered, setRegistered] = useState(false);
 
+  // Restore session from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("cofounder_profile");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      setForm(parsed);
+      setRegistered(true);
+      setStep("find");
+    }
+  }, []);
+
   async function register() {
     if (!form.alias || !form.email || !form.skills) return;
     setLoading(true);
@@ -43,6 +54,7 @@ export default function CofounderPage() {
     setLoading(false);
     setRegistered(true);
     setStep("find");
+    localStorage.setItem("cofounder_profile", JSON.stringify(form));
   }
 
   async function findMatch() {
@@ -118,9 +130,15 @@ export default function CofounderPage() {
         <div className="text-center space-y-4">
           {registered && (
             <p className="text-green-400 font-semibold">
-              ✓ Profile registered! Now find your match.
+              ✓ Registered as <span className="text-white">{form.alias}</span>! Now find your match.
             </p>
           )}
+          <button
+            onClick={() => { localStorage.removeItem("cofounder_profile"); setStep("register"); setRegistered(false); setForm({ alias: "", email: "", skills: "", interests: "", vibe: "" }); }}
+            className="text-xs text-white/30 hover:text-white/60 underline"
+          >
+            Not you? Register a different profile
+          </button>
           <button
             onClick={findMatch}
             disabled={loading}
