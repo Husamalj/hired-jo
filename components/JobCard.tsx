@@ -11,9 +11,9 @@ const LI_GEO: Record<string, string> = {
 };
 
 function linkedInSearchUrl(job: Job): string {
-  const q = encodeURIComponent(`${job.title} ${job.company}`);
+  const keywords = encodeURIComponent(job.title);
   const geoId = LI_GEO[job.country] ?? LI_GEO["Jordan"];
-  return `https://www.linkedin.com/jobs/search/?keywords=${q}&geoId=${geoId}`;
+  return `https://www.linkedin.com/jobs/search/?keywords=${keywords}&geoId=${geoId}`;
 }
 
 function applyUrl(job: Job): string {
