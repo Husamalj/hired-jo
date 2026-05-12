@@ -1,0 +1,90 @@
+[
+  {
+    "id": "cert-001",
+    "name": "INJAZ Jordan — Company Program",
+    "provider": "INJAZ Al-Arab",
+    "url": "https://injaz.org.jo",
+    "fields": ["Entrepreneurship", "Business", "Leadership"],
+    "format": "In-person workshop",
+    "free": true,
+    "language": "Both",
+    "description": "Hands-on entrepreneurship program for university students. Build a student-run company, pitch to investors."
+  },
+  {
+    "id": "cert-002",
+    "name": "Orange Coding Academy — Web Development Bootcamp",
+    "provider": "Orange Jordan",
+    "url": "https://www.orange.jo/en/coding-academy",
+    "fields": ["Web Development", "React", "Node.js", "JavaScript"],
+    "format": "Full-time bootcamp (3 months)",
+    "free": true,
+    "language": "Both",
+    "description": "Fully-funded intensive coding bootcamp. 500+ graduates placed in tech jobs across Jordan. Covers HTML, CSS, JS, React, Node."
+  },
+  {
+    "id": "cert-003",
+    "name": "HTU Bootcamp — Data Science",
+    "provider": "Hashemite University",
+    "url": "https://www.hu.edu.jo",
+    "fields": ["Data Science", "Python", "Machine Learning"],
+    "format": "Weekend bootcamp (8 weeks)",
+    "free": false,
+    "language": "AR",
+    "description": "Practical data science training by HTU faculty. Python, pandas, scikit-learn, project-based curriculum."
+  },
+  {
+    "id": "cert-004",
+    "name": "ZINC Startup Accelerator",
+    "provider": "Zain Innovation Campus",
+    "url": "https://zinc.jo",
+    "fields": ["Entrepreneurship", "Startups", "Product", "Tech"],
+    "format": "6-month accelerator program",
+    "free": true,
+    "language": "EN",
+    "description": "Jordan's top startup accelerator. Get mentorship, seed funding up to $15k, and a co-working space in Amman."
+  },
+  {
+    "id": "cert-005",
+    "name": "Beyond Capital Ventures — Founders Program",
+    "provider": "Beyond Capital",
+    "url": "https://beyondcapital.com",
+    "fields": ["Entrepreneurship", "Fundraising", "Business Model"],
+    "format": "Cohort-based program (12 weeks)",
+    "free": true,
+    "language": "EN",
+    "description": "MENA-focused program connecting early-stage founders with investors and mentors."
+  },
+  {
+    "id": "cert-006",
+    "name": "Makani — Digital Skills Program",
+    "provider": "USAID / Makani",
+    "url": "https://makani.jo",
+    "fields": ["Freelancing", "Digital Marketing", "E-commerce", "Web Development"],
+    "format": "Online + in-person hybrid",
+    "free": true,
+    "language": "AR",
+    "description": "Government-backed digital skills program targeting Jordanian youth. Covers freelancing on Upwork, digital marketing."
+  },
+  {
+    "id": "cert-007",
+    "name": "Luminus Tech Academy",
+    "provider": "Luminus Technical University College",
+    "url": "https://ltuc.com",
+    "fields": ["Cybersecurity", "Networking", "Cloud", "Programming"],
+    "format": "Part-time courses (3–6 months)",
+    "free": false,
+    "language": "Both",
+    "description": "Professional certifications and training programs including Cisco, CompTIA, AWS, and more."
+  },
+  {
+    "id": "cert-008",
+    "name": "Arab Women in Technology — Scholarship Program",
+    "provider": "AWT",
+    "url": "https://awt.jo",
+    "fields": ["Web Development", "Data Science", "UX Design", "Leadership"],
+    "format": "Online + mentorship",
+    "free": true,
+    "language": "AR",
+    "description": "Scholarship-based tech training for women in Jordan. Includes mentorship, job placement support, and community network."
+  }
+]

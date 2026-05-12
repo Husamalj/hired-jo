@@ -1,0 +1,302 @@
+[
+  {
+    "id": "lr-001",
+    "skill": "React",
+    "title": "React Full Course for Beginners",
+    "provider": "freeCodeCamp",
+    "url": "https://www.youtube.com/watch?v=bMknfKXIFA8",
+    "hours": 12,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-002",
+    "skill": "TypeScript",
+    "title": "TypeScript Full Course for Beginners",
+    "provider": "freeCodeCamp",
+    "url": "https://www.youtube.com/watch?v=30LWjhZzg50",
+    "hours": 8,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-003",
+    "skill": "Python",
+    "title": "Python for Everybody Specialization",
+    "provider": "Coursera",
+    "url": "https://www.coursera.org/specializations/python",
+    "hours": 20,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-004",
+    "skill": "Node.js",
+    "title": "Node.js and Express Full Course",
+    "provider": "freeCodeCamp",
+    "url": "https://www.youtube.com/watch?v=Oe421EPjeBE",
+    "hours": 8,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-005",
+    "skill": "SQL",
+    "title": "SQL Tutorial — Full Database Course",
+    "provider": "freeCodeCamp",
+    "url": "https://www.youtube.com/watch?v=HXV3zeQKqGY",
+    "hours": 4,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-006",
+    "skill": "Machine Learning",
+    "title": "Machine Learning Specialization",
+    "provider": "Coursera",
+    "url": "https://www.coursera.org/specializations/machine-learning-introduction",
+    "hours": 40,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-007",
+    "skill": "Docker",
+    "title": "Docker Tutorial for Beginners",
+    "provider": "YouTube",
+    "url": "https://www.youtube.com/watch?v=pTFZFxd5hgI",
+    "hours": 3,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-008",
+    "skill": "AWS",
+    "title": "AWS Cloud Practitioner Essentials",
+    "provider": "Coursera",
+    "url": "https://www.coursera.org/learn/aws-cloud-practitioner-essentials",
+    "hours": 15,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-009",
+    "skill": "Flutter",
+    "title": "Flutter & Dart – The Complete Guide",
+    "provider": "YouTube",
+    "url": "https://www.youtube.com/watch?v=VPvVD8t02U8",
+    "hours": 10,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-010",
+    "skill": "Django",
+    "title": "Python Django Web Framework Full Course",
+    "provider": "freeCodeCamp",
+    "url": "https://www.youtube.com/watch?v=F5mRW0jo-U4",
+    "hours": 4,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-011",
+    "skill": "Kotlin",
+    "title": "Android Development with Kotlin",
+    "provider": "YouTube",
+    "url": "https://www.youtube.com/watch?v=BBWyXo-3JGQ",
+    "hours": 7,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-012",
+    "skill": "Figma",
+    "title": "Figma UI Design Tutorial",
+    "provider": "YouTube",
+    "url": "https://www.youtube.com/watch?v=FTFaQWZBqQ8",
+    "hours": 5,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-013",
+    "skill": "Git",
+    "title": "Git and GitHub Full Course",
+    "provider": "freeCodeCamp",
+    "url": "https://www.youtube.com/watch?v=RGOj5yH7evk",
+    "hours": 2,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-014",
+    "skill": "Power BI",
+    "title": "Power BI Full Course",
+    "provider": "YouTube",
+    "url": "https://www.youtube.com/watch?v=AGrl-H87pRU",
+    "hours": 6,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-015",
+    "skill": "Kubernetes",
+    "title": "Kubernetes Tutorial for Beginners",
+    "provider": "freeCodeCamp",
+    "url": "https://www.youtube.com/watch?v=X48VuDVv0do",
+    "hours": 4,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-016",
+    "skill": "TensorFlow",
+    "title": "TensorFlow 2.0 Complete Course",
+    "provider": "freeCodeCamp",
+    "url": "https://www.youtube.com/watch?v=tPYj3fFJGjk",
+    "hours": 7,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-017",
+    "skill": "React Native",
+    "title": "React Native Full Course",
+    "provider": "freeCodeCamp",
+    "url": "https://www.youtube.com/watch?v=0-S5a0eXPoc",
+    "hours": 5,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-018",
+    "skill": "PostgreSQL",
+    "title": "PostgreSQL Tutorial Full Course",
+    "provider": "freeCodeCamp",
+    "url": "https://www.youtube.com/watch?v=qw--VYLpxG4",
+    "hours": 4,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-019",
+    "skill": "Cybersecurity",
+    "title": "Introduction to Cybersecurity",
+    "provider": "Coursera",
+    "url": "https://www.coursera.org/learn/intro-cyber-security",
+    "hours": 10,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-020",
+    "skill": "Java",
+    "title": "Java Programming: Solving Problems with Software",
+    "provider": "Coursera",
+    "url": "https://www.coursera.org/learn/java-programming",
+    "hours": 15,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-021",
+    "skill": "Linux",
+    "title": "Introduction to Linux",
+    "provider": "freeCodeCamp",
+    "url": "https://www.youtube.com/watch?v=sWbUDq4S6Y8",
+    "hours": 5,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-022",
+    "skill": "Agile",
+    "title": "Agile with Atlassian JIRA",
+    "provider": "Coursera",
+    "url": "https://www.coursera.org/learn/agile-atlassian-jira",
+    "hours": 8,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-023",
+    "skill": "Next.js",
+    "title": "Next.js Full Course for Beginners",
+    "provider": "YouTube",
+    "url": "https://www.youtube.com/watch?v=843nec-IvW0",
+    "hours": 6,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-024",
+    "skill": "Arabic NLP",
+    "title": "Arabic Natural Language Processing",
+    "provider": "YouTube",
+    "url": "https://www.youtube.com/watch?v=T0b_Qr9KIWU",
+    "hours": 4,
+    "free": true,
+    "language": "AR"
+  },
+  {
+    "id": "lr-025",
+    "skill": "Data Analysis",
+    "title": "Data Analysis with Python",
+    "provider": "freeCodeCamp",
+    "url": "https://www.freecodecamp.org/learn/data-analysis-with-python/",
+    "hours": 20,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-026",
+    "skill": "REST APIs",
+    "title": "APIs and Microservices Certification",
+    "provider": "freeCodeCamp",
+    "url": "https://www.freecodecamp.org/learn/back-end-development-and-apis/",
+    "hours": 15,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-027",
+    "skill": "CI/CD",
+    "title": "DevOps, CI/CD with GitHub Actions",
+    "provider": "YouTube",
+    "url": "https://www.youtube.com/watch?v=R8_veQiYBjI",
+    "hours": 3,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-028",
+    "skill": "Swift",
+    "title": "iOS Development with Swift",
+    "provider": "Coursera",
+    "url": "https://www.coursera.org/specializations/ios-development",
+    "hours": 30,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-029",
+    "skill": "GraphQL",
+    "title": "GraphQL Full Course",
+    "provider": "freeCodeCamp",
+    "url": "https://www.youtube.com/watch?v=ed8SzALpx1Q",
+    "hours": 4,
+    "free": true,
+    "language": "EN"
+  },
+  {
+    "id": "lr-030",
+    "skill": "Penetration Testing",
+    "title": "Ethical Hacking Full Course",
+    "provider": "freeCodeCamp",
+    "url": "https://www.youtube.com/watch?v=3Kq1MIfTWCE",
+    "hours": 15,
+    "free": true,
+    "language": "EN"
+  }
+]
