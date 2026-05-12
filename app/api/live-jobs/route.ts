@@ -68,12 +68,13 @@ async function fetchGeminiJobs(
       tools: [{ googleSearch: {} } as any],
     });
 
-    const prompt = `Search ${site} right now and find the 10 most recently posted jobs in Jordan.
+    const prompt = `Search ${site} right now and find the 10 most recently posted jobs in Jordan, UAE, or Saudi Arabia.
 Return ONLY a valid JSON array — no markdown, no explanation, no extra text. Each item:
 {
   "title": "job title",
   "company": "company name",
-  "city": "city in Jordan",
+  "city": "city name",
+  "country": "Jordan" or "UAE" or "Saudi Arabia",
   "description": "2-sentence job summary",
   "url": "direct link to the job posting on ${site}",
   "postedAt": "YYYY-MM-DD or 'today'"
@@ -94,7 +95,7 @@ Only include real listings you can verify are currently on ${site}.`;
       company:     j.company ?? "Unknown",
       sector:      inferSector(j.title ?? "", j.description ?? ""),
       city:        j.city || "Amman",
-      country:     "Jordan",
+      country:     j.country || "Jordan",
       seniority:   inferSeniority(j.title ?? ""),
       skills:      [],
       remote:      false,
@@ -118,7 +119,10 @@ export async function GET() {
   // ── 1. JSearch (LinkedIn/Indeed/Glassdoor) ──────────────────────────────
   const jsearchResults: any[] = [];
   try {
-    const queries = ["jobs in Jordan", "software developer Jordan", "internship Amman"];
+    const queries = [
+      "jobs in Jordan", "software developer Jordan", "internship Amman",
+      "jobs in Dubai UAE", "jobs in Riyadh Saudi Arabia",
+    ];
     for (const query of queries) {
       const res = await fetch(
         `https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(query)}&num_pages=2&country=jo&date_posted=all`,
@@ -144,15 +148,18 @@ export async function GET() {
   });
   const jsearchJobs = jsearchUnique.map(mapJSearchJob);
 
-  // ── 2. Gemini Search grounding (Akhtaboot, For9a, Bayt, Wuzzuf) ─────────
-  const [akhtaboot, for9a, bayt, wuzzuf] = await Promise.all([
-    fetchGeminiJobs("akhtaboot.com",  "Akhtaboot", 20000),
-    fetchGeminiJobs("for9a.com",      "Fursa",      21000),
-    fetchGeminiJobs("bayt.com",       "Bayt",       22000),
-    fetchGeminiJobs("wuzzuf.net",     "Wuzzuf",     23000),
+  // ── 2. Gemini Search grounding (Arab job boards) ────────────────────────
+  const [akhtaboot, for9a, bayt, wuzzuf, naukrigulf, gulftalent, tanqeeb] = await Promise.all([
+    fetchGeminiJobs("akhtaboot.com",   "Akhtaboot",  20000),
+    fetchGeminiJobs("for9a.com",       "Fursa",      21000),
+    fetchGeminiJobs("bayt.com",        "Bayt",       22000),
+    fetchGeminiJobs("wuzzuf.net",      "Wuzzuf",     23000),
+    fetchGeminiJobs("naukrigulf.com",  "Naukrigulf", 24000),
+    fetchGeminiJobs("gulftalent.com",  "GulfTalent", 25000),
+    fetchGeminiJobs("tanqeeb.com",     "Tanqeeb",    26000),
   ]);
 
-  const geminiJobs = [...akhtaboot, ...for9a, ...bayt, ...wuzzuf];
+  const geminiJobs = [...akhtaboot, ...for9a, ...bayt, ...wuzzuf, ...naukrigulf, ...gulftalent, ...tanqeeb];
 
   // ── 3. Merge all sources, static jobs as final fallback ─────────────────
   const allLive = [...jsearchJobs, ...geminiJobs];

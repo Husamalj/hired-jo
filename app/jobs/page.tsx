@@ -15,13 +15,15 @@ function sortOtherLast(arr: string[]) {
 
 const TYPES       = ["All", "Jobs", "Internships"];
 const SENIORITIES = ["All", "Junior", "Mid", "Senior"];
-const COUNTRIES   = ["All", "Jordan", "Palestine"];
-const APPLY_FROM  = ["Jordan", "Palestine"];
-const INT_LOCS    = ["All", "Remote", "Jordan", "Palestine", "UK"];
+const COUNTRIES   = ["All", "Jordan", "UAE", "Saudi Arabia", "Palestine"];
+const APPLY_FROM  = ["Jordan", "UAE", "Saudi Arabia", "Palestine"];
+const INT_LOCS    = ["All", "Remote", "Jordan", "UAE", "Saudi Arabia", "Palestine", "UK"];
 
 const CITIES_BY_COUNTRY: Record<string, string[]> = {
-  Jordan:    ["Amman","Irbid","Zarqa","Balqa","Madaba","Jerash","Ajloun","Mafraq","Karak","Tafilah","Ma'an","Aqaba"],
-  Palestine: ["Ramallah","Jerusalem","Nablus","Hebron","Bethlehem","Jericho","Jenin","Tulkarm","Qalqilya","Tubas","Salfit","Gaza City","Khan Yunis","Rafah","Deir al-Balah","Jabalia"],
+  Jordan:       ["Amman","Irbid","Zarqa","Balqa","Madaba","Jerash","Ajloun","Mafraq","Karak","Tafilah","Ma'an","Aqaba"],
+  UAE:          ["Dubai","Abu Dhabi","Sharjah","Ajman","Ras Al Khaimah","Fujairah","Umm Al Quwain"],
+  "Saudi Arabia": ["Riyadh","Jeddah","Mecca","Medina","Dammam","Al Khobar","Dhahran","Tabuk","Abha","Taif","Jubail","Yanbu","Najran","Hail","Khamis Mushait","Buraidah","Al Ahsa"],
+  Palestine:    ["Ramallah","Jerusalem","Nablus","Hebron","Bethlehem","Jericho","Jenin","Tulkarm","Qalqilya","Tubas","Salfit","Gaza City","Khan Yunis","Rafah","Deir al-Balah","Jabalia"],
 };
 
 const sel = "px-4 py-2 rounded-xl bg-[#1A1340] border border-white/20 outline-none text-sm text-white appearance-none cursor-pointer";
