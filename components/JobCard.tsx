@@ -95,9 +95,14 @@ export function JobCard({ job, cv }: { job: Job; cv?: any }) {
             <h3 className="font-bold text-base leading-tight">{job.title}</h3>
             <p className="text-white/50 text-sm mt-0.5">{job.company} · {job.city}</p>
           </div>
-          <span className={`shrink-0 text-xs px-2 py-1 rounded-full font-medium ${seniorityColor[job.seniority] ?? "bg-white/10"}`}>
-            {job.seniority}
-          </span>
+          <div className="shrink-0 flex gap-1">
+            <span className="text-xs px-2 py-1 rounded-full font-medium bg-white/10 text-white/60">
+              {job.source}
+            </span>
+            <span className={`text-xs px-2 py-1 rounded-full font-medium ${seniorityColor[job.seniority] ?? "bg-white/10"}`}>
+              {job.seniority}
+            </span>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-1">
