@@ -52,7 +52,8 @@ export async function POST(req: Request) {
         })
         .sort((a, b) => b.matchScore - a.matchScore)
         .slice(0, 5)
-        .map(({ embedding: _emb, ...rest }) => rest);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        .map(({ embedding: _omit, ...rest }) => rest)
       return NextResponse.json({ matches: ranked });
     }
 

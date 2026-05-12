@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
 import type { CV, Job } from "@/lib/types";
@@ -8,23 +8,23 @@ import jobsData from "@/data/jobs.json";
 
 const jobs = jobsData as Job[];
 
+// Lazy initializer — reads localStorage once on mount, safe in "use client"
+function loadCv(): CV | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem("hired_cv");
+    return raw ? (JSON.parse(raw) as CV) : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function CoverPage() {
-  const [cv, setCv] = useState<CV | null>(null);
+  const [cv] = useState<CV | null>(loadCv);
   const [selectedJobId, setSelectedJobId] = useState<string>(jobs[0]?.id ?? "");
   const [letter, setLetter] = useState("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    const raw = localStorage.getItem("hired_cv");
-    if (raw) {
-      try {
-        setCv(JSON.parse(raw));
-      } catch {
-        // ignore
-      }
-    }
-  }, []);
 
   async function handleGenerate() {
     if (!cv || !selectedJobId) return;
@@ -59,7 +59,6 @@ export default function CoverPage() {
       <Navbar />
       <main className="min-h-screen grain px-6 py-12">
         <div className="max-w-2xl mx-auto space-y-8">
-          {/* Header */}
           <div className="text-center space-y-2">
             <h1 className="font-display text-4xl font-bold text-grad">
               Cover Letter Generator
@@ -83,7 +82,6 @@ export default function CoverPage() {
             </div>
           ) : (
             <>
-              {/* CV pill */}
               <div className="glass rounded-xl px-4 py-3 flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full gold-grad flex items-center justify-center text-black font-bold text-sm shrink-0">
                   {cv.fullName.charAt(0)}
@@ -94,11 +92,8 @@ export default function CoverPage() {
                 </div>
               </div>
 
-              {/* Job selector */}
               <div className="glass rounded-2xl p-6 space-y-4">
-                <label className="block text-sm text-white/60 font-medium">
-                  Select a job
-                </label>
+                <label className="block text-sm text-white/60 font-medium">Select a job</label>
                 <select
                   value={selectedJobId}
                   onChange={(e) => setSelectedJobId(e.target.value)}
@@ -132,7 +127,6 @@ export default function CoverPage() {
                 </button>
               </div>
 
-              {/* Letter output */}
               {letter && (
                 <div className="space-y-3">
                   <div className="glass rounded-2xl p-6 whitespace-pre-wrap text-sm leading-relaxed max-h-96 overflow-y-auto text-white/90">
@@ -147,7 +141,6 @@ export default function CoverPage() {
                 </div>
               )}
 
-              {/* Quick nav */}
               <div className="flex gap-3 pt-2">
                 <Link href="/jobs" className="gold-grad text-black font-bold px-5 py-2 rounded-xl text-sm">
                   Browse Jobs →
