@@ -3,7 +3,7 @@ import type { CV } from "@/lib/types";
 
 export function CvPreview({ cv }: { cv: CV }) {
   function downloadPdf() {
-    import("jspdf").then(({ default: jsPDF }) => {
+    Promise.all([import("jspdf"), import("jspdf/dist/jspdf.umd.min.js")]).then(([{ jsPDF }]) => {
       const doc = new jsPDF({ unit: "pt", format: "a4" });
       const L = 40, R = 555, W = R - L;
       const PAGE_H = 841;
@@ -103,7 +103,141 @@ export function CvPreview({ cv }: { cv: CV }) {
       }
 
       doc.save(`${cv.fullName.replace(/\s+/g, "_")}_CV.pdf`);
-    });
+    }).catch((err) => console.error("PDF error:", err));
+  }
+
+  function downloadWord() {
+    import("docx").then(({ Document, Packer, Paragraph, TextRun, HeadingLevel, BorderStyle, convertInchesToTwip }) => {
+      const sections: any[] = [
+        new Paragraph({
+          text: cv.fullName,
+          heading: HeadingLevel.HEADING_1,
+          spacing: { after: 100 },
+        }),
+        new Paragraph({
+          text: cv.summary || "Professional",
+          spacing: { after: 200 },
+          style: "Normal",
+        }),
+        new Paragraph({
+          text: [cv.phone, cv.email, cv.location].filter(Boolean).join(" • "),
+          spacing: { after: 400 },
+          style: "Normal",
+        }),
+      ];
+
+      if (cv.experience.length) {
+        sections.push(
+          new Paragraph({
+            text: "EXPERIENCE",
+            heading: HeadingLevel.HEADING_2,
+            spacing: { before: 200, after: 200 },
+          })
+        );
+        cv.experience.forEach(x => {
+          sections.push(
+            new Paragraph({
+              text: x.title,
+              bold: true,
+              spacing: { after: 50 },
+            }),
+            new Paragraph({
+              text: x.company,
+              spacing: { after: 50 },
+            }),
+            new Paragraph({
+              text: `${x.startDate} - ${x.endDate}`,
+              italics: true,
+              spacing: { after: 100 },
+            })
+          );
+          x.bullets.forEach(b => {
+            sections.push(
+              new Paragraph({
+                text: b,
+                spacing: { after: 100 },
+                indent: { left: convertInchesToTwip(0.3) },
+              })
+            );
+          });
+        });
+      }
+
+      if (cv.education.length) {
+        sections.push(
+          new Paragraph({
+            text: "EDUCATION",
+            heading: HeadingLevel.HEADING_2,
+            spacing: { before: 200, after: 200 },
+          })
+        );
+        cv.education.forEach(e => {
+          sections.push(
+            new Paragraph({
+              text: e.degree,
+              bold: true,
+              spacing: { after: 50 },
+            }),
+            new Paragraph({
+              text: e.institution,
+              spacing: { after: 50 },
+            }),
+            new Paragraph({
+              text: `${e.startYear} - ${e.endYear}${e.gpa ? ` • GPA ${e.gpa}` : ""}`,
+              spacing: { after: 150 },
+            })
+          );
+        });
+      }
+
+      if (cv.skillCategories && cv.skillCategories.length) {
+        sections.push(
+          new Paragraph({
+            text: "SKILLS",
+            heading: HeadingLevel.HEADING_2,
+            spacing: { before: 200, after: 200 },
+          })
+        );
+        cv.skillCategories.forEach(cat => {
+          sections.push(
+            new Paragraph({
+              text: `${cat.category}: ${cat.items.join(", ")}`,
+              spacing: { after: 100 },
+            })
+          );
+        });
+      }
+
+      if (cv.languages.length) {
+        sections.push(
+          new Paragraph({
+            text: "LANGUAGES",
+            heading: HeadingLevel.HEADING_2,
+            spacing: { before: 200, after: 200 },
+          })
+        );
+        cv.languages.forEach(l => {
+          sections.push(
+            new Paragraph({
+              text: `${l.name} (${l.level})`,
+              spacing: { after: 100 },
+            })
+          );
+        });
+      }
+
+      const doc = new Document({ sections: [{ children: sections }] });
+      Packer.toBlob(doc).then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${cv.fullName.replace(/\s+/g, "_")}_CV.docx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      });
+    }).catch((err) => console.error("Word error:", err));
   }
 
   return (
@@ -183,9 +317,12 @@ export function CvPreview({ cv }: { cv: CV }) {
         </section>
       )}
 
-      <div className="mt-8 pt-6 border-t border-gray-300">
+      <div className="mt-8 pt-6 border-t border-gray-300 flex gap-3">
         <button onClick={downloadPdf} className="gold-grad text-black font-bold px-6 py-2 rounded-lg text-sm hover:opacity-90">
-          Download PDF
+          📄 Download PDF
+        </button>
+        <button onClick={downloadWord} className="bg-blue-600 text-white font-bold px-6 py-2 rounded-lg text-sm hover:bg-blue-700">
+          📝 Download Word
         </button>
       </div>
     </div>
