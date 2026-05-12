@@ -3,7 +3,6 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { Job } from "@/lib/types";
 import staticJobs from "@/data/jobs.json";
 
-// Cache 1 hour — Gemini + JSearch both have daily limits
 let cache: { data: Job[]; ts: number } | null = null;
 const CACHE_MS = 60 * 60 * 1000;
 
@@ -23,11 +22,27 @@ function inferSector(title: string, desc: string): string {
   if (/finance|accounting|bank|audit|tax|invest/.test(t)) return "Finance";
   if (/marketing|social media|content|seo|brand|digital/.test(t)) return "Marketing";
   if (/sales|business development|account manager/.test(t)) return "Sales";
-  if (/design|ui|ux|graphic|creative/.test(t)) return "Design";
+  if (/video|videograph|photograph|photo|film|cinemat|camera|edit|production/.test(t)) return "Creative";
+  if (/design|ui|ux|graphic/.test(t)) return "Design";
   if (/hr|human resource|recruit|talent/.test(t)) return "HR";
   if (/health|medical|pharma|nurse|doctor/.test(t)) return "Healthcare";
   if (/educat|teach|train|instruct/.test(t)) return "Education";
+  if (/legal|lawyer|law|compliance|contract/.test(t)) return "Legal";
+  if (/operat|supply chain|logistics|warehouse|procurement/.test(t)) return "Operations";
+  if (/customer service|support|call center|helpdesk/.test(t)) return "Customer Service";
+  if (/civil|construct|architect|site engineer|real estate/.test(t)) return "Construction";
   return "Other";
+}
+
+function inferCountry(jobCountry: string, jobCity: string): string {
+  const c = (jobCountry ?? "").toLowerCase();
+  if (/united arab|uae|\bae\b/.test(c)) return "UAE";
+  if (/saudi|ksa|\bsa\b/.test(c)) return "Saudi Arabia";
+  if (/jordan|\bjo\b/.test(c)) return "Jordan";
+  const city = (jobCity ?? "").toLowerCase();
+  if (/dubai|abu dhabi|sharjah|ajman|fujairah|ras al/.test(city)) return "UAE";
+  if (/riyadh|jeddah|mecca|medina|dammam|khobar|dhahran|tabuk/.test(city)) return "Saudi Arabia";
+  return "Jordan";
 }
 
 function mapJSearchJob(j: any, index: number): Job {
@@ -43,7 +58,7 @@ function mapJSearchJob(j: any, index: number): Job {
     company:     j.employer_name ?? "Unknown",
     sector:      inferSector(j.job_title ?? "", j.job_description ?? ""),
     city:        j.job_city || "Amman",
-    country:     "Jordan",
+    country:     inferCountry(j.job_country ?? "", j.job_city ?? ""),
     seniority:   inferSeniority(j.job_title ?? ""),
     skills:      [...new Set(skills)].slice(0, 8),
     salaryMin:   j.job_min_salary ?? undefined,
@@ -56,11 +71,13 @@ function mapJSearchJob(j: any, index: number): Job {
   };
 }
 
-// Use Gemini Search grounding to scrape job boards that have no API
+type GeminiSource = "Akhtaboot" | "Bayt" | "Wuzzuf" | "Fursa" | "Naukrigulf" | "GulfTalent" | "Tanqeeb";
+
 async function fetchGeminiJobs(
   site: string,
-  sourceName: "Akhtaboot" | "Bayt" | "Wuzzuf" | "Fursa" | "Naukrigulf" | "GulfTalent" | "Tanqeeb",
-  offset: number
+  sourceName: GeminiSource,
+  offset: number,
+  targetCountry?: string
 ): Promise<Job[]> {
   try {
     const model = genAI.getGenerativeModel({
@@ -68,23 +85,17 @@ async function fetchGeminiJobs(
       tools: [{ googleSearch: {} } as any],
     });
 
-    const prompt = `Search ${site} right now and find the 10 most recently posted jobs in Jordan, UAE, or Saudi Arabia.
-Return ONLY a valid JSON array — no markdown, no explanation, no extra text. Each item:
-{
-  "title": "job title",
-  "company": "company name",
-  "city": "city name",
-  "country": "Jordan" or "UAE" or "Saudi Arabia",
-  "description": "2-sentence job summary",
-  "url": "direct link to the job posting on ${site}",
-  "postedAt": "YYYY-MM-DD or 'today'"
-}
-Only include real listings you can verify are currently on ${site}.`;
+    const countryClause = targetCountry
+      ? `in ${targetCountry}`
+      : "in Jordan, UAE, or Saudi Arabia";
+
+    const prompt = `Search ${site} right now and find the 10 most recently posted jobs ${countryClause}.
+Return ONLY a valid JSON array — no markdown, no explanation. Each item:
+{"title":"job title","company":"company name","city":"city","country":"${targetCountry ?? "Jordan or UAE or Saudi Arabia"}","description":"2-sentence summary","url":"link","postedAt":"YYYY-MM-DD or today"}
+Only include real current listings from ${site}.`;
 
     const result = await model.generateContent(prompt);
     const text = result.response.text().replace(/```json|```/g, "").trim();
-
-    // Extract JSON array from response
     const match = text.match(/\[[\s\S]*\]/);
     if (!match) return [];
 
@@ -94,16 +105,14 @@ Only include real listings you can verify are currently on ${site}.`;
       title:       j.title ?? "Untitled",
       company:     j.company ?? "Unknown",
       sector:      inferSector(j.title ?? "", j.description ?? ""),
-      city:        j.city || "Amman",
-      country:     j.country || "Jordan",
+      city:        j.city || (targetCountry === "UAE" ? "Dubai" : targetCountry === "Saudi Arabia" ? "Riyadh" : "Amman"),
+      country:     j.country || targetCountry || "Jordan",
       seniority:   inferSeniority(j.title ?? ""),
       skills:      [],
       remote:      false,
       source:      sourceName,
       url:         j.url ?? "",
-      postedAt:    j.postedAt === "today"
-                     ? new Date().toISOString().slice(0, 10)
-                     : (j.postedAt ?? ""),
+      postedAt:    j.postedAt === "today" ? new Date().toISOString().slice(0, 10) : (j.postedAt ?? ""),
       description: j.description ?? "",
     }));
   } catch {
@@ -121,11 +130,11 @@ export async function GET() {
   try {
     const queries = [
       "jobs in Jordan", "software developer Jordan", "internship Amman",
-      "jobs in Dubai UAE", "jobs in Riyadh Saudi Arabia",
+      "jobs in Dubai UAE", "tech jobs Dubai", "jobs in Riyadh Saudi Arabia", "jobs Jeddah",
     ];
     for (const query of queries) {
       const res = await fetch(
-        `https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(query)}&num_pages=2&country=jo&date_posted=all`,
+        `https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(query)}&num_pages=2&date_posted=all`,
         {
           headers: {
             "x-rapidapi-host": "jsearch.p.rapidapi.com",
@@ -141,29 +150,40 @@ export async function GET() {
   }
 
   const seen = new Set<string>();
-  const jsearchUnique = jsearchResults.filter((j) => {
-    if (seen.has(j.job_id)) return false;
-    seen.add(j.job_id);
-    return true;
-  });
-  const jsearchJobs = jsearchUnique.map(mapJSearchJob);
+  const jsearchJobs = jsearchResults
+    .filter((j) => { if (seen.has(j.job_id)) return false; seen.add(j.job_id); return true; })
+    .map(mapJSearchJob);
 
-  // ── 2. Gemini Search grounding (Arab job boards) ────────────────────────
-  const [akhtaboot, for9a, bayt, wuzzuf, naukrigulf, gulftalent, tanqeeb] = await Promise.all([
-    fetchGeminiJobs("akhtaboot.com",   "Akhtaboot",  20000),
-    fetchGeminiJobs("for9a.com",       "Fursa",      21000),
-    fetchGeminiJobs("bayt.com",        "Bayt",       22000),
-    fetchGeminiJobs("wuzzuf.net",      "Wuzzuf",     23000),
-    fetchGeminiJobs("naukrigulf.com",  "Naukrigulf", 24000),
-    fetchGeminiJobs("gulftalent.com",  "GulfTalent", 25000),
-    fetchGeminiJobs("tanqeeb.com",     "Tanqeeb",    26000),
+  // ── 2. Gemini Search grounding ──────────────────────────────────────────
+  // Jordan-focused boards
+  const [akhtaboot, for9a, wuzzuf] = await Promise.all([
+    fetchGeminiJobs("akhtaboot.com", "Akhtaboot", 20000, "Jordan"),
+    fetchGeminiJobs("for9a.com",     "Fursa",     21000, "Jordan"),
+    fetchGeminiJobs("wuzzuf.net",    "Wuzzuf",    23000, "Jordan"),
   ]);
 
-  const geminiJobs = [...akhtaboot, ...for9a, ...bayt, ...wuzzuf, ...naukrigulf, ...gulftalent, ...tanqeeb];
+  // UAE-focused boards
+  const [baytUAE, naukrigulfUAE, gulftalentUAE] = await Promise.all([
+    fetchGeminiJobs("bayt.com",         "Bayt",       22000, "UAE"),
+    fetchGeminiJobs("naukrigulf.com",   "Naukrigulf", 24000, "UAE"),
+    fetchGeminiJobs("gulftalent.com",   "GulfTalent", 25000, "UAE"),
+  ]);
 
-  // ── 3. Merge all sources, static jobs as final fallback ─────────────────
+  // Saudi Arabia-focused boards
+  const [baytSA, naukrigulfSA, tanqeeb] = await Promise.all([
+    fetchGeminiJobs("bayt.com",        "Bayt",       32000, "Saudi Arabia"),
+    fetchGeminiJobs("naukrigulf.com",  "Naukrigulf", 33000, "Saudi Arabia"),
+    fetchGeminiJobs("tanqeeb.com",     "Tanqeeb",    26000, "Saudi Arabia"),
+  ]);
+
+  const geminiJobs = [
+    ...akhtaboot, ...for9a, ...wuzzuf,
+    ...baytUAE, ...naukrigulfUAE, ...gulftalentUAE,
+    ...baytSA, ...naukrigulfSA, ...tanqeeb,
+  ];
+
+  // ── 3. Merge all sources ────────────────────────────────────────────────
   const allLive = [...jsearchJobs, ...geminiJobs];
-
   const staticFiltered = (staticJobs as Job[]).filter(
     (s) => !allLive.some(
       (l) => l.title.toLowerCase() === s.title.toLowerCase() &&

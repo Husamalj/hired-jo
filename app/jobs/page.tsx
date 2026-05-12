@@ -31,6 +31,8 @@ const sel = "px-4 py-2 rounded-xl bg-[#1A1340] border border-white/20 outline-no
 export default function JobsPage() {
   const [allJobs, setAllJobs]       = useState<Job[]>(staticJobs as Job[]);
   const [liveLoading, setLiveLoading] = useState(true);
+  const [diverseLoading, setDiverseLoading] = useState(false);
+  const [diverseJobs, setDiverseJobs] = useState<Job[]>([]);
   const [cv, setCv]                 = useState<any>(null);
   const [type, setType]             = useState("All");
   const [sector, setSector]         = useState("All");
@@ -59,6 +61,17 @@ export default function JobsPage() {
     if (raw) setCv(JSON.parse(raw));
   }, []);
 
+  useEffect(() => {
+    if (sector !== "Other") return;
+    if (diverseJobs.length > 0) return;
+    setDiverseLoading(true);
+    fetch("/api/diverse-jobs")
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data)) setDiverseJobs(data); })
+      .catch(() => {})
+      .finally(() => setDiverseLoading(false));
+  }, [sector]);
+
   function handleCountryChange(c: string) { setCountry(c); setCity("All"); }
 
   const cityOptions = useMemo(() => {
@@ -69,8 +82,13 @@ export default function JobsPage() {
   const SOURCES  = useMemo(() => ["All", ...Array.from(new Set(allJobs.map((j) => j.source)))], [allJobs]);
   const SECTORS  = useMemo(() => ["All", ...sortOtherLast(Array.from(new Set(allJobs.map((j) => j.sector))))], [allJobs]);
 
+  const sourcePool = useMemo(
+    () => sector === "Other" ? [...allJobs, ...diverseJobs] : allJobs,
+    [allJobs, diverseJobs, sector]
+  );
+
   const filtered = useMemo(() =>
-    allJobs.filter((j) => {
+    sourcePool.filter((j) => {
       if (isInternships && j.seniority !== "Intern") return false;
       if (isJobs        && j.seniority === "Intern") return false;
 
@@ -97,7 +115,7 @@ export default function JobsPage() {
       }
       return true;
     }),
-    [allJobs, type, sector, source, country, city, seniority, applyFrom, intLoc, search]
+    [sourcePool, type, sector, source, country, city, seniority, applyFrom, intLoc, search]
   );
 
   return (
@@ -169,6 +187,12 @@ export default function JobsPage() {
         {!cv && (
           <div className="mb-4 p-3 rounded-xl bg-[#F5B82E]/10 border border-[#F5B82E]/30 text-sm text-[#F5B82E]">
             💡 Build your CV on the <a href="/build" className="underline font-semibold">/build</a> page to unlock "Check fit".
+          </div>
+        )}
+
+        {diverseLoading && (
+          <div className="mb-4 p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-sm text-purple-300 animate-pulse">
+            ✨ Fetching 100 diverse jobs across 10 fields…
           </div>
         )}
 
