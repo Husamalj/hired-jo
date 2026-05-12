@@ -98,3 +98,83 @@ Required env vars: `DATABASE_URL`, `GEMINI_API_KEY`, `RAPIDAPI_KEY`.
 
 ## Live site
 https://hired-jo-zrgu.vercel.app
+
+---
+
+## Handoff to Track A: JSearch Location Filtering
+
+**Priority:** Medium. Fix before final demo.
+
+**Problem:** JSearch (LinkedIn/Indeed/Glassdoor API) returns jobs globally, not filtered by country. Example:
+- Search query: "jobs in Dubai UAE"
+- Result: Job with `job_city="Amman"` but actual address "DE12 8LZ, Walton-On-Trent, England, United Kingdom"
+- User clicks LinkedIn → geoId shows Jordan, but job is actually in UK
+
+**Root cause:** `inferCountry()` in `app/api/live-jobs/route.ts` only reads `job_city` field. If JSearch returns wrong city, the entire job gets wrong country.
+
+**Solution:** Add city validation in `mapJSearchJob()` to reject jobs where city doesn't match expected country.
+
+```typescript
+const CITIES_BY_COUNTRY = {
+  "Jordan": ["Amman","Irbid","Zarqa","Balqa","Madaba","Jerash","Ajloun","Mafraq","Karak","Tafilah","Ma'an","Aqaba"],
+  "UAE": ["Dubai","Abu Dhabi","Sharjah","Ajman","Ras Al Khaimah","Fujairah","Umm Al Quwain"],
+  "Saudi Arabia": ["Riyadh","Jeddah","Mecca","Medina","Dammam","Al Khobar","Dhahran","Tabuk","Abha","Taif","Jubail","Yanbu","Najran","Hail","Khamis Mushait","Buraidah","Al Ahsa"],
+};
+
+// In mapJSearchJob, after inferCountry():
+const inferredCountry = inferCountry(j.job_country ?? "", j.job_city ?? "");
+const validCities = CITIES_BY_COUNTRY[inferredCountry];
+if (!validCities?.some(c => j.job_city?.toLowerCase().includes(c.toLowerCase()))) {
+  return null; // Skip this job
+}
+```
+
+Then filter nulls: `const jsearchJobs = jsearchUnique.map(mapJSearchJob).filter(Boolean);`
+
+**Files:** `app/api/live-jobs/route.ts`
+
+**Testing:** After fix, verify:
+- "jobs in Jordan" only shows Amman/Zarqa/Irbid cities
+- "jobs in Dubai" only shows UAE cities
+- UK/USA jobs are filtered out
+
+---
+
+## Handoff to Track C: Initial Setup & Integration Points
+
+**At session start, read this order:**
+1. `CLAUDE.md` — stack, types, integration contracts
+2. `TRACK_B_DONE.md` — what Track B built
+3. `lib/types.ts` — all type definitions (import from here, don't redefine)
+
+**Your deliverables:**
+
+| Export | From | Used by | Signature |
+|--------|------|---------|-----------|
+| `chat(messages: any[], context?: string)` | `lib/gemini.ts` | `/roast` page | Returns streamed AI response |
+| `roastCv(cv: CV)` | `lib/gemini.ts` | `/roast` page | Returns critique + tips |
+| `matchCvToJob(cv: CV, job: Job)` | `lib/gemini.ts` | `/api/match` | Returns `MatchResult` |
+| `enrichJob(job: Job)` | `lib/gemini.ts` | Scripts (optional) | Adds skills/salary to job |
+| `generateCoverLetter(cv: CV, job: Job)` | `lib/gemini.ts` | `/cover` page | Returns formatted letter |
+| `embed(text: string)` | `lib/embeddings.ts` | `/api/cofounder` | Returns `number[]` embedding |
+| `cosine(a: number[], b: number[])` | `lib/embeddings.ts` | `/api/cofounder` | Returns similarity 0–1 |
+
+**Integration checklist:**
+- [ ] `lib/gemini.ts` created, all 5 functions exported
+- [ ] `lib/embeddings.ts` created, both functions exported
+- [ ] `/api/match/route.ts` — replace `// STUB` with `matchCvToJob(cv, job)`
+- [ ] `/api/cofounder/route.ts` — replace `// STUB` with `embed()`/`cosine()`
+- [ ] `/roast` page created (uses `roastCv()`)
+- [ ] `/cover` page created (uses `generateCoverLetter()`)
+- [ ] All imports use `@/lib/types` (not redefined)
+
+**Env vars Track C needs:**
+- `GEMINI_API_KEY` — already in Vercel, copy to `.env.local`
+
+**No breaking changes allowed:**
+- Don't modify `lib/types.ts`, `lib/db.ts`, `lib/store.ts`, `data/jobs.json`, `/api/live-jobs`
+- Don't redefine types — import from `lib/types.ts`
+- Keep localStorage key for CV as `hired_cv`
+
+**When done:**
+Push to `main` with commit message: `feat(track-c): gemini + embeddings + roast + cover pages`
