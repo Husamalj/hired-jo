@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { getLeaderboard, addLeaderboardEntry } from "@/lib/store";
 
 export async function GET() {
+  return NextResponse.json(getLeaderboard());
+}
+
+export async function POST(req: Request) {
   try {
-    const top = await prisma.leaderboardEntry.findMany({
-      orderBy: { score: "desc" },
-      take: 20,
-    });
-    return NextResponse.json(top);
-  } catch {
-    return NextResponse.json({ error: "DB error" }, { status: 500 });
+    const { alias, score, topSkill } = await req.json();
+    if (!alias || score === undefined) return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+    const entry = addLeaderboardEntry({ alias, score, topSkill: topSkill ?? "—" });
+    return NextResponse.json(entry);
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message }, { status: 500 });
   }
 }
