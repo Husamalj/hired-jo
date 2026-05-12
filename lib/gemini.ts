@@ -131,7 +131,7 @@ Fill in:
     (step: { skill: string; weeks: number; resources: { title: string; url: string; provider: string }[] }) => ({
       skill: step.skill,
       weeks: step.weeks ?? 2,
-      resources: (step.resources ?? []).map((res: { title: string; url: string; provider: string }) => ({
+      resources: (step.resources ?? []).map((res: { title: string; url: string; provider": string }) => ({
         title: res.title,
         url: res.url,
         provider: res.provider,
@@ -147,43 +147,18 @@ export async function enrichJob(job: Job): Promise<Job> {
     {
       role: "system",
       content: `From a job posting, extract the following and return ONLY valid JSON with no markdown fences:
-{
-  "skills": ["skill1", "skill2"],
-  "seniority": "Junior",
-  "salaryMin": null,
-  "salaryMax": null,
-  "description": "one sentence summary"
-}
-Seniority must be one of: "Intern" | "Junior" | "Mid" | "Senior"
-Salary in JOD integers or null.`,
+{ "skills": ["skill1"], "seniority": "Junior", "salaryMin": null, "salaryMax": null, "description": "one sentence summary" }`,
     },
-    {
-      role: "user",
-      content: `JOB: ${JSON.stringify(job)}`,
-    },
+    { role: "user", content: `JOB: ${JSON.stringify(job)}` },
   ]);
   const enriched = JSON.parse(text.replace(/```json|```/g, "").trim());
   return { ...job, ...enriched };
 }
 
 // Generate Cover Letter
-export async function generateCoverLetter(cv: CV, job: Job): Promise<string> {
-  const text = await ask([
-    {
-      role: "system",
-      content: `Write tight, authentic cover letters (180-220 words).
-Rules:
-- Open with a strong hook (NOT "I am writing to express my interest")
-- Connect exactly 2 specific items from the CV to 2 specific job requirements
-- Mention the company by name naturally in the body
-- End with a polite call to a 20-minute interview
-- No buzzwords like "passionate", "dynamic", "synergy"
-- Plain text only -- no markdown, no subject line, no "Dear Hiring Manager" header`,
-    },
-    {
-      role: "user",
-      content: `Write a cover letter from ${cv.fullName} to the hiring manager at ${job.company} for the ${job.title} role in ${job.city}.\n\nCV: ${JSON.stringify(cv)}\nJOB: ${JSON.stringify(job)}`,
-    },
+esync function generateCoverLetter(cv: CV, job: Job): Promise<string> {
+  return ask([
+    { role: "system", content: "Write tight, authentic cover letters (180-220 words). Open with a strong hook. Connect specific CV items to job requirements. Mention the company name. End with a call to a 20-minute interview. Plain text only." },
+    { role: "user", content: `Write a cover letter from ${cv.fullName} to ${job.company} for the ${job.title} role.\nCV: ${JSON.stringify(cv)}\nJOB: ${JSON.stringify(job)}` },
   ]);
-  return text;
 }
