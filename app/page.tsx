@@ -1,137 +1,169 @@
+"use client";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+
+const TOTAL_FRAMES = 145;
+
+function ScrollHero() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const framesRef = useRef<HTMLImageElement[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [loadCount, setLoadCount] = useState(0);
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    const images: HTMLImageElement[] = [];
+    let done = 0;
+    for (let i = 0; i < TOTAL_FRAMES; i++) {
+      const img = new Image();
+      img.src = `/frames/f${String(i).padStart(3, "0")}.jpg`;
+      img.onload = () => {
+        done++;
+        setLoadCount(done);
+        if (done === TOTAL_FRAMES) {
+          setLoaded(true);
+          const canvas = canvasRef.current;
+          const ctx = canvas?.getContext("2d");
+          if (canvas && ctx) ctx.drawImage(images[0], 0, 0, canvas.width, canvas.height);
+        }
+      };
+      images.push(img);
+    }
+    framesRef.current = images;
+  }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    function onScroll() {
+      const container = containerRef.current;
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext("2d");
+      if (!container || !canvas || !ctx) return;
+      const p = Math.min(1, Math.max(0, window.scrollY / (container.offsetHeight - window.innerHeight)));
+      setProgress(p);
+      const idx = Math.min(TOTAL_FRAMES - 1, Math.floor(p * TOTAL_FRAMES));
+      const img = framesRef.current[idx];
+      if (img?.complete) ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [loaded]);
+
+  const s1 = op(progress, 0, 0.12, 0.25, 0.35);
+  const s2 = op(progress, 0.32, 0.44, 0.57, 0.67);
+  const s3 = op(progress, 0.65, 0.76, 1, 1);
+
+  return (
+    <div ref={containerRef} style={{ height: "280vh" }} className="relative">
+      <div className="sticky top-0 h-screen w-full overflow-hidden">
+        <canvas ref={canvasRef} width={1280} height={720}
+          className="absolute inset-0 w-full h-full object-cover" />
+
+        {!loaded && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: "#0A0716" }}>
+            <div className="text-white/50 text-sm mb-3 font-display">Loading experience…</div>
+            <div className="w-48 h-1 rounded-full bg-white/10">
+              <div className="h-full rounded-full gold-grad transition-all duration-100"
+                style={{ width: `${(loadCount / TOTAL_FRAMES) * 100}%` }} />
+            </div>
+          </div>
+        )}
+
+        <div className="absolute inset-0"
+          style={{ background: "linear-gradient(to bottom, rgba(10,7,22,0.55) 0%, rgba(10,7,22,0.2) 50%, rgba(10,7,22,0.7) 100%)" }} />
+
+        {/* Navbar inside hero */}
+        <nav className="absolute top-0 left-0 right-0 flex items-center justify-between px-8 py-5 z-20">
+          <Link href="/" className="font-display font-bold text-2xl tracking-tight">
+            Hired<span style={{ color: "var(--gold)" }}>.jo</span>
+          </Link>
+          <div className="hidden md:flex gap-8 text-sm text-white/70">
+            <Link className="hover:text-white" href="/build">Build CV</Link>
+            <Link className="hover:text-white" href="/jobs">Find Jobs</Link>
+            <Link className="hover:text-white" href="/score">My Score</Link>
+            <Link className="hover:text-white" href="/dashboard">Market</Link>
+            <Link className="hover:text-white" href="/cofounder">Co-founders</Link>
+            <Link className="hover:text-white" href="/leaderboard">Leaderboard</Link>
+          </div>
+          <Link href="/build" className="px-4 py-2 rounded-full gold-grad text-black text-sm font-bold">
+            Get hired →
+          </Link>
+        </nav>
+
+        {/* Scene 1 */}
+        <div className="absolute inset-0 flex items-center px-10 md:px-24 pointer-events-none"
+          style={{ opacity: s1, transition: "opacity 0.4s ease" }}>
+          <div className="max-w-2xl">
+            <p className="text-white/50 uppercase tracking-widest text-xs mb-4">Jordan, 2026</p>
+            <h1 className="font-display font-extrabold leading-tight mb-5"
+              style={{ fontSize: "clamp(2.8rem, 6vw, 5rem)", textShadow: "0 4px 40px rgba(0,0,0,0.9)" }}>
+              46% of graduates<br />
+              <span style={{ color: "#F5B82E" }}>can't find work.</span>
+            </h1>
+            <p className="text-white/70 text-lg" style={{ textShadow: "0 2px 20px rgba(0,0,0,0.9)" }}>
+              Your CV is rejected before a human ever reads it.
+            </p>
+          </div>
+        </div>
+
+        {/* Scene 2 */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none"
+          style={{ opacity: s2, transition: "opacity 0.4s ease" }}>
+          <div className="text-center max-w-2xl px-8">
+            <p className="text-white/50 uppercase tracking-widest text-xs mb-4">The fix</p>
+            <h2 className="font-display font-extrabold leading-tight mb-5"
+              style={{ fontSize: "clamp(2.5rem, 5vw, 4.5rem)", textShadow: "0 4px 40px rgba(0,0,0,0.9)" }}>
+              Your story <span style={{ color: "#F5B82E" }}>deserves</span><br />to be told right.
+            </h2>
+            <p className="text-white/70 text-lg" style={{ textShadow: "0 2px 20px rgba(0,0,0,0.9)" }}>
+              Experience ✓ &nbsp;&nbsp; Skills ⚡ &nbsp;&nbsp; Summary ✨
+            </p>
+          </div>
+        </div>
+
+        {/* Scene 3 — video has Hired.jo baked in, just show the CTA buttons */}
+        <div className="absolute inset-0 flex items-end justify-center pb-20"
+          style={{ opacity: s3, transition: "opacity 0.4s ease", pointerEvents: s3 > 0.5 ? "auto" : "none" }}>
+          <div className="text-center px-8">
+            <div className="flex gap-4 flex-wrap justify-center">
+              <Link href="/build" className="px-8 py-4 rounded-2xl gold-grad text-black font-bold text-lg">
+                Build my CV →
+              </Link>
+              <Link href="/roast" className="px-8 py-4 rounded-2xl glass text-white font-bold text-lg">
+                🔥 Roast my CV
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/10">
+          <div className="h-full gold-grad" style={{ width: `${progress * 100}%`, transition: "width 0.05s linear" }} />
+        </div>
+
+        {loaded && progress < 0.03 && (
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-white/40 text-sm animate-bounce">
+            <span>scroll</span><span>↓</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function op(p: number, i0: number, i1: number, o0: number, o1: number) {
+  if (p < i0) return 0;
+  if (p < i1) return (p - i0) / (i1 - i0);
+  if (p < o0) return 1;
+  if (p < o1) return 1 - (p - o0) / (o1 - o0);
+  return 0;
+}
 
 export default function HomePage() {
   return (
     <div className="min-h-screen">
-
-      {/* NAVBAR */}
-      <nav className="flex items-center justify-between px-8 py-5 border-b border-white/5">
-        <Link href="/" className="font-display font-bold text-2xl tracking-tight">
-          Hired<span style={{ color: "var(--gold)" }}>.jo</span>
-        </Link>
-        <div className="hidden md:flex gap-8 text-sm text-white/60">
-          <Link className="hover:text-white" href="/build">Build CV</Link>
-          <Link className="hover:text-white" href="/jobs">Find Jobs</Link>
-          <Link className="hover:text-white" href="/score">My Score</Link>
-          <Link className="hover:text-white" href="/dashboard">Market</Link>
-          <Link className="hover:text-white" href="/cofounder">Co-founders</Link>
-          <Link className="hover:text-white" href="/leaderboard">Leaderboard</Link>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="hidden md:inline-flex items-center gap-2 text-xs text-white/50 px-3 py-1.5 rounded-full glass">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            Live · 60 jobs scraped
-          </span>
-          <Link href="/build" className="px-4 py-2 rounded-full gold-grad text-black text-sm font-bold ring-gold">
-            Get hired →
-          </Link>
-        </div>
-      </nav>
-
-      {/* HERO */}
-      <section className="relative px-8 pt-16 pb-24 overflow-hidden">
-        <div className="absolute inset-0 dot-grid opacity-30 pointer-events-none"></div>
-        <div className="relative max-w-7xl mx-auto grid lg:grid-cols-12 gap-10 items-center">
-
-          {/* LEFT */}
-          <div className="lg:col-span-7">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass text-xs mb-6">
-              <span style={{ color: "var(--gold)" }}>⬢</span>
-              <span className="text-white/70">Made in Jordan · Powered by Gemini 2.0</span>
-            </div>
-            <h1 className="font-display text-6xl md:text-7xl lg:text-8xl font-extrabold leading-[0.95] text-grad">
-              From graduate<br />
-              to <span className="gold-text-grad">hired</span>.
-            </h1>
-            <p className="mt-6 text-lg text-white/65 max-w-xl leading-relaxed">
-              The AI career copilot for Jordanian graduates. It <b className="text-white">interviews</b> you to build your CV, scrapes <b className="text-white">real Jordan jobs</b>, and tells you exactly what to learn to <b className="text-white">get hired</b>.
-            </p>
-            <div className="mt-10 flex flex-wrap gap-3">
-              <Link href="/build" className="group inline-flex items-center gap-3 px-6 py-4 rounded-2xl gold-grad text-black font-bold ring-gold">
-                <span className="w-8 h-8 rounded-xl bg-black/15 flex items-center justify-center">🗣</span>
-                Build my CV
-                <span className="transition-transform group-hover:translate-x-1">→</span>
-              </Link>
-              <Link href="/roast" className="inline-flex items-center gap-3 px-6 py-4 rounded-2xl glass font-semibold text-white">
-                🔥 <span>Roast my CV</span>
-              </Link>
-              <Link href="/jobs" className="inline-flex items-center gap-3 px-6 py-4 rounded-2xl glass font-semibold text-white">
-                📊 <span>Browse Jordan jobs</span>
-              </Link>
-            </div>
-            <div className="mt-12 flex items-center gap-6 text-xs text-white/40">
-              <div className="flex -space-x-2">
-                {["from-purple-500 to-pink-500","from-amber-400 to-orange-500","from-emerald-400 to-teal-500","from-blue-400 to-indigo-600"].map((g, i) => (
-                  <div key={i} className={`w-8 h-8 rounded-full bg-gradient-to-br ${g} border-2`} style={{ borderColor: "var(--ink)" }}></div>
-                ))}
-              </div>
-              <span>Job feed: <b className="text-white/80">Akhtaboot · Bayt · Wuzzuf · Fursa</b></span>
-              <span className="hidden md:inline">Updated <b className="text-white/80">May 2026</b></span>
-            </div>
-          </div>
-
-          {/* RIGHT: chat mockup */}
-          <div className="lg:col-span-5">
-            <div className="relative">
-              <div className="absolute -inset-4 purple-grad opacity-25 blur-3xl rounded-[40px]"></div>
-              <div className="relative glass rounded-[28px] p-5 float">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-red-400"></div>
-                    <div className="w-2 h-2 rounded-full bg-amber-400"></div>
-                    <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
-                  </div>
-                  <span className="text-xs text-white/40">hired.jo/build</span>
-                  <div className="pulse-ring w-2 h-2 rounded-full" style={{ background: "var(--gold)" }}></div>
-                </div>
-                <div className="space-y-2">
-                  <div className="chat-bubble chat-1 flex">
-                    <div className="px-4 py-2.5 rounded-2xl rounded-bl-sm bg-white/10 text-sm max-w-[85%]">
-                      Hey! I&apos;ll help you build a CV in 5 minutes. What&apos;s your full name?
-                    </div>
-                  </div>
-                  <div className="chat-bubble chat-2 flex justify-end">
-                    <div className="px-4 py-2.5 rounded-2xl rounded-br-sm gold-grad text-black text-sm font-medium max-w-[85%]">
-                      Khalid Masoud — CE student at Hashemite University.
-                    </div>
-                  </div>
-                  <div className="chat-bubble chat-3 flex">
-                    <div className="px-4 py-2.5 rounded-2xl rounded-bl-sm bg-white/10 text-sm max-w-[85%]">
-                      Nice. Tell me about your strongest graduation project — what problem did it solve?
-                    </div>
-                  </div>
-                  <div className="chat-bubble chat-4 flex justify-end">
-                    <div className="px-4 py-2.5 rounded-2xl rounded-br-sm gold-grad text-black text-sm font-medium max-w-[85%]">
-                      Real-time pose-estimation app in Flutter + TF-Lite, 30 FPS on mid-range Android.
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 px-3 py-2 text-xs text-white/40">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/50 blink"></span>
-                    AI is writing your CV…
-                  </div>
-                </div>
-                <div className="mt-4 flex items-center gap-2 p-2 rounded-2xl bg-white/5 border border-white/10">
-                  <button className="w-9 h-9 rounded-xl gold-grad text-black font-bold flex items-center justify-center text-lg">🎤</button>
-                  <div className="flex-1 text-sm text-white/40 px-2">Type or speak your answer…</div>
-                  <button className="px-4 py-2 rounded-xl bg-white/10 text-sm font-semibold">Send</button>
-                </div>
-                <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                  {[["5m","avg build"],["0–1000","hired score"],["60","JO jobs"]].map(([val, label]) => (
-                    <div key={label} className="p-2 rounded-xl bg-white/5">
-                      <div className="font-display font-bold text-lg gold-text-grad">{val}</div>
-                      <div className="text-[10px] text-white/40 uppercase tracking-wider">{label}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="absolute -bottom-6 -left-6 glass rounded-2xl px-4 py-3 shadow-2xl">
-                <div className="text-[10px] uppercase tracking-widest text-white/40">CV ready</div>
-                <div className="font-display font-bold text-xl">Khalid_Masoud_CV.pdf</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <ScrollHero />
 
       {/* STATS STRIP */}
       <section className="border-y border-white/5 py-5 mt-8">
