@@ -133,12 +133,14 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* MARQUEE */}
-      <section className="border-y border-white/5 overflow-hidden py-5 mt-8">
-        <div className="marquee text-2xl font-display font-bold text-white/30">
-          {["46% Jordan youth unemployment","●","75% of CVs killed by ATS","●","~40% of jobs filled via wasta","●","0 tools showing real JO data","●",
-            "46% Jordan youth unemployment","●","75% of CVs killed by ATS","●","~40% of jobs filled via wasta","●","0 tools showing real JO data","●"].map((t, i) => (
-            <span key={i} style={t === "●" ? { color: "var(--gold)" } : {}}>{t}</span>
+      {/* STATS STRIP */}
+      <section className="border-y border-white/5 py-5 mt-8">
+        <div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-3 text-lg font-display font-bold text-white/30">
+          {["46% Jordan youth unemployment","75% of CVs killed by ATS","~40% of jobs filled via wasta","0 tools showing real JO data"].map((t, i) => (
+            <span key={i} className="flex items-center gap-3">
+              {i > 0 && <span style={{ color: "var(--gold)" }}>●</span>}
+              {t}
+            </span>
           ))}
         </div>
       </section>
