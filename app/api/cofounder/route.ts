@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { embed, cosine } from "@/lib/embeddings";
 
-// Stub embed/cosine until Track C delivers lib/embeddings.ts
-// When ready: import { embed, cosine } from "@/lib/embeddings";
-function stubEmbed(_text: string): number[] {
-  return Array(10).fill(0);
-}
-function stubCosine(_a: number[], _b: number[]): number {
-  return Math.random(); // random until real embeddings arrive
-}
+type PrismaCofounder = {
+  id: string;
+  alias: string;
+  email: string;
+  skills: string;
+  interests: string;
+  vibe: string;
+  embedding: string | null;
+  createdAt: Date;
+};
 
 export async function POST(req: Request) {
   try {
@@ -16,7 +19,7 @@ export async function POST(req: Request) {
 
     if (body.action === "register") {
       const text = `${(body.skills as string[]).join(" ")} ${(body.interests as string[]).join(" ")} ${body.vibe}`;
-      const emb = stubEmbed(text);
+      const emb = await embed(text);
       await prisma.cofounderProfile.create({
         data: {
           alias: body.alias,
@@ -31,18 +34,25 @@ export async function POST(req: Request) {
     }
 
     if (body.action === "match") {
-      const meEmb = stubEmbed(`${(body.skills as string[]).join(" ")} ${(body.interests as string[]).join(" ")}`);
-      const all = await prisma.cofounderProfile.findMany();
+      const meText = `${(body.skills as string[]).join(" ")} ${(body.interests as string[]).join(" ")}`;
+      const meEmb = await embed(meText);
+      const all = (await prisma.cofounderProfile.findMany()) as PrismaCofounder[];
       const ranked = all
         .map((p) => {
           const pSkills: string[] = JSON.parse(p.skills);
-          const complementary = pSkills.filter((s) => !(body.skills as string[]).includes(s)).length;
-          const sim = p.embedding ? stubCosine(meEmb, JSON.parse(p.embedding)) : 0;
-          return { ...p, matchScore: complementary * 0.5 + sim * 0.5 };
+          const pInterests: string[] = JSON.parse(p.interests);
+          const complementary = pSkills.filter(
+            (s) => !(body.skills as string[]).includes(s)
+          ).length;
+          const shared = pInterests.filter(
+            (i) => (body.interests as string[]).includes(i)
+          ).length;
+          const sim = p.embedding ? cosine(meEmb, JSON.parse(p.embedding)) : 0;
+          return { ...p, matchScore: complementary * 0.4 + shared * 0.3 + sim * 0.3 };
         })
         .sort((a, b) => b.matchScore - a.matchScore)
         .slice(0, 5)
-        .map(({ embedding, ...rest }) => rest); // strip embedding from response
+        .map(({ embedding: _emb, ...rest }) => rest);
       return NextResponse.json({ matches: ranked });
     }
 
