@@ -2,28 +2,44 @@
 import { useState } from "react";
 import type { Job, MatchResult } from "@/lib/types";
 
+// LinkedIn geoIds — avoids "Jordan, Pennsylvania, USA" ambiguity
+const LI_GEO: Record<string, string> = {
+  "Jordan":       "101282781",
+  "UAE":          "104305776",
+  "Saudi Arabia": "102571732",
+  "Palestine":    "101620481",
+};
+
+function linkedInSearchUrl(job: Job): string {
+  const q = encodeURIComponent(`${job.title} ${job.company}`);
+  const geoId = LI_GEO[job.country] ?? LI_GEO["Jordan"];
+  return `https://www.linkedin.com/jobs/search/?keywords=${q}&geoId=${geoId}`;
+}
+
 function applyUrl(job: Job): string {
   const q = encodeURIComponent(job.title);
   const company = encodeURIComponent(job.company);
+  const country = job.country === "UAE" ? "uae" : job.country === "Saudi Arabia" ? "saudi-arabia" : "jordan";
   switch (job.source) {
     case "Akhtaboot":
-      return `https://www.akhtaboot.com/en/jordan/jobs?q=${q}+${company}`;
+      return `https://www.akhtaboot.com/en/${country}/jobs?q=${q}+${company}`;
     case "Bayt":
-      return `https://www.bayt.com/en/jordan/jobs/?q=${q}`;
+      return `https://www.bayt.com/en/${country}/jobs/?q=${q}`;
     case "Wuzzuf":
       return `https://wuzzuf.net/search/jobs/?q=${q}&a=hpb`;
     case "Fursa":
       return `https://www.for9a.com/search?q=${q}`;
+    case "Naukrigulf":
+      return `https://www.naukrigulf.com/jobs-in-${country}?q=${q}`;
+    case "GulfTalent":
+      return `https://www.gulftalent.com/jobs?search=${q}`;
+    case "Tanqeeb":
+      return `https://www.tanqeeb.com/jobs?q=${q}`;
     case "LinkedIn":
-      return job.url ?? `https://www.linkedin.com/jobs/search/?keywords=${q}&location=Jordan`;
+      return job.url ?? linkedInSearchUrl(job);
     default:
-      return job.url ?? `https://www.akhtaboot.com/en/jordan/jobs?q=${q}`;
+      return job.url ?? linkedInSearchUrl(job);
   }
-}
-
-function linkedInUrl(job: Job): string {
-  const q = encodeURIComponent(`${job.title} ${job.company}`);
-  return `https://www.linkedin.com/jobs/search/?keywords=${q}&location=Jordan`;
 }
 
 const seniorityColor: Record<string, string> = {
@@ -176,7 +192,7 @@ export function JobCard({ job, cv }: { job: Job; cv?: any }) {
             Apply →
           </a>
           <a
-            href={linkedInUrl(job)}
+            href={linkedInSearchUrl(job)}
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}

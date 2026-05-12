@@ -80,7 +80,12 @@ export default function JobsPage() {
   }, [country]);
 
   const SOURCES  = useMemo(() => ["All", ...Array.from(new Set(allJobs.map((j) => j.source)))], [allJobs]);
-  const SECTORS  = useMemo(() => ["All", ...sortOtherLast(Array.from(new Set(allJobs.map((j) => j.sector))))], [allJobs]);
+  const SECTORS  = useMemo(() => {
+    const fromJobs = Array.from(new Set(allJobs.map((j) => j.sector)));
+    const always = ["Tech","Finance","Marketing","Sales","Design","Creative","HR","Healthcare","Education","Legal","Operations","Customer Service","Construction","Other"];
+    const merged = Array.from(new Set([...fromJobs, ...always]));
+    return ["All", ...sortOtherLast(merged.filter((s) => s !== "All"))];
+  }, [allJobs]);
 
   const sourcePool = useMemo(
     () => sector === "Other" ? [...allJobs, ...diverseJobs] : allJobs,
