@@ -14,6 +14,8 @@ function applyUrl(job: Job): string {
       return `https://wuzzuf.net/search/jobs/?q=${q}&a=hpb`;
     case "Fursa":
       return `https://www.for9a.com/search?q=${q}`;
+    case "LinkedIn":
+      return job.url ?? `https://www.linkedin.com/jobs/search/?keywords=${q}&location=Jordan`;
     default:
       return job.url ?? `https://www.akhtaboot.com/en/jordan/jobs?q=${q}`;
   }

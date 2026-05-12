@@ -36,7 +36,7 @@ function mapJob(j: any, index: number): Job {
     [];
 
   return {
-    id:          index + 10000,
+    id:          String(index + 10000),
     title:       j.job_title ?? "Untitled",
     company:     j.employer_name ?? "Unknown",
     sector:      inferSector(j.job_title ?? "", j.job_description ?? ""),
