@@ -6,7 +6,7 @@ import staticJobs from "@/data/jobs.json";
 let cache: { data: Job[]; ts: number } | null = null;
 const CACHE_MS = 30 * 60 * 1000;
 
-function inferSeniority(title: string): string {
+function inferSeniority(title: string): "Intern" | "Junior" | "Mid" | "Senior" {
   const t = title.toLowerCase();
   if (/intern|internship|trainee/.test(t)) return "Intern";
   if (/senior|sr\.|lead|principal|head|director|manager/.test(t)) return "Senior";
