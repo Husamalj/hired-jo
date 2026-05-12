@@ -1,6 +1,49 @@
 "use client";
 import type { CV } from "@/lib/types";
 
+interface Section {
+  name: "experience" | "education" | "projects" | "skills" | "languages";
+  score: number;
+  hasData: boolean;
+}
+
+function getSmartSectionOrder(cv: CV): Section["name"][] {
+  const isFreshGrad = cv.experience.length < 2;
+
+  const sections: Section[] = [
+    {
+      name: "experience",
+      score: cv.experience.length * 8 + cv.experience.reduce((sum, x) => sum + x.bullets.length, 0),
+      hasData: cv.experience.length > 0,
+    },
+    {
+      name: "education",
+      score: cv.education.length * (isFreshGrad ? 15 : 8) + (cv.education[0]?.gpa ? 2 : 0),
+      hasData: cv.education.length > 0,
+    },
+    {
+      name: "projects",
+      score: (cv.projects?.length || 0) * 10 + (cv.projects?.reduce((sum, p) => sum + p.bullets.length, 0) || 0),
+      hasData: (cv.projects?.length || 0) > 0,
+    },
+    {
+      name: "skills",
+      score: (cv.skillCategories?.length || 0) * 6 + (cv.skillCategories?.reduce((sum, s) => sum + s.items.length, 0) || 0),
+      hasData: (cv.skillCategories?.length || 0) > 0 || (cv.skills?.length || 0) > 0,
+    },
+    {
+      name: "languages",
+      score: cv.languages.length * 3,
+      hasData: cv.languages.length > 0,
+    },
+  ];
+
+  return sections
+    .filter(s => s.hasData)
+    .sort((a, b) => b.score - a.score)
+    .map(s => s.name);
+}
+
 export function CvPreview({ cv }: { cv: CV }) {
   function downloadPdf() {
     Promise.all([import("jspdf"), import("jspdf/dist/jspdf.umd.min.js")]).then(([{ jsPDF }]) => {
@@ -240,6 +283,100 @@ export function CvPreview({ cv }: { cv: CV }) {
     }).catch((err) => console.error("Word error:", err));
   }
 
+  const sectionOrder = getSmartSectionOrder(cv);
+
+  const renderSection = (sectionName: string) => {
+    switch (sectionName) {
+      case "experience":
+        return (
+          <section key="experience" className="mb-8">
+            <h2 className="text-sm font-bold text-black uppercase tracking-wider mb-4 pb-2 border-b border-gray-300">Experience</h2>
+            {cv.experience.map((x, i) => (
+              <div key={i} className="mb-6">
+                <div className="flex justify-between items-baseline mb-2">
+                  <p className="text-blue-600 font-bold text-sm">{x.title}</p>
+                  <p className="text-gray-500 text-xs">{x.startDate} - {x.endDate}</p>
+                </div>
+                <p className="text-gray-600 text-sm mb-3">{x.company}</p>
+                <ul className="space-y-2">
+                  {x.bullets.map((b, j) => (
+                    <li key={j} className="text-gray-700 text-sm leading-relaxed">
+                      • {b}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </section>
+        );
+      case "education":
+        return (
+          <section key="education" className="mb-8">
+            <h2 className="text-sm font-bold text-black uppercase tracking-wider mb-4 pb-2 border-b border-gray-300">Education</h2>
+            {cv.education.map((e, i) => (
+              <div key={i} className="mb-4">
+                <p className="text-blue-600 font-bold text-sm">{e.degree}</p>
+                <p className="text-gray-600 text-sm">{e.institution}</p>
+                <p className="text-gray-500 text-xs mt-1">{e.startYear} - {e.endYear}{e.gpa ? ` • GPA ${e.gpa}` : ""}</p>
+              </div>
+            ))}
+          </section>
+        );
+      case "projects":
+        return (
+          <section key="projects" className="mb-8">
+            <h2 className="text-sm font-bold text-black uppercase tracking-wider mb-4 pb-2 border-b border-gray-300">Projects</h2>
+            {cv.projects?.map((p, i) => (
+              <div key={i} className="mb-6">
+                <p className="text-blue-600 font-bold text-sm">{p.name}</p>
+                {p.description && <p className="text-gray-600 text-sm mt-1">{p.description}</p>}
+                {p.tech.length > 0 && <p className="text-gray-500 text-xs mt-1">Tech: {p.tech.join(", ")}</p>}
+                {p.bullets && p.bullets.length > 0 && (
+                  <ul className="space-y-1 mt-2">
+                    {p.bullets.map((b, j) => (
+                      <li key={j} className="text-gray-700 text-sm leading-relaxed">
+                        • {b}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </section>
+        );
+      case "skills":
+        return (
+          <section key="skills" className="mb-8">
+            <h2 className="text-sm font-bold text-black uppercase tracking-wider mb-4 pb-2 border-b border-gray-300">Skills</h2>
+            <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+              {cv.skillCategories?.map((cat, i) => (
+                <div key={i} className="flex justify-between">
+                  <p className="font-semibold text-gray-800 text-sm">{cat.category}</p>
+                  <p className="text-gray-600 text-sm">{cat.items.slice(0, 2).join(", ")}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      case "languages":
+        return (
+          <section key="languages" className="mb-8">
+            <h2 className="text-sm font-bold text-black uppercase tracking-wider mb-4 pb-2 border-b border-gray-300">Languages</h2>
+            <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+              {cv.languages.map((l, i) => (
+                <div key={i} className="flex justify-between">
+                  <p className="font-semibold text-gray-800 text-sm">{l.name}</p>
+                  <p className="text-gray-600 text-sm">{l.level}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="bg-white text-black p-12 max-w-4xl mx-auto rounded-lg shadow-sm" style={{ fontFamily: "Georgia, serif" }}>
       <div className="flex justify-between items-start mb-8 pb-6 border-b border-gray-300">
@@ -254,68 +391,7 @@ export function CvPreview({ cv }: { cv: CV }) {
         </div>
       </div>
 
-      {cv.experience.length > 0 && (
-        <section className="mb-8">
-          <h2 className="text-sm font-bold text-black uppercase tracking-wider mb-4 pb-2 border-b border-gray-300">Experience</h2>
-          {cv.experience.map((x, i) => (
-            <div key={i} className="mb-6">
-              <div className="flex justify-between items-baseline mb-2">
-                <p className="text-blue-600 font-bold text-sm">{x.title}</p>
-                <p className="text-gray-500 text-xs">{x.startDate} - {x.endDate}</p>
-              </div>
-              <p className="text-gray-600 text-sm mb-3">{x.company}</p>
-              <ul className="space-y-2">
-                {x.bullets.map((b, j) => (
-                  <li key={j} className="text-gray-700 text-sm leading-relaxed">
-                    • {b}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </section>
-      )}
-
-      {cv.education.length > 0 && (
-        <section className="mb-8">
-          <h2 className="text-sm font-bold text-black uppercase tracking-wider mb-4 pb-2 border-b border-gray-300">Education</h2>
-          {cv.education.map((e, i) => (
-            <div key={i} className="mb-4">
-              <p className="text-blue-600 font-bold text-sm">{e.degree}</p>
-              <p className="text-gray-600 text-sm">{e.institution}</p>
-              <p className="text-gray-500 text-xs mt-1">{e.startYear} - {e.endYear}{e.gpa ? ` • GPA ${e.gpa}` : ""}</p>
-            </div>
-          ))}
-        </section>
-      )}
-
-      {cv.skillCategories && cv.skillCategories.length > 0 && (
-        <section className="mb-8">
-          <h2 className="text-sm font-bold text-black uppercase tracking-wider mb-4 pb-2 border-b border-gray-300">Skills</h2>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-3">
-            {cv.skillCategories.map((cat, i) => (
-              <div key={i} className="flex justify-between">
-                <p className="font-semibold text-gray-800 text-sm">{cat.category}</p>
-                <p className="text-gray-600 text-sm">{cat.items.slice(0, 2).join(", ")}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {cv.languages.length > 0 && (
-        <section className="mb-8">
-          <h2 className="text-sm font-bold text-black uppercase tracking-wider mb-4 pb-2 border-b border-gray-300">Languages</h2>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-3">
-            {cv.languages.map((l, i) => (
-              <div key={i} className="flex justify-between">
-                <p className="font-semibold text-gray-800 text-sm">{l.name}</p>
-                <p className="text-gray-600 text-sm">{l.level}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      {sectionOrder.map(section => renderSection(section))}
 
       <div className="mt-8 pt-6 border-t border-gray-300 flex gap-3">
         <button onClick={downloadPdf} className="gold-grad text-black font-bold px-6 py-2 rounded-lg text-sm hover:opacity-90">
