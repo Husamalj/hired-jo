@@ -2,18 +2,11 @@
 import { useState } from "react";
 import type { Job, MatchResult } from "@/lib/types";
 
-// LinkedIn geoIds — avoids "Jordan, Pennsylvania, USA" ambiguity
-const LI_GEO: Record<string, string> = {
-  "Jordan":       "101282781",
-  "UAE":          "104305776",
-  "Saudi Arabia": "102571732",
-  "Palestine":    "101620481",
-};
-
 function linkedInSearchUrl(job: Job): string {
   const keywords = encodeURIComponent(job.title);
-  const geoId = LI_GEO[job.country] ?? LI_GEO["Jordan"];
-  return `https://www.linkedin.com/jobs/search/?keywords=${keywords}&geoId=${geoId}`;
+  const company = encodeURIComponent(job.company);
+  const location = job.country === "UAE" ? "Dubai" : job.country === "Saudi Arabia" ? "Riyadh" : "Amman";
+  return `https://www.linkedin.com/jobs/search/?keywords=${keywords}%20${company}&location=${location}`;
 }
 
 function applyUrl(job: Job): string {
