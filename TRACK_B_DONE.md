@@ -101,9 +101,23 @@ https://hired-jo-zrgu.vercel.app
 
 ---
 
-## Handoff to Track A: JSearch Location Filtering
+## Handoff to Track A: Two Tasks
 
-**Priority:** Medium. Fix before final demo.
+### Task 1: Build /build page (CV Builder)
+See the full prompt pasted above in your Claude Code session. Build:
+- `app/build/page.tsx` — conversational CV builder with chat UI
+- `components/CvPreview.tsx` — CV display card
+- `components/VoiceRecorder.tsx` — voice input (optional WOW feature)
+
+**Must save CV to localStorage exactly:** `localStorage.setItem("hired_cv", JSON.stringify(cv))`
+
+When done: `git commit -m "feat(build): conversational CV builder + voice mode" && git push`
+
+---
+
+### Task 2: Fix JSearch Location Filtering
+
+**Priority:** Medium. Fix before final demo after Task 1 is done.
 
 **Problem:** JSearch (LinkedIn/Indeed/Glassdoor API) returns jobs globally, not filtered by country. Example:
 - Search query: "jobs in Dubai UAE"
