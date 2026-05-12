@@ -8,10 +8,12 @@ const groq = new Groq({
 
 const MODEL = "llama-3.3-70b-versatile";
 
-async function ask(
-  messages: Groq.Chat.Completions.ChatCompletionMessageParam[],
-  maxTokens = 4096
-): Promise<string> {
+interface Msg {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
+async function ask(messages: Msg[], maxTokens = 4096): Promise<string> {
   const completion = await groq.chat.completions.create({
     messages,
     model: MODEL,
@@ -59,10 +61,10 @@ Write experience and project bullets as: action verb + specific deliverable + qu
 Write the summary as a confident 2-sentence elevator pitch.
 No placeholder text. No markdown in JSON string values.`;
 
-  const groqMessages: Groq.Chat.Completions.ChatCompletionMessageParam[] = [
+  const groqMessages: Msg[] = [
     { role: "system", content: SYSTEM },
     ...messages.map((m) => ({
-      role: m.role === "ai" ? ("assistant" as const) : ("user" as const),
+      role: (m.role === "ai" ? "assistant" : "user") as "assistant" | "user",
       content: m.text,
     })),
   ];
