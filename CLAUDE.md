@@ -6,11 +6,12 @@
 
 ---
 
-## Read this before touching any file
+## Read these files before touching anything
 
-1. Read `TRACK_B_DONE.md` — full inventory of what Track B built and owns. Contains integration contracts and the list of files you must NOT overwrite.
-2. Read `lib/types.ts` — all shared TypeScript types (CV, Job, MatchResult, HiredScore). Never redefine these.
-3. Read `app/globals.css` — all custom CSS utility classes. Use them, don't add new ones.
+1. Read `PLAN.md` — the original full hackathon plan. Read this first for the big picture, feature goals, and demo strategy. Note: some details differ from what was actually built (see notes at top of that file).
+2. Read `TRACK_B_DONE.md` — exact inventory of what Track B built and owns. Contains integration contracts and the list of files you must NOT overwrite.
+3. Read `lib/types.ts` — all shared TypeScript types (CV, Job, MatchResult, HiredScore). Never redefine these.
+4. Read `app/globals.css` — all custom CSS utility classes. Use them, don't add new ones.
 
 ---
 
