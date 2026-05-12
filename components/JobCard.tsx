@@ -36,9 +36,11 @@ function applyUrl(job: Job): string {
     case "Tanqeeb":
       return `https://www.tanqeeb.com/jobs?q=${q}`;
     case "LinkedIn":
-      return job.url ?? linkedInSearchUrl(job);
+    case "Indeed":
+    case "Glassdoor":
+      return linkedInSearchUrl(job);
     default:
-      return job.url ?? linkedInSearchUrl(job);
+      return linkedInSearchUrl(job);
   }
 }
 
