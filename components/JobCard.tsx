@@ -2,18 +2,11 @@
 import { useState } from "react";
 import type { Job, MatchResult } from "@/lib/types";
 
-// LinkedIn geoIds — avoids "Jordan, Pennsylvania, USA" ambiguity
-const LI_GEO: Record<string, string> = {
-  "Jordan":       "101282781",
-  "UAE":          "104305776",
-  "Saudi Arabia": "102571732",
-  "Palestine":    "101620481",
-};
-
 function linkedInSearchUrl(job: Job): string {
   const keywords = encodeURIComponent(job.title);
-  const geoId = LI_GEO[job.country] ?? LI_GEO["Jordan"];
-  return `https://www.linkedin.com/jobs/search/?keywords=${keywords}&geoId=${geoId}`;
+  const company = encodeURIComponent(job.company);
+  const location = job.country === "UAE" ? "Dubai" : job.country === "Saudi Arabia" ? "Riyadh" : "Amman";
+  return `https://www.linkedin.com/jobs/search/?keywords=${keywords}%20${company}&location=${location}`;
 }
 
 function applyUrl(job: Job): string {
@@ -36,9 +29,11 @@ function applyUrl(job: Job): string {
     case "Tanqeeb":
       return `https://www.tanqeeb.com/jobs?q=${q}`;
     case "LinkedIn":
-      return job.url ?? linkedInSearchUrl(job);
+    case "Indeed":
+    case "Glassdoor":
+      return linkedInSearchUrl(job);
     default:
-      return job.url ?? linkedInSearchUrl(job);
+      return linkedInSearchUrl(job);
   }
 }
 
@@ -93,9 +88,14 @@ export function JobCard({ job, cv }: { job: Job; cv?: any }) {
             <h3 className="font-bold text-base leading-tight">{job.title}</h3>
             <p className="text-white/50 text-sm mt-0.5">{job.company} · {job.city}</p>
           </div>
-          <span className={`shrink-0 text-xs px-2 py-1 rounded-full font-medium ${seniorityColor[job.seniority] ?? "bg-white/10"}`}>
-            {job.seniority}
-          </span>
+          <div className="shrink-0 flex gap-1">
+            <span className="text-xs px-2 py-1 rounded-full font-medium bg-white/10 text-white/60">
+              {job.source}
+            </span>
+            <span className={`text-xs px-2 py-1 rounded-full font-medium ${seniorityColor[job.seniority] ?? "bg-white/10"}`}>
+              {job.seniority}
+            </span>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-1">

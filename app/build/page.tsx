@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { CvPreview } from "@/components/CvPreview";
+import { CvBulkForm } from "@/components/CvBulkForm";
 import { VoiceRecorder } from "@/components/VoiceRecorder";
 import type { CV } from "@/lib/types";
 
@@ -372,6 +373,7 @@ function buildCvFromAnswers(answers: string[]): CV {
 
 export default function BuildPage() {
   const router = useRouter();
+  const [mode, setMode] = useState<"chat" | "form">("chat");
   const [msgs, setMsgs] = useState<Msg[]>([
     { role: "ai", text: "Hey! I'll help you build a professional CV in just a few minutes. Ready? Let's go!" },
   ]);
@@ -381,6 +383,11 @@ export default function BuildPage() {
   const [answers, setAnswers] = useState<string[]>([]);
   const [cv, setCv] = useState<CV | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const handleFormSubmit = (formCv: CV) => {
+    setCv(formCv);
+    localStorage.setItem("hired_cv", JSON.stringify(formCv));
+  };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -475,8 +482,36 @@ export default function BuildPage() {
     <div className="min-h-screen grain dot-grid">
       <Navbar />
       <main className="max-w-2xl mx-auto px-4 py-8">
-        <h1 className="text-grad font-display font-bold text-3xl mb-1">Build your CV</h1>
-        <p className="text-white/60 text-sm mb-6">Talk or type. I'll write your CV for you.</p>
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h1 className="text-grad font-display font-bold text-3xl mb-1">Build your CV</h1>
+            <p className="text-white/60 text-sm">{mode === "chat" ? "Talk or type. I'll write your CV for you." : "Fill all your information at once."}</p>
+          </div>
+          {!cv && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setMode("chat")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  mode === "chat"
+                    ? "gold-grad text-black"
+                    : "bg-white/10 text-white/60 hover:text-white"
+                }`}
+              >
+                💬 Chat
+              </button>
+              <button
+                onClick={() => setMode("form")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  mode === "form"
+                    ? "gold-grad text-black"
+                    : "bg-white/10 text-white/60 hover:text-white"
+                }`}
+              >
+                📝 Form
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Progress bar */}
         {!cv && (
@@ -496,7 +531,11 @@ export default function BuildPage() {
 
         {!cv ? (
           <>
-            {/* Chat window */}
+            {mode === "form" ? (
+              <CvBulkForm onSubmit={handleFormSubmit} />
+            ) : (
+              <>
+                {/* Chat window */}
             <div className="glass rounded-2xl p-5 mb-4 h-[50vh] overflow-y-auto flex flex-col gap-3">
               {msgs.map((m, i) => (
                 <div key={i} className={`flex chat-bubble ${m.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -548,6 +587,8 @@ export default function BuildPage() {
                 Send
               </button>
             </div>
+              </>
+            )}
           </>
         ) : (
           <>

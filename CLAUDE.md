@@ -38,7 +38,8 @@
 | Co-founder matching | Track B | `app/cofounder/`, `app/api/cofounder/` |
 | Navbar + landing | Track B | `components/Navbar.tsx`, `app/page.tsx` |
 | In-memory store | Track B | `lib/store.ts` |
-| **CV Builder (/build)** | **Track A** | `app/build/page.tsx` |
+| **CV Builder (/build)** | **Track A** | `app/build/page.tsx` — use `<CvBulkForm>` component |
+| **CV Components** | **Track B** | `components/CvPreview.tsx`, `components/CvBulkForm.tsx` |
 | **Gemini AI layer** | **Track C** | `lib/gemini.ts`, `lib/embeddings.ts` |
 | **CV Roast (/roast)** | **Track C** | `app/roast/`, `app/api/roast/` |
 | **Cover letter (/cover)** | **Track C** | `app/cover/`, `app/api/cover/` |
@@ -102,6 +103,28 @@ GEMINI_API_KEY=<google ai studio key>
 | `/leaderboard` | Track B | Done |
 | `/roast` | Track C | **Track C builds this** |
 | `/cover` | Track C | **Track C builds this** |
+
+---
+
+## CV Builder (/build) — For Track A
+
+**Components available:**
+- `<CvPreview cv={cv} />` — displays the formatted white CV template with smart section ordering
+- `<CvBulkForm onSubmit={(cv) => {}} />` — form mode for filling all CV fields at once
+
+**CvBulkForm features:**
+- Single-page form for all CV fields (no conversational flow)
+- Format guides for each section (e.g., "Job Title | Company | Jan 2023 - Dec 2023 | Bullet 1 | Bullet 2")
+- Live preview of added items
+- Auto-saves to localStorage under key `hired_cv`
+- Returns formatted `CV` object matching `lib/types.ts`
+
+**CvPreview features:**
+- Smart section reordering based on data completeness
+- Detects fresh graduates vs experienced professionals
+- Hides empty sections automatically
+- PDF and Word download buttons
+- Professional white template design
 
 ---
 

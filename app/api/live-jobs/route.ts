@@ -8,6 +8,12 @@ const CACHE_MS = 60 * 60 * 1000;
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
+const CITIES_BY_COUNTRY: Record<string, string[]> = {
+  "Jordan": ["Amman","Irbid","Zarqa","Balqa","Madaba","Jerash","Ajloun","Mafraq","Karak","Tafilah","Ma'an","Aqaba"],
+  "UAE": ["Dubai","Abu Dhabi","Sharjah","Ajman","Ras Al Khaimah","Fujairah","Umm Al Quwain"],
+  "Saudi Arabia": ["Riyadh","Jeddah","Mecca","Medina","Dammam","Al Khobar","Dhahran","Tabuk","Abha","Taif","Jubail","Yanbu","Najran","Hail","Khamis Mushait","Buraidah","Al Ahsa"],
+};
+
 function inferSeniority(title: string): "Intern" | "Junior" | "Mid" | "Senior" {
   const t = title.toLowerCase();
   if (/intern|internship|trainee/.test(t)) return "Intern";
@@ -45,7 +51,17 @@ function inferCountry(jobCountry: string, jobCity: string): string {
   return "Jordan";
 }
 
-function mapJSearchJob(j: any, index: number): Job {
+function mapJSearchJob(j: any, index: number): Job | null {
+  const jobCity = j.job_city ?? "";
+  const inferredCountry = inferCountry(j.job_country ?? "", jobCity);
+  const validCities = CITIES_BY_COUNTRY[inferredCountry];
+
+  // Reject jobs where city doesn't match country (e.g., UK jobs appearing in search results)
+  const cityLower = jobCity.toLowerCase();
+  if (!validCities?.some(c => cityLower.includes(c.toLowerCase()))) {
+    return null;
+  }
+
   const skills: string[] =
     j.job_required_skills ??
     (j.job_highlights?.Qualifications ?? [])
@@ -58,7 +74,7 @@ function mapJSearchJob(j: any, index: number): Job {
     company:     j.employer_name ?? "Unknown",
     sector:      inferSector(j.job_title ?? "", j.job_description ?? ""),
     city:        j.job_city || "Amman",
-    country:     inferCountry(j.job_country ?? "", j.job_city ?? ""),
+    country:     inferredCountry,
     seniority:   inferSeniority(j.job_title ?? ""),
     skills:      [...new Set(skills)].slice(0, 8),
     salaryMin:   j.job_min_salary ?? undefined,
@@ -152,7 +168,8 @@ export async function GET() {
   const seen = new Set<string>();
   const jsearchJobs = jsearchResults
     .filter((j) => { if (seen.has(j.job_id)) return false; seen.add(j.job_id); return true; })
-    .map(mapJSearchJob);
+    .map(mapJSearchJob)
+    .filter(Boolean);
 
   // ── 2. Gemini Search grounding ──────────────────────────────────────────
   // Jordan-focused boards
