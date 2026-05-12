@@ -59,7 +59,7 @@ function mapJSearchJob(j: any, index: number): Job {
 // Use Gemini Search grounding to scrape job boards that have no API
 async function fetchGeminiJobs(
   site: string,
-  sourceName: "Akhtaboot" | "Bayt" | "Wuzzuf" | "Fursa",
+  sourceName: "Akhtaboot" | "Bayt" | "Wuzzuf" | "Fursa" | "Naukrigulf" | "GulfTalent" | "Tanqeeb",
   offset: number
 ): Promise<Job[]> {
   try {
