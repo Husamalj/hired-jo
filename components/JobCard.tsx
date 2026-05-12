@@ -19,6 +19,11 @@ function applyUrl(job: Job): string {
   }
 }
 
+function linkedInUrl(job: Job): string {
+  const q = encodeURIComponent(`${job.title} ${job.company}`);
+  return `https://www.linkedin.com/jobs/search/?keywords=${q}&location=Jordan`;
+}
+
 const seniorityColor: Record<string, string> = {
   Intern: "bg-blue-500/20 text-blue-300",
   Junior: "bg-green-500/20 text-green-300",
@@ -167,6 +172,15 @@ export function JobCard({ job, cv }: { job: Job; cv?: any }) {
             className="px-3 py-2 text-xs rounded-xl border border-white/20 text-white/70 hover:text-white"
           >
             Apply →
+          </a>
+          <a
+            href={linkedInUrl(job)}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="px-3 py-2 text-xs rounded-xl border border-[#0A66C2]/50 text-[#0A66C2] hover:text-white hover:border-[#0A66C2]"
+          >
+            in
           </a>
         </div>
 
