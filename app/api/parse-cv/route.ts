@@ -1,7 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { CV } from "@/lib/types";
-
-const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 export async function POST(req: Request) {
   try {
@@ -11,61 +8,8 @@ export async function POST(req: Request) {
       return Response.json({ error: "No text provided" }, { status: 400 });
     }
 
-    const model = gemini.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-    const prompt = `You are a CV parser. Extract and structure this person's CV information into JSON format.
-
-IMPORTANT: Return ONLY the JSON object, nothing else. No markdown, no code blocks, no explanation.
-
-Return this exact structure:
-{
-  "fullName": "extracted name or empty string",
-  "email": "extracted email or empty string",
-  "phone": "extracted phone or empty string",
-  "location": "extracted location or empty string",
-  "summary": "professional summary if mentioned, otherwise empty string",
-  "experience": [{"title": "job title", "company": "company name", "startDate": "month year", "endDate": "month year or Present", "bullets": ["achievement 1", "achievement 2"]}],
-  "education": [{"degree": "degree name", "institution": "university name", "startYear": "year", "endYear": "year", "gpa": null}],
-  "projects": [{"name": "project name", "description": "short description", "tech": ["tech1", "tech2"], "bullets": ["achievement"], "link": ""}],
-  "skillCategories": [{"category": "category name", "items": ["skill1", "skill2"]}],
-  "skills": [],
-  "languages": [{"name": "language", "level": "Native"}],
-  "links": []
-}
-
-Person's information:
-${text}`;
-
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text().trim();
-
-    // Try to extract JSON - it might be wrapped in markdown code blocks
-    let jsonStr = responseText;
-    const jsonMatch = responseText.match(/```(?:json)?\n?([\s\S]*?)\n?```/) || responseText.match(/\{[\s\S]*\}/);
-
-    if (jsonMatch) {
-      jsonStr = jsonMatch[1] || jsonMatch[0];
-    }
-
-    const cv: CV = JSON.parse(jsonStr);
-
-    // Ensure all required fields exist
-    const validCV: CV = {
-      fullName: cv.fullName || "",
-      email: cv.email || "",
-      phone: cv.phone || "",
-      location: cv.location || "",
-      summary: cv.summary || "",
-      experience: Array.isArray(cv.experience) ? cv.experience : [],
-      education: Array.isArray(cv.education) ? cv.education : [],
-      projects: Array.isArray(cv.projects) ? cv.projects : [],
-      skillCategories: Array.isArray(cv.skillCategories) ? cv.skillCategories : [],
-      skills: Array.isArray(cv.skills) ? cv.skills : [],
-      languages: Array.isArray(cv.languages) ? cv.languages : [],
-      links: Array.isArray(cv.links) ? cv.links : [],
-    };
-
-    return Response.json(validCV);
+    const cv: CV = parseCV(text);
+    return Response.json(cv);
   } catch (error) {
     console.error("Error parsing CV:", error);
     return Response.json(
@@ -74,3 +18,164 @@ ${text}`;
     );
   }
 }
+
+function parseCV(text: string): CV {
+  const lines = text.split("\n").map(l => l.trim()).filter(l => l);
+  const textLower = text.toLowerCase();
+
+  return {
+    fullName: extractName(text),
+    email: extractEmail(text),
+    phone: extractPhone(text),
+    location: extractLocation(text),
+    summary: extractSummary(text),
+    experience: extractExperience(text),
+    education: extractEducation(text),
+    projects: extractProjects(text),
+    skillCategories: extractSkills(text),
+    skills: [],
+    languages: extractLanguages(text),
+    links: [],
+  };
+}
+
+function extractName(text: string): string {
+  const nameMatch = text.match(/(?:name|my name)[:\s]+([A-Za-z\s]+?)(?:[\.|,]|email|phone|$)/i);
+  return nameMatch ? nameMatch[1].trim() : "";
+}
+
+function extractEmail(text: string): string {
+  const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+  return emailMatch ? emailMatch[0] : "";
+}
+
+function extractPhone(text: string): string {
+  const phoneMatch = text.match(/\+?[\d\s\-\(\)]{10,}/);
+  return phoneMatch ? phoneMatch[0].trim() : "";
+}
+
+function extractLocation(text: string): string {
+  const locMatch = text.match(/(?:location|based in)[:\s]+([^,.\n]+(?:,[^,.\n]+)?)/i);
+  return locMatch ? locMatch[1].trim() : "";
+}
+
+function extractSummary(text: string): string {
+  const lines = text.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].toLowerCase();
+    if (
+      (line.includes("engineer") ||
+        line.includes("developer") ||
+        line.includes("designer") ||
+        line.includes("years of experience")) &&
+      !line.includes("@")
+    ) {
+      return lines[i].trim();
+    }
+  }
+  return "";
+}
+
+function extractExperience(text: string): Array<any> {
+  const exp: any[] = [];
+  const expKeywords = /(worked as|engineer|developer|manager|director|specialist|lead|senior)\s+(.+?)(?:at|company|for)\s+(.+?)\s+(?:from|between)?\s*(\w+\s+\d{4})\s*(?:to|-|–)\s*(\w+\s+\d{4}|present)/gi;
+
+  let match;
+  while ((match = expKeywords.exec(text)) !== null) {
+    exp.push({
+      title: match[2].trim(),
+      company: match[3].trim(),
+      startDate: match[4].trim(),
+      endDate: match[5].trim(),
+      bullets: extractBullets(text, match[2]),
+    });
+  }
+  return exp;
+}
+
+function extractEducation(text: string): Array<any> {
+  const edu: any[] = [];
+  const eduRegex = /(?:degree|studied|graduated|bachelor|master|diploma)\s+(?:in\s+)?(.+?)(?:from|at)\s+(.+?)\s+(\d{4})\s*(?:to|-|–)\s*(\d{4})(?:\s*,?\s*(?:gpa|gp\.a\.?|gpa:)\s*([\d.]+))?/gi;
+
+  let match;
+  while ((match = eduRegex.exec(text)) !== null) {
+    edu.push({
+      degree: match[1].trim(),
+      institution: match[2].trim(),
+      startYear: match[3],
+      endYear: match[4],
+      gpa: match[5] ? match[5].trim() : undefined,
+    });
+  }
+  return edu;
+}
+
+function extractProjects(text: string): Array<any> {
+  const projects: any[] = [];
+  const projRegex = /(?:project|built|developed)\s*[:–-]?\s*(.+?)(?:description|desc\.?|:)?\s+(.+?)(?:tech|technologies|stack|tools)[:–-]?\s*(.+?)(?:$|[\n•])/gi;
+
+  let match;
+  while ((match = projRegex.exec(text)) !== null) {
+    projects.push({
+      name: match[1].trim(),
+      description: match[2].trim(),
+      tech: match[3].split(/[,;]/).map(t => t.trim()),
+      bullets: [],
+      link: "",
+    });
+  }
+  return projects;
+}
+
+function extractSkills(text: string): Array<any> {
+  const skills: any[] = [];
+  const skillRegex = /(?:skills?|expertise|proficient in|know|know:|technologies?)\s*[:–-]?\s*(.+?)(?:\n|$)/gi;
+
+  let match;
+  while ((match = skillRegex.exec(text)) !== null) {
+    const skillItems = match[1]
+      .split(/[,;]/)
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+
+    if (skillItems.length > 0) {
+      skills.push({
+        category: "Skills",
+        items: skillItems,
+      });
+    }
+  }
+  return skills;
+}
+
+function extractLanguages(text: string): Array<any> {
+  const langs: any[] = [];
+  const langRegex = /(?:languages?|speaks?|fluent in)\s*[:–-]?\s*(.+?)(?:\n|$)/gi;
+
+  let match;
+  while ((match = langRegex.exec(text)) !== null) {
+    const langItems = match[1].split(/[,;]/);
+    for (const item of langItems) {
+      const parts = item.split(/[\(\)]/);
+      const name = parts[0].trim();
+      const level = parts[1]?.trim() || "Fluent";
+      if (name) {
+        langs.push({ name, level });
+      }
+    }
+  }
+  return langs;
+}
+
+function extractBullets(text: string, context: string): string[] {
+  const bullets: string[] = [];
+  // Simple heuristic: look for sentences after the job title
+  const contextIdx = text.toLowerCase().indexOf(context.toLowerCase());
+  if (contextIdx > 0) {
+    const section = text.substring(contextIdx, contextIdx + 500);
+    const sentences = section.match(/[.!?]+\s+[A-Z][^.!?]*[.!?]+/g) || [];
+    bullets.push(...sentences.slice(0, 3).map(s => s.trim()));
+  }
+  return bullets;
+}
+
