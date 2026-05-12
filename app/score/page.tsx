@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { HiredScoreCard } from "@/components/HiredScore";
+import { Navbar } from "@/components/Navbar";
 import type { CV, HiredScore } from "@/lib/types";
 
 export default function ScorePage() {
@@ -40,20 +41,25 @@ export default function ScorePage() {
 
   if (!hasCV) {
     return (
-      <main className="px-8 py-16 text-center">
-        <h1 className="text-3xl font-bold mb-4">Get Your Hired Score</h1>
-        <p className="text-white/60">
-          You need to build your CV first.{" "}
-          <a href="/build" className="text-[#F5B82E] underline">
-            Build it now →
-          </a>
-        </p>
-      </main>
+      <>
+        <Navbar />
+        <main className="px-8 py-16 text-center">
+          <h1 className="text-3xl font-bold mb-4">Get Your Hired Score</h1>
+          <p className="text-white/60">
+            You need to build your CV first.{" "}
+            <a href="/build" className="text-[#F5B82E] underline">
+              Build it now →
+            </a>
+          </p>
+        </main>
+      </>
     );
   }
 
   return (
-    <main className="px-8 py-8 max-w-xl mx-auto">
+    <>
+      <Navbar />
+      <main className="px-8 py-8 max-w-xl mx-auto">
       <h1 className="text-3xl font-bold mb-2">Your Hired Score</h1>
       <p className="text-white/60 mb-6">
         Based on your CV vs real Jordan job market data.
@@ -87,5 +93,6 @@ export default function ScorePage() {
         </p>
       )}
     </main>
+    </>
   );
 }

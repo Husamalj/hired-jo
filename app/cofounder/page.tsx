@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { Navbar } from "@/components/Navbar";
 
 type Match = {
   id: number;
@@ -62,7 +63,9 @@ export default function CofounderPage() {
   }
 
   return (
-    <main className="px-8 py-8 max-w-2xl mx-auto">
+    <>
+      <Navbar />
+      <main className="px-8 py-8 max-w-2xl mx-auto">
       <h1 className="text-3xl font-bold mb-2">Find My Co-founder</h1>
       <p className="text-white/60 mb-8">
         Register your profile, then get matched with complementary founders in Jordan.
@@ -172,5 +175,6 @@ export default function CofounderPage() {
         </div>
       )}
     </main>
+    </>
   );
 }

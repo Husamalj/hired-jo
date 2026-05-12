@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Navbar } from "@/components/Navbar";
 
 type Entry = {
   id: number;
@@ -29,18 +30,24 @@ export default function LeaderboardPage() {
   }, []);
 
   return (
-    <main className="px-8 py-8 max-w-2xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div>
+    <>
+      <Navbar />
+      <main className="px-8 py-8 max-w-2xl mx-auto">
+      <div className="mb-6">
+        <div className="flex items-start gap-3">
           <h1 className="text-3xl font-bold">Hired Score Leaderboard</h1>
-          <p className="text-white/50 text-sm mt-1">Live · refreshes every 5 s</p>
+          <span className="relative -top-1 mt-0.5 ml-1 text-xs px-3 py-1 rounded-full bg-green-500/20 text-green-400 animate-pulse whitespace-nowrap">
+            ● LIVE
+          </span>
         </div>
-        <span className="text-xs px-3 py-1 rounded-full bg-green-500/20 text-green-400 animate-pulse">
-          ● LIVE
-        </span>
+        <p className="text-white/50 text-sm mt-1">Live · refreshes every 5 s</p>
       </div>
 
-      {loading && <p className="text-white/40 animate-pulse">Loading…</p>}
+      {loading && (
+        <div className="flex justify-center items-center py-24">
+          <p className="text-white/40 animate-pulse">Loading…</p>
+        </div>
+      )}
 
       {!loading && entries.length === 0 && (
         <div className="text-center py-12 text-white/40">
@@ -77,5 +84,6 @@ export default function LeaderboardPage() {
         ))}
       </div>
     </main>
+    </>
   );
 }

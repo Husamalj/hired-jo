@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { JobCard } from "@/components/JobCard";
+import { Navbar } from "@/components/Navbar";
 import jobs from "../../data/jobs.json";
 import type { Job } from "@/lib/types";
 
@@ -91,7 +92,9 @@ export default function JobsPage() {
   );
 
   return (
-    <main className="px-8 py-8">
+    <>
+      <Navbar />
+      <main className="px-8 py-8">
       <h1 className="text-3xl font-bold mb-1">
         {isInternships ? "Internships" : "Jobs in Jordan"}
       </h1>
@@ -178,5 +181,6 @@ export default function JobsPage() {
         {filtered.map((j) => <JobCard key={j.id} job={j} cv={cv} />)}
       </div>
     </main>
+    </>
   );
 }
