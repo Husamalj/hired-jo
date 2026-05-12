@@ -8,7 +8,8 @@ export async function POST(req: Request) {
     const roast = await roastCv(cv);
     return NextResponse.json({ roast });
   } catch (e) {
-    console.error("roast error:", e);
-    return NextResponse.json({ error: "Roast failed" }, { status: 500 });
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("roast error:", msg);
+    return NextResponse.json({ error: "Roast failed", detail: msg }, { status: 500 });
   }
 }
