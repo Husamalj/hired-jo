@@ -158,8 +158,8 @@ export default function RoastPage() {
               <div className="glass rounded-2xl p-6 flex items-center justify-between gap-4">
                 <div>
                   <p className="text-white/50 text-sm">CV loaded for</p>
-                  <p className="font-bold text-lg">{cv.fullName}</p>
-                  <p className="text-white/40 text-sm">{cv.education?.[0]?.institution ?? ""}</p>
+                  <p className="font-bold text-lg">{cv.fullName || "Uploaded CV"}</p>
+                  <p className="text-white/40 text-sm">{cv.education?.[0]?.institution ?? cv.email ?? ""}</p>
                   <button
                     onClick={() => setCv(null)}
                     className="mt-2 text-xs text-white/30 hover:text-white/60 underline"
