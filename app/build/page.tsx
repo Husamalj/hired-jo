@@ -82,9 +82,7 @@ function isSkipAnswer(s: string) {
 
 function getNextStep(
   stepId: StepId,
-  answer: string,
-  expIndex: number,
-  projIndex: number
+  answer: string
 ): StepId {
   if (stepId === "name") return "phone";
   if (stepId === "phone") return "email";
@@ -137,9 +135,7 @@ function getNextStep(
 function applyAnswer(
   stepId: StepId,
   answer: string,
-  data: StructuredAnswers,
-  expIndex: number,
-  projIndex: number
+  data: StructuredAnswers
 ): StructuredAnswers {
   const d = { ...data };
   if (stepId === "name") return { ...d, name: answer };
@@ -204,8 +200,6 @@ export default function BuildPage() {
   const [thinking, setThinking] = useState(false);
   const [stepId, setStepId] = useState<StepId>("name");
   const [data, setData] = useState<StructuredAnswers>(INITIAL_ANSWERS);
-  const [expIndex, setExpIndex] = useState(0);
-  const [projIndex, setProjIndex] = useState(0);
   const [cv, setCv] = useState<CV | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -230,7 +224,7 @@ export default function BuildPage() {
     const text = (rawAnswer ?? input).trim();
     if (!text || thinking) return;
 
-    const newData = applyAnswer(stepId, text, data, expIndex, projIndex);
+    const newData = applyAnswer(stepId, text, data);
     setData(newData);
 
     const userMsg = text === "yes" ? "✅ Yes" : text === "no" ? "❌ No" : text;
@@ -238,13 +232,7 @@ export default function BuildPage() {
     setMsgs(newMsgs);
     setInput("");
 
-    // Update loop indices
-    const expMatch = (stepId as string).match(/^exp_\w+_(\d+)$/);
-    const projMatch = (stepId as string).match(/^proj_\w+_(\d+)$/);
-    if (expMatch) setExpIndex(parseInt(expMatch[1]));
-    if (projMatch) setProjIndex(parseInt(projMatch[1]));
-
-    const nextStep = getNextStep(stepId, text, expIndex, projIndex);
+    const nextStep = getNextStep(stepId, text);
     setStepId(nextStep);
 
     if (nextStep === "done") {
@@ -260,6 +248,7 @@ export default function BuildPage() {
         if (result.cv) {
           setMsgs(prev => [...prev, { role: "ai", text: "Your CV is ready! Review it below and download when happy." }]);
           setCv(result.cv);
+          localStorage.setItem("hired_cv", JSON.stringify(result.cv));
         } else throw new Error("no cv");
       } catch {
         setThinking(false);
