@@ -44,12 +44,64 @@ function loadCv(): CV | null {
   }
 }
 
-function getTopJobSkills(): string[] {
+type Sector = "Tech" | "Transport" | "FinTech" | "Healthcare" | "Other";
+
+// Keywords that signal each sector — checked against job titles, education, and skills
+const SECTOR_SIGNALS: Record<Sector, string[]> = {
+  Healthcare: [
+    "doctor", "physician", "nurse", "medical", "health", "clinical", "hospital",
+    "pharmacy", "pharmacist", "dentist", "surgeon", "medicine", "patient",
+    "radiology", "laboratory", "biomedical", "healthcare", "therapist",
+  ],
+  FinTech: [
+    "finance", "financial", "banking", "bank", "accountant", "accounting",
+    "fintech", "investment", "audit", "tax", "insurance", "actuary",
+    "economics", "economist", "treasury", "compliance", "risk",
+  ],
+  Transport: [
+    "transport", "logistics", "supply chain", "fleet", "driver", "shipping",
+    "warehouse", "procurement", "operations", "delivery", "freight",
+  ],
+  Tech: [
+    "software", "developer", "engineer", "programming", "frontend", "backend",
+    "fullstack", "devops", "data", "ai", "machine learning", "web", "mobile",
+    "cybersecurity", "network", "cloud", "computer science", "it ", "ict",
+  ],
+  Other: [],
+};
+
+function detectSector(cv: CV): Sector {
+  const haystack = [
+    ...(cv.experience ?? []).map((e) => `${e.title} ${e.company}`),
+    ...(cv.education ?? []).map((e) => `${e.degree} ${e.institution}`),
+    ...(cv.skills ?? []),
+    cv.summary ?? "",
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  const scores: Record<Sector, number> = { Tech: 0, Transport: 0, FinTech: 0, Healthcare: 0, Other: 0 };
+  for (const [sector, keywords] of Object.entries(SECTOR_SIGNALS) as [Sector, string[]][]) {
+    for (const kw of keywords) {
+      if (haystack.includes(kw)) scores[sector]++;
+    }
+  }
+
+  const best = (Object.entries(scores) as [Sector, number][]).sort((a, b) => b[1] - a[1])[0];
+  return best[1] > 0 ? best[0] : "Tech"; // default to Tech for ambiguous profiles
+}
+
+function getTopSkillsForSector(sector: Sector): string[] {
+  const sectorJobs = jobs.filter((j) => j.sector === sector);
+  // fall back to all jobs if sector has too few entries
+  const pool = sectorJobs.length >= 3 ? sectorJobs : jobs;
   const counts: Record<string, number> = {};
-  jobs.forEach((j) => (j.skills ?? []).forEach((s: string) => {
-    const k = s.toLowerCase();
-    counts[k] = (counts[k] ?? 0) + 1;
-  }));
+  pool.forEach((j) =>
+    (j.skills ?? []).forEach((s: string) => {
+      const k = s.toLowerCase();
+      counts[k] = (counts[k] ?? 0) + 1;
+    })
+  );
   return Object.entries(counts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 20)
@@ -63,11 +115,12 @@ export default function LearnPage() {
     setCv(loadCv());
   }, []);
 
-  const topJobSkills = getTopJobSkills();
+  const sector: Sector = cv ? detectSector(cv) : "Tech";
+  const topJobSkills = getTopSkillsForSector(sector);
   const cvSkills = (cv?.skills ?? []).map((s) => s.toLowerCase());
   const gapSkills = topJobSkills.filter((s) => !cvSkills.includes(s));
 
-  // resources matched to gaps first, then remaining
+  // resources matched to gaps first, then sector-relevant others, then rest
   const gapResources = resources.filter((r) =>
     gapSkills.includes(r.skill.toLowerCase())
   );
@@ -99,16 +152,13 @@ export default function LearnPage() {
               </div>
               <div>
                 <p className="text-sm font-medium">{cv.fullName}</p>
-                {gapSkills.length > 0 ? (
-                  <p className="text-xs text-white/40">
-                    {gapSkills.length} skill gap{gapSkills.length !== 1 ? "s" : ""} detected vs Jordan market —
-                    showing matched courses first
-                  </p>
-                ) : (
-                  <p className="text-xs text-green-400">
-                    Your skills cover the top Jordan job market demands
-                  </p>
-                )}
+                <p className="text-xs text-white/40">
+                  Detected field:{" "}
+                  <span className="text-purple-300 font-medium">{sector}</span>
+                  {gapSkills.length > 0
+                    ? ` · ${gapSkills.length} skill gap${gapSkills.length !== 1 ? "s" : ""} vs Jordan ${sector} jobs`
+                    : " · your skills cover the top demands"}
+                </p>
               </div>
               <Link href="/score" className="ml-auto text-xs text-white/40 underline shrink-0">
                 See your score →
