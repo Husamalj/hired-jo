@@ -46,7 +46,7 @@ type JobSource = "Akhtaboot" | "Bayt" | "Wuzzuf" | "Fursa" | "LinkedIn";
 async function fetchGeminiJobs(site: string, sourceName: JobSource, country: string, offset: number): Promise<Job[]> {
   try {
     const model = genAI.getGenerativeModel({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       tools: [{ googleSearch: {} } as any],
     });
     const result = await model.generateContent(
