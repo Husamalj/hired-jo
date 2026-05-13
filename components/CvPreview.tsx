@@ -62,8 +62,10 @@ export function CvPreview({ cv }: { cv: CV }) {
         cv.experience.forEach(x => {
           checkPage(40);
           doc.setFontSize(10).setFont("helvetica", "bold").setTextColor(0).text(`${x.title} — ${x.company}`, L, y);
+          // Switch to 9pt normal BEFORE measuring, so getTextWidth uses the correct font
+          doc.setFontSize(9).setFont("helvetica", "normal").setTextColor(100);
           const dateStr = `${x.startDate} – ${x.endDate}`;
-          doc.setFontSize(9).setFont("helvetica", "normal").setTextColor(100).text(dateStr, R - doc.getTextWidth(dateStr), y);
+          doc.text(dateStr, R - doc.getTextWidth(dateStr), y);
           y += 13;
           x.bullets.forEach(b => addWrapped(`• ${b}`, L + 10, W - 10, 9, 50));
           y += 4;
