@@ -58,3 +58,178 @@ html, body {
 .chat-3 { animation-delay: 1.2s; }
 .chat-4 { animation-delay: 1.8s; }
 .blink { animation: blink 1s steps(2) infinite; }
+
+.post-hero-world {
+  background:
+    radial-gradient(900px 420px at 14% 8%, rgba(245,184,46,.09), transparent 62%),
+    radial-gradient(820px 520px at 88% 22%, rgba(91,63,200,.22), transparent 65%),
+    linear-gradient(180deg, #0A0716 0%, #0B0819 48%, #0A0716 100%);
+}
+
+.hero-to-content-fade {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 220px;
+  background:
+    radial-gradient(520px 150px at 50% 8%, rgba(245,184,46,.24), transparent 68%),
+    linear-gradient(180deg, rgba(10,7,22,0) 0%, rgba(10,7,22,.74) 38%, rgba(10,7,22,0) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.hero-to-content-fade::after {
+  content: "";
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  top: 58px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(245,184,46,.42), transparent);
+  filter: blur(.2px);
+  opacity: .72;
+}
+
+.post-hero-world::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.028) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 84%, transparent 100%);
+  opacity: .55;
+}
+
+.post-hero-world::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(105deg, transparent 0 28%, rgba(245,184,46,.08) 29%, transparent 31%),
+    linear-gradient(75deg, transparent 0 64%, rgba(255,255,255,.035) 65%, transparent 67%);
+  opacity: .7;
+  pointer-events: none;
+}
+
+.paper-bg {
+  position: absolute;
+  width: 260px;
+  height: 340px;
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.045)),
+    repeating-linear-gradient(180deg, transparent 0 28px, rgba(10,7,22,.18) 29px 30px);
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 28px 90px -60px rgba(245,184,46,.55);
+  opacity: .16;
+  pointer-events: none;
+}
+
+.paper-bg::before {
+  content: "CV";
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  font-family: 'Space Grotesk', 'Inter', sans-serif;
+  font-size: 34px;
+  font-weight: 800;
+  color: rgba(255,255,255,.35);
+}
+
+.paper-bg::after {
+  content: "";
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: 92px;
+  bottom: 34px;
+  border-top: 2px solid rgba(255,255,255,.18);
+  border-bottom: 2px solid rgba(255,255,255,.09);
+}
+
+.paper-bg-one {
+  top: 210px;
+  right: -72px;
+  transform: rotate(-12deg);
+}
+
+.paper-bg-two {
+  top: 870px;
+  left: -92px;
+  transform: rotate(10deg) scale(.9);
+}
+
+.feature-card {
+  box-shadow: 0 18px 45px -34px rgba(245,184,46,.35);
+}
+
+.feature-card:hover,
+.feature-card:focus-visible {
+  transform: translateY(-6px);
+}
+
+.feature-card-active {
+  background:
+    linear-gradient(135deg, rgba(245,184,46,.16), rgba(255,255,255,.055) 46%, rgba(91,63,200,.18)),
+    rgba(255,255,255,.045);
+  border: 1px solid rgba(245,184,46,.35);
+  box-shadow:
+    0 0 0 1px rgba(245,184,46,.12) inset,
+    0 24px 70px -38px rgba(245,184,46,.85);
+}
+
+.workflow-pulse {
+  animation: workflow-pulse 1.7s ease-in-out infinite;
+}
+
+@keyframes workflow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245,184,46,.35); }
+  50% { box-shadow: 0 0 0 8px rgba(245,184,46,0); }
+}
+
+.qr-scan-line {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 16px;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(245,184,46,.95), transparent);
+  box-shadow: 0 0 18px rgba(245,184,46,.85);
+  animation: qr-scan 2.4s ease-in-out infinite;
+}
+
+@keyframes qr-scan {
+  0%, 100% { transform: translateY(0); opacity: .25; }
+  50% { transform: translateY(196px); opacity: .95; }
+}
+
+.stat-tile {
+  position: relative;
+  overflow: hidden;
+  animation: stat-rise .7s ease both;
+}
+
+.stat-tile::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(245,184,46,.13), transparent 42%, rgba(91,63,200,.14));
+  opacity: .65;
+}
+
+.stat-tile > * {
+  position: relative;
+}
+
+.stat-tile:hover {
+  transform: translateY(-3px);
+  border-color: rgba(245,184,46,.28);
+  box-shadow: 0 20px 55px -38px rgba(245,184,46,.85);
+}
+
+@keyframes stat-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
