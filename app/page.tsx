@@ -52,7 +52,7 @@ function ScrollHero() {
 
   const s1 = op(progress, 0, 0.12, 0.25, 0.35);
   const s2 = op(progress, 0.32, 0.44, 0.57, 0.67);
-  const s3 = op(progress, 0.65, 0.76, 1, 1);
+  const s3 = op(progress, 0.65, 0.76, 99, 99);
 
   return (
     <div ref={containerRef} style={{ height: "280vh" }} className="relative">
