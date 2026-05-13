@@ -37,6 +37,10 @@ export default function RoastPage() {
   const [displayed, setDisplayed] = useState("");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const adviceItems = done && advice ? parseAdvice(advice) : [];
@@ -70,6 +74,25 @@ export default function RoastPage() {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [roast]);
+
+  async function handleFile(file: File) {
+    if (!file) return;
+    setUploadError("");
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/parse-cv", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+      localStorage.setItem("hired_cv", JSON.stringify(data.cv));
+      setCv(data.cv);
+    } catch (e: unknown) {
+      setUploadError(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function handleRoast() {
     if (!cv) return;
@@ -124,18 +147,46 @@ export default function RoastPage() {
           </div>
 
           {!cv ? (
-            <div className="glass rounded-2xl p-8 text-center space-y-4">
-              <p className="text-2xl">🤔</p>
-              <p className="text-white/80 text-lg">You haven&apos;t built your CV yet.</p>
-              <p className="text-white/50">
-                The roast engine needs something to work with.
-              </p>
-              <Link
-                href="/build"
-                className="inline-block mt-2 gold-grad text-black font-bold px-6 py-3 rounded-xl"
+            <div className="space-y-4">
+              <div
+                className={`glass rounded-2xl p-10 text-center cursor-pointer transition-all border-2 ${dragOver ? "border-yellow-400/60 bg-yellow-400/5" : "border-white/10 hover:border-white/20"}`}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
+                onClick={() => fileInputRef.current?.click()}
               >
-                Build My CV First →
-              </Link>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.docx"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+                />
+                {uploading ? (
+                  <div className="space-y-3">
+                    <div className="text-3xl animate-pulse">⚙️</div>
+                    <p className="text-white/70 text-lg">Reading your CV…</p>
+                    <p className="text-white/40 text-sm">AI is extracting your details</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="text-4xl">📄</div>
+                    <p className="text-white/90 text-lg font-semibold">Drop your CV here</p>
+                    <p className="text-white/50 text-sm">PDF or DOCX · click to browse</p>
+                  </div>
+                )}
+              </div>
+
+              {uploadError && (
+                <p className="text-red-400 text-sm text-center">{uploadError}</p>
+              )}
+
+              <div className="text-center">
+                <p className="text-white/30 text-sm mb-3">— or —</p>
+                <Link href="/build" className="gold-grad text-black font-bold px-6 py-3 rounded-xl inline-block">
+                  Build a new CV with AI →
+                </Link>
+              </div>
             </div>
           ) : (
             <>
