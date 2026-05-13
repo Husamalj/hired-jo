@@ -14,16 +14,9 @@ export async function POST(req: Request) {
     let text = "";
 
     if (file.name.toLowerCase().endsWith(".pdf")) {
-      // pdfjs-dist requires DOMMatrix which doesn't exist in Node
-      if (typeof (globalThis as Record<string, unknown>).DOMMatrix === "undefined") {
-        (globalThis as Record<string, unknown>).DOMMatrix = class {
-          constructor() {}
-          static fromMatrix() { return new (globalThis as Record<string, unknown>).DOMMatrix as object; }
-        };
-      }
-      const pdfParse = (await import("pdf-parse")).default;
-      const result = await pdfParse(buffer);
-      text = result.text;
+      const { extractText } = await import("unpdf");
+      const { text: pages } = await extractText(new Uint8Array(buffer), { mergePages: true });
+      text = pages as unknown as string;
     } else if (file.name.toLowerCase().endsWith(".docx")) {
       const mammoth = await import("mammoth");
       const result = await mammoth.extractRawText({ buffer });
