@@ -156,7 +156,7 @@ export async function enrichJob(job: Job): Promise<Job> {
 }
 
 // Generate Cover Letter
-esync function generateCoverLetter(cv: CV, job: Job): Promise<string> {
+export async function generateCoverLetter(cv: CV, job: Job): Promise<string> {
   return ask([
     { role: "system", content: "Write tight, authentic cover letters (180-220 words). Open with a strong hook. Connect specific CV items to job requirements. Mention the company name. End with a call to a 20-minute interview. Plain text only." },
     { role: "user", content: `Write a cover letter from ${cv.fullName} to ${job.company} for the ${job.title} role.\nCV: ${JSON.stringify(cv)}\nJOB: ${JSON.stringify(job)}` },
