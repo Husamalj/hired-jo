@@ -70,41 +70,50 @@ export function CvPreview({ cv }: { cv: CV }) {
         });
       };
 
-      if (isExp) renderExp("EXPERIENCE");
+      const renderProjects = () => {
+        if (cv.projects?.length) {
+          section("PROJECTS");
+          cv.projects.forEach(p => {
+            checkPage(35);
+            const techStr = p.tech?.length ? ` | ${p.tech.join(", ")}` : "";
+            doc.setFontSize(10).setFont("helvetica", "bold").setTextColor(0).text(`${p.name}${techStr}`, L, y);
+            y += 13;
+            p.bullets?.forEach(b => addWrapped(`• ${b}`, L + 10, W - 10, 9, 50));
+            y += 4;
+          });
+        }
+      };
 
-      // ── Projects ──
-      if (cv.projects?.length) {
-        section("PROJECTS");
-        cv.projects.forEach(p => {
-          checkPage(35);
-          const techStr = p.tech?.length ? ` | ${p.tech.join(", ")}` : "";
-          doc.setFontSize(10).setFont("helvetica", "bold").setTextColor(0).text(`${p.name}${techStr}`, L, y);
-          y += 13;
-          p.bullets?.forEach(b => addWrapped(`• ${b}`, L + 10, W - 10, 9, 50));
+      const renderSkills = () => {
+        if (cv.skillCategories?.length) {
+          section("SKILLS");
+          cv.skillCategories.forEach(cat => {
+            checkPage(14);
+            const labelText = `${cat.category}: `;
+            const labelW = doc.getTextWidth(labelText);
+            doc.setFontSize(9).setFont("helvetica", "bold").setTextColor(0).text(labelText, L, y);
+            doc.setFont("helvetica", "normal").setTextColor(60).text(cat.items.join(", "), L + labelW, y);
+            y += 13;
+          });
           y += 4;
-        });
-      }
+        } else if (cv.skills?.length) {
+          section("SKILLS");
+          addWrapped(cv.skills.join(" • "), L, W, 9, 60);
+          y += 4;
+        }
+      };
 
-      // ── Skills ──
-      if (cv.skillCategories?.length) {
-        section("SKILLS");
-        cv.skillCategories.forEach(cat => {
-          checkPage(14);
-          const labelText = `${cat.category}: `;
-          const labelW = doc.getTextWidth(labelText);
-          doc.setFontSize(9).setFont("helvetica", "bold").setTextColor(0).text(labelText, L, y);
-          doc.setFont("helvetica", "normal").setTextColor(60).text(cat.items.join(", "), L + labelW, y);
-          y += 13;
-        });
-        y += 4;
-      } else if (cv.skills?.length) {
-        section("SKILLS");
-        addWrapped(cv.skills.join(" • "), L, W, 9, 60);
-        y += 4;
+      if (isExp) {
+        // Experienced: experience → projects → skills
+        renderExp("EXPERIENCE");
+        renderProjects();
+        renderSkills();
+      } else {
+        // Fresher: skills → projects → internships
+        renderSkills();
+        renderProjects();
+        renderExp("INTERNSHIPS");
       }
-
-      // ── Internships (fresher layout only) ──
-      if (!isExp) renderExp("INTERNSHIPS");
 
       // ── Education ──
       if (cv.education.length) {
