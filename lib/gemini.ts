@@ -131,7 +131,7 @@ Fill in:
     (step: { skill: string; weeks: number; resources: { title: string; url: string; provider: string }[] }) => ({
       skill: step.skill,
       weeks: step.weeks ?? 2,
-      resources: (step.resources ?? []).map((res: { title: string; url: string; provider": string }) => ({
+      resources: (step.resources ?? []).map((res: { title: string; url: string; provider: string }) => ({
         title: res.title,
         url: res.url,
         provider: res.provider,

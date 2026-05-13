@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { computeScore } from "@/lib/score";
-import { prisma } from "@/lib/db";
+import { getSupabase } from "@/lib/supabase";
 import type { CV } from "@/lib/types";
 
 export async function POST(req: Request) {
@@ -8,13 +8,9 @@ export async function POST(req: Request) {
     const { cv, alias }: { cv: CV; alias?: string } = await req.json();
     const score = computeScore(cv);
     if (alias) {
-      await prisma.leaderboardEntry.create({
-        data: {
-          alias,
-          score: score.total,
-          topSkill: cv.skills[0] ?? "—",
-        },
-      });
+      await getSupabase()
+        .from("leaderboard")
+        .insert({ alias, score: score.total, top_skill: cv.skills[0] ?? "—" });
     }
     return NextResponse.json(score);
   } catch {
