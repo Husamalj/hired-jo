@@ -249,10 +249,10 @@ export default function BuildPage() {
           setMsgs(prev => [...prev, { role: "ai", text: "Your CV is ready! Review it below and download when happy." }]);
           setCv(result.cv);
           localStorage.setItem("hired_cv", JSON.stringify(result.cv));
-        } else throw new Error("no cv");
-      } catch {
+        } else throw new Error(result.detail ?? "no cv returned");
+      } catch (err: any) {
         setThinking(false);
-        setMsgs(prev => [...prev, { role: "ai", text: "Something went wrong building your CV. Please try again." }]);
+        setMsgs(prev => [...prev, { role: "ai", text: `Error: ${err?.message ?? "Something went wrong. Please try again."}` }]);
       }
       return;
     }

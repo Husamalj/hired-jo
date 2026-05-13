@@ -155,8 +155,8 @@ export async function POST(req: Request) {
     const text = extractJson(raw);
     const cv = JSON.parse(text);
     return NextResponse.json({ cv });
-  } catch (e) {
+  } catch (e: any) {
     console.error("build-cv error:", e);
-    return NextResponse.json({ error: "Failed to build CV" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to build CV", detail: e?.message ?? String(e) }, { status: 500 });
   }
 }
