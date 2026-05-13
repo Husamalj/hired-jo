@@ -126,12 +126,12 @@ function ScrollHero() {
         <div className="absolute inset-0 flex items-end justify-center pb-20"
           style={{ opacity: s3, transition: "opacity 0.4s ease", pointerEvents: s3 > 0.5 ? "auto" : "none" }}>
           <div className="text-center px-8">
-            <div className="flex gap-4 flex-wrap justify-center">
+            <div className="flex gap-4 flex-wrap justify-center items-center">
               <Link href="/build" className="px-8 py-4 rounded-2xl gold-grad text-black font-bold text-lg">
-                Build my CV →
+                Build my CV
               </Link>
               <Link href="/roast" className="px-8 py-4 rounded-2xl glass text-white font-bold text-lg">
-                🔥 Roast my CV
+                Roast my CV
               </Link>
             </div>
           </div>
