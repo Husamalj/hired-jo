@@ -10,6 +10,9 @@ function linkedInSearchUrl(job: Job): string {
 }
 
 function applyUrl(job: Job): string {
+  // Always use the direct URL when available
+  if (job.url && job.url.startsWith("http")) return job.url;
+  // Fallback search URLs per source
   const q = encodeURIComponent(job.title);
   const company = encodeURIComponent(job.company);
   const country = job.country === "UAE" ? "uae" : job.country === "Saudi Arabia" ? "saudi-arabia" : "jordan";
@@ -28,10 +31,6 @@ function applyUrl(job: Job): string {
       return `https://www.gulftalent.com/jobs?search=${q}`;
     case "Tanqeeb":
       return `https://www.tanqeeb.com/jobs?q=${q}`;
-    case "LinkedIn":
-    case "Indeed":
-    case "Glassdoor":
-      return linkedInSearchUrl(job);
     default:
       return linkedInSearchUrl(job);
   }
