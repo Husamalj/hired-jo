@@ -1,36 +1,108 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Hired.jo — AI Career Copilot for Jordanian Graduates
 
-## Getting Started
+> Built at **HU AI Employability Hackathon 2026**
+> **Live Demo:** https://hired-jo-zrgu.vercel.app
 
-First, run the development server:
+---
+
+## What It Does
+
+Hired.jo is an AI-powered career assistant that helps Jordanian graduates find jobs, build CVs, and prepare for the job market.
+
+**Core user flow:**
+1. **Build your CV** → paste your info in one shot, AI structures it into a professional CV (PDF + Word download)
+2. **Get your Hired Score** → AI scores your CV 0–1000 based on market demand
+3. **Browse live jobs** → real-time jobs from LinkedIn, Indeed, Akhtaboot, Bayt, Wuzzuf, and more
+4. **Check job fit** → AI matches your CV against any job and shows matched/missing skills + learning plan
+5. **Roast your CV** → AI gives brutally honest feedback
+6. **Generate a cover letter** → AI writes a tailored cover letter for any job
+
+---
+
+## AI Integration (Real API Calls)
+
+All AI features use **Google Gemini 2.0 Flash** via live API calls — no mocked responses.
+
+| Feature | How AI is used |
+|---|---|
+| CV Builder (chat mode) | Gemini conversational interview extracts CV info step by step |
+| CV Parser (form mode) | Gemini parses raw pasted text into structured CV JSON |
+| CV Roast | Gemini analyzes CV and gives detailed critique |
+| Job Fit Check | Gemini matches CV skills vs job requirements, returns score + learning plan |
+| Cover Letter | Gemini generates a tailored letter per job |
+| Live Job Scraping | Gemini with Google Search grounding scrapes Akhtaboot, Bayt, Wuzzuf, Fursa, Naukrigulf, GulfTalent, Tanqeeb in real time |
+| Hired Score | Rule-based engine (0–1000) analyzing skills completeness, experience, education |
+
+Live jobs also pulled via **JSearch RapidAPI** (LinkedIn / Indeed / Glassdoor aggregator).
+
+---
+
+## Pages
+
+| Route | Description |
+|---|---|
+| `/` | Landing page with cinematic scroll animation |
+| `/build` | CV builder — chat with AI or paste all info at once |
+| `/score` | Get your Hired Score (0–1000) |
+| `/jobs` | Live jobs feed with filters (sector, country, seniority, source) |
+| `/roast` | AI roasts your CV |
+| `/cover` | AI generates a cover letter for any job |
+| `/dashboard` | Jordan job market analytics charts |
+| `/leaderboard` | Top candidates leaderboard |
+| `/cofounder` | Find a co-founder by skills match |
+| `/learn` | Learning resources and certifications |
+
+---
+
+## Tech Stack
+
+- **Framework**: Next.js 16 App Router (TypeScript)
+- **Styling**: Tailwind CSS v4
+- **AI**: Google Gemini 2.0 Flash via `@google/generative-ai`
+- **Database**: Neon PostgreSQL via Prisma v7 + Supabase
+- **Live Jobs**: JSearch RapidAPI + Gemini Search Grounding
+- **Deployment**: Vercel
+
+---
+
+## Running Locally
+
+### 1. Clone and install
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/Husamalj/hired-jo.git
+cd hired-jo
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Create `.env.local`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```env
+GEMINI_API_KEY=your_google_ai_studio_key
+DATABASE_URL=your_neon_postgres_connection_string
+RAPIDAPI_KEY=your_rapidapi_key
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **GEMINI_API_KEY** → https://ai.google.dev/apikey
+- **DATABASE_URL** → Neon PostgreSQL at https://neon.tech
+- **RAPIDAPI_KEY** → JSearch at https://rapidapi.com/letscrape-6bJTR3j6Z/api/jsearch
 
-## Learn More
+### 3. Run
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+pnpm dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Open http://localhost:3000
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## Try It (For Judges)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Go to **https://hired-jo-zrgu.vercel.app/build**
+2. Click **"📝 Form"** → paste any career info → click **"Generate CV"**
+3. Your professional CV appears → download as PDF or Word
+4. Go to **`/score`** → see your Hired Score
+5. Go to **`/jobs`** → browse live jobs → click **"Check Fit"** on any job
+6. Go to **`/roast`** → get AI feedback on your CV
+7. Go to **`/cover`** → generate a tailored cover letter
