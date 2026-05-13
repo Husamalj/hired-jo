@@ -5,6 +5,7 @@ const links = [
   { href: "/jobs", label: "Find Jobs" },
   { href: "/score", label: "My Score" },
   { href: "/dashboard", label: "Market" },
+  { href: "/learn", label: "Learn" },
   { href: "/cofounder", label: "Co-founders" },
   { href: "/leaderboard", label: "Leaderboard" },
 ];

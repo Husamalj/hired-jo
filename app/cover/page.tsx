@@ -132,21 +132,34 @@ export default function CoverPage() {
                   <div className="glass rounded-2xl p-6 whitespace-pre-wrap text-sm leading-relaxed max-h-96 overflow-y-auto text-white/90">
                     {letter}
                   </div>
-                  <button
-                    onClick={handleCopy}
-                    className="w-full purple-grad text-white font-bold px-6 py-3 rounded-xl"
-                  >
-                    {copied ? "Copied! ✓" : "Copy to Clipboard"}
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleCopy}
+                      className="flex-1 purple-grad text-white font-bold px-6 py-3 rounded-xl text-sm"
+                    >
+                      {copied ? "Copied! ✓" : "Copy to Clipboard"}
+                    </button>
+                    {selectedJob && (
+                      <a
+                        href={`mailto:?subject=Application for ${encodeURIComponent(selectedJob.title)} at ${encodeURIComponent(selectedJob.company)}&body=${encodeURIComponent(letter)}`}
+                        className="gold-grad text-black font-bold px-5 py-3 rounded-xl text-sm shrink-0"
+                      >
+                        Send via Email ✉️
+                      </a>
+                    )}
+                  </div>
                 </div>
               )}
 
-              <div className="flex gap-3 pt-2">
-                <Link href="/jobs" className="gold-grad text-black font-bold px-5 py-2 rounded-xl text-sm">
+              <div className="flex flex-wrap gap-3 pt-2">
+                <Link href="/score" className="gold-grad text-black font-bold px-5 py-2 rounded-xl text-sm">
+                  My Score →
+                </Link>
+                <Link href="/jobs" className="purple-grad text-white font-bold px-5 py-2 rounded-xl text-sm">
                   Browse Jobs →
                 </Link>
-                <Link href="/roast" className="purple-grad text-white font-bold px-5 py-2 rounded-xl text-sm">
-                  Roast My CV 🔥
+                <Link href="/learn" className="glass text-white font-semibold px-5 py-2 rounded-xl text-sm border border-white/10 hover:border-white/20">
+                  Learning Roadmap →
                 </Link>
               </div>
             </>
