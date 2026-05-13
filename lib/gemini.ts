@@ -79,19 +79,33 @@ No placeholder text. No markdown in JSON string values.`;
 }
 
 // Roast CV
-export async function roastCv(cv: CV): Promise<string> {
+export async function roastCv(cv: CV): Promise<{ roast: string; advice: string }> {
   const text = await ask([
     {
       role: "system",
-      content:
-        "You are a brutally honest but hilarious Jordanian career coach. Roast CVs in 3-5 short punchy paragraphs. Be specific to the person's actual content -- no generic advice. Reference real details: company names, project titles, skill list, GPA, etc. Be funny, be direct, but end with one genuine encouragement. Use markdown formatting.",
+      content: `You are a brutally honest but hilarious Jordanian career coach.
+
+Your response MUST have exactly two sections separated by the marker [ADVICE]:
+
+SECTION 1 — THE ROAST (before [ADVICE]):
+Roast the CV in 3-4 short punchy paragraphs. Be specific — reference the person's actual company names, project titles, skill list, GPA, etc. Be funny and direct. End with one genuine encouragement sentence.
+
+[ADVICE]
+
+SECTION 2 — HOW TO FIX IT (after [ADVICE]):
+Give exactly 5 specific, actionable improvement tips as a numbered list. Each tip must reference something real from this person's CV and give a concrete rewrite example or specific action. Be direct, 1-2 sentences each. Use markdown **bold** for tip titles. No intro sentence.`,
     },
     {
       role: "user",
-      content: `Roast this CV:\n${JSON.stringify(cv)}`,
+      content: `Roast this CV and give improvement advice:\n${JSON.stringify(cv)}`,
     },
   ]);
-  return text;
+
+  const parts = text.split("[ADVICE]");
+  return {
+    roast: parts[0]?.trim() ?? text,
+    advice: parts[1]?.trim() ?? "",
+  };
 }
 
 // Match CV to Job
@@ -147,44 +161,31 @@ export async function enrichJob(job: Job): Promise<Job> {
     {
       role: "system",
       content: `From a job posting, extract the following and return ONLY valid JSON with no markdown fences:
-{ "skills": ["skill1"], "seniority": "Junior", "salaryMin": null, "salaryMax": null, "description": "one sentence summary" }`,
+{
+  "skills": ["skill1", "skill2"],
+  "seniority": "Junior",
+  "salaryMin": null,
+  "salaryMax": null,
+  "description": "one sentence summary"
+}
+Seniority must be one of: "Intern" | "Junior" | "Mid" | "Senior"
+Salary in JOD integers or null.`,
     },
-    { role: "user", content: `JOB: ${JSON.stringify(job)}` },
+    {
+      role: "user",
+      content: `JOB: ${JSON.stringify(job)}`,
+    },
   ]);
   const enriched = JSON.parse(text.replace(/```json|```/g, "").trim());
   return { ...job, ...enriched };
 }
 
-// Parse CV from raw text (uploaded file)
-export async function parseCvFromText(text: string): Promise<CV> {
-  const raw = await ask([
-    {
-      role: "system",
-      content: `Extract a CV from the raw text and return ONLY valid JSON with no markdown fences matching this TypeScript type exactly:
-{
-  "fullName": "",
-  "email": "",
-  "phone": "",
-  "location": "",
-  "summary": "",
-  "education": [{ "degree": "", "institution": "", "startYear": 2020, "endYear": 2024, "gpa": "" }],
-  "experience": [{ "title": "", "company": "", "startDate": "", "endDate": "", "bullets": [] }],
-  "projects": [{ "name": "", "description": "", "tech": [], "link": "", "bullets": [] }],
-  "skills": [],
-  "languages": [{ "name": "", "level": "Fluent" }],
-  "certifications": []
-}
-Fill every field you can infer. Leave unknown fields as empty string / empty array. Never output markdown.`,
-    },
-    { role: "user", content: `CV TEXT:\n${text.slice(0, 8000)}` },
-  ]);
-  return JSON.parse(raw.replace(/```json|```/g, "").trim()) as CV;
-}
-
 // Generate Cover Letter
 export async function generateCoverLetter(cv: CV, job: Job): Promise<string> {
-  return ask([
-    { role: "system", content: "Write tight, authentic cover letters (180-220 words). Open with a strong hook. Connect specific CV items to job requirements. Mention the company name. End with a call to a 20-minute interview. Plain text only." },
-    { role: "user", content: `Write a cover letter from ${cv.fullName} to ${job.company} for the ${job.title} role.\nCV: ${JSON.stringify(cv)}\nJOB: ${JSON.stringify(job)}` },
-  ]);
-}
+  const text = await ask([
+    {
+      role: "system",
+      content: `Write tight, authentic cover letters (180-220 words).
+Rules:
+- Open with a strong hook (NOT "I am writing to express my interest")
+- Connect exactly 2 s
