@@ -80,13 +80,71 @@ Only include real current listings with real URLs from ${site}. Do not invent jo
   }
 }
 
+async function fetchJSearch(query: string, offset: number): Promise<Job[]> {
+  const key = process.env.RAPIDAPI_KEY;
+  if (!key) return [];
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+    const res = await fetch(
+      `https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(query)}&num_pages=1&date_posted=all`,
+      {
+        headers: {
+          "x-rapidapi-host": "jsearch.p.rapidapi.com",
+          "x-rapidapi-key": key,
+        },
+        signal: controller.signal,
+      }
+    );
+    clearTimeout(timeout);
+    const json = await res.json();
+    if (!Array.isArray(json.data)) return [];
+    const seen = new Set<string>();
+    return json.data
+      .filter((j: any) => { if (seen.has(j.job_id)) return false; seen.add(j.job_id); return true; })
+      .map((j: any, i: number): Job | null => {
+        const skills: string[] =
+          j.job_required_skills ??
+          (j.job_highlights?.Qualifications ?? [])
+            .join(" ")
+            .match(/\b(React|Node\.js|Python|Java|SQL|TypeScript|JavaScript|AWS|Docker|Git|Excel|Figma|Flutter|Kotlin|Swift|PHP|Laravel|Angular|Vue|MongoDB|PostgreSQL)\b/g) ??
+          [];
+        const country =
+          /uae|dubai|abu dhabi|sharjah/i.test((j.job_country ?? "") + (j.job_city ?? "")) ? "UAE" :
+          /saudi|riyadh|jeddah/i.test((j.job_country ?? "") + (j.job_city ?? "")) ? "Saudi Arabia" : "Jordan";
+        return {
+          id:          String(offset + i),
+          title:       j.job_title ?? "Untitled",
+          company:     j.employer_name ?? "Unknown",
+          sector:      inferSector(j.job_title ?? "", j.job_description ?? ""),
+          city:        j.job_city || "Amman",
+          country,
+          seniority:   inferSeniority(j.job_title ?? ""),
+          skills:      [...new Set(skills)].slice(0, 8),
+          salaryMin:   j.job_min_salary ?? undefined,
+          salaryMax:   j.job_max_salary ?? undefined,
+          remote:      j.job_is_remote ?? false,
+          source:      "LinkedIn" as const,
+          url:         j.job_apply_link ?? "",
+          postedAt:    j.job_posted_at_datetime_utc?.slice(0, 10) ?? "",
+          description: (j.job_description ?? "").slice(0, 300),
+        };
+      })
+      .filter(Boolean) as Job[];
+  } catch {
+    return [];
+  }
+}
+
 export async function GET() {
   if (cache && Date.now() - cache.ts < CACHE_MS) {
     return NextResponse.json(cache.data);
   }
 
-  // All sources in parallel — each has Gemini's internal timeout
+  // All sources in parallel
   const [
+    jsearchJO,
+    jsearchUAE,
     akhtaboot,
     wuzzuf,
     for9a,
@@ -95,6 +153,8 @@ export async function GET() {
     naukrigulf,
     tanqeeb,
   ] = await Promise.allSettled([
+    fetchJSearch("jobs in Amman Jordan",          10000),
+    fetchJSearch("jobs in Dubai UAE tech",        11000),
     fetchGeminiJobs("akhtaboot.com",   "Akhtaboot",  "Jordan",       20000),
     fetchGeminiJobs("wuzzuf.net",      "Wuzzuf",     "Jordan",       21000),
     fetchGeminiJobs("for9a.com",       "Fursa",      "Jordan",       22000),
@@ -105,7 +165,7 @@ export async function GET() {
   ]);
 
   const liveJobs: Job[] = [
-    akhtaboot, wuzzuf, for9a, baytJO, baytUAE, naukrigulf, tanqeeb,
+    jsearchJO, jsearchUAE, akhtaboot, wuzzuf, for9a, baytJO, baytUAE, naukrigulf, tanqeeb,
   ]
     .filter((r) => r.status === "fulfilled")
     .flatMap((r) => (r as PromiseFulfilledResult<Job[]>).value);
