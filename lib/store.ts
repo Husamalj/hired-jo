@@ -15,6 +15,7 @@ export type CofounderRow = {
   skills: string;
   interests: string;
   vibe: string;
+  embedding?: string;
 };
 
 const g = globalThis as any;
@@ -35,7 +36,10 @@ export function getLeaderboard(): LeaderboardRow[] {
 
 export function addCofounder(entry: Omit<CofounderRow, "id">): CofounderRow {
   const existing = store.cofounders.findIndex((c) => c.alias === entry.alias);
-  if (existing >= 0) { store.cofounders[existing] = { ...store.cofounders[existing], ...entry }; return store.cofounders[existing]; }
+  if (existing >= 0) {
+    store.cofounders[existing] = { ...store.cofounders[existing], ...entry };
+    return store.cofounders[existing];
+  }
   const row: CofounderRow = { ...entry, id: store.nextId++ };
   store.cofounders.push(row);
   return row;
