@@ -188,4 +188,48 @@ export async function generateCoverLetter(cv: CV, job: Job): Promise<string> {
       content: `Write tight, authentic cover letters (180-220 words).
 Rules:
 - Open with a strong hook (NOT "I am writing to express my interest")
-- Connect exactly 2 s
+- Connect exactly 2 specific skills or achievements from the CV to the job requirements
+- Mention the company name and role title naturally
+- End with a confident, direct call to action
+- Tone: professional but human — not stiff corporate language
+- No filler phrases like "I am passionate about" or "I would be a great fit"
+- Output only the letter text, no subject line, no headers`,
+    },
+    {
+      role: "user",
+      content: `Write a cover letter for this candidate applying to this job.\n\nCV: ${JSON.stringify(cv)}\n\nJOB: ${JSON.stringify(job)}`,
+    },
+  ]);
+  return text.trim();
+}
+
+// Parse CV from uploaded text (PDF/DOCX extraction)
+export async function parseCvFromText(text: string): Promise<CV> {
+  const result = await ask([
+    {
+      role: "system",
+      content: `Extract CV information from the provided text and return ONLY a valid JSON object with no markdown fences matching this exact shape:
+{
+  "fullName": "",
+  "email": "",
+  "phone": "",
+  "location": "",
+  "summary": "",
+  "education": [{ "degree": "", "institution": "", "startYear": 2020, "endYear": 2024, "gpa": "" }],
+  "experience": [{ "title": "", "company": "", "startDate": "", "endDate": "", "bullets": [] }],
+  "projects": [{ "name": "", "description": "", "tech": [], "link": "", "bullets": [] }],
+  "skills": [],
+  "languages": [{ "name": "", "level": "Fluent" }],
+  "certifications": []
+}
+Only extract what is actually present in the text. Do not invent or hallucinate any information.
+If a field is not present, use empty string or empty array.`,
+    },
+    {
+      role: "user",
+      content: `Extract CV data from this text:\n\n${text}`,
+    },
+  ]);
+  const raw = result.replace(/```json|```/g, "").trim();
+  return JSON.parse(raw) as CV;
+}
