@@ -4,12 +4,20 @@ import { getSupabase } from "@/lib/supabase";
 export async function GET() {
   const { data, error } = await getSupabase()
     .from("leaderboard")
-    .select("id, alias, score, top_skill as topSkill, created_at as createdAt")
+    .select("id, alias, score, top_skill, created_at")
     .order("score", { ascending: false })
     .limit(20);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+
+  const rows = (data ?? []).map((r) => ({
+    id: r.id,
+    alias: r.alias,
+    score: r.score,
+    topSkill: r.top_skill,
+    createdAt: r.created_at,
+  }));
+  return NextResponse.json(rows);
 }
 
 export async function POST(req: Request) {
