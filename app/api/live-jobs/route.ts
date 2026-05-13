@@ -141,32 +141,16 @@ export async function GET() {
     return NextResponse.json(cache.data);
   }
 
-  // All sources in parallel
-  const [
-    jsearchJO,
-    jsearchUAE,
-    akhtaboot,
-    wuzzuf,
-    for9a,
-    baytJO,
-    baytUAE,
-    naukrigulf,
-    tanqeeb,
-  ] = await Promise.allSettled([
-    fetchJSearch("jobs in Amman Jordan",          10000),
-    fetchJSearch("jobs in Dubai UAE tech",        11000),
-    fetchGeminiJobs("akhtaboot.com",   "Akhtaboot",  "Jordan",       20000),
-    fetchGeminiJobs("wuzzuf.net",      "Wuzzuf",     "Jordan",       21000),
-    fetchGeminiJobs("for9a.com",       "Fursa",      "Jordan",       22000),
-    fetchGeminiJobs("bayt.com",        "Bayt",       "Jordan",       23000),
-    fetchGeminiJobs("bayt.com",        "Bayt",       "UAE",          24000),
-    fetchGeminiJobs("naukrigulf.com",  "Naukrigulf", "Saudi Arabia", 25000),
-    fetchGeminiJobs("tanqeeb.com",     "Tanqeeb",    "Saudi Arabia", 26000),
+  // JSearch: 5 parallel queries covering Jordan, UAE, Saudi across sectors
+  const results = await Promise.allSettled([
+    fetchJSearch("jobs in Amman Jordan",                    10000),
+    fetchJSearch("software developer Jordan",               10100),
+    fetchJSearch("jobs in Dubai UAE",                       11000),
+    fetchJSearch("jobs in Riyadh Saudi Arabia",             12000),
+    fetchJSearch("internship Jordan OR UAE OR Saudi Arabia", 13000),
   ]);
 
-  const liveJobs: Job[] = [
-    jsearchJO, jsearchUAE, akhtaboot, wuzzuf, for9a, baytJO, baytUAE, naukrigulf, tanqeeb,
-  ]
+  const liveJobs: Job[] = results
     .filter((r) => r.status === "fulfilled")
     .flatMap((r) => (r as PromiseFulfilledResult<Job[]>).value);
 
