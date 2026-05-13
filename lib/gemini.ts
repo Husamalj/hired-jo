@@ -155,6 +155,32 @@ export async function enrichJob(job: Job): Promise<Job> {
   return { ...job, ...enriched };
 }
 
+// Parse CV from raw text (uploaded file)
+export async function parseCvFromText(text: string): Promise<CV> {
+  const raw = await ask([
+    {
+      role: "system",
+      content: `Extract a CV from the raw text and return ONLY valid JSON with no markdown fences matching this TypeScript type exactly:
+{
+  "fullName": "",
+  "email": "",
+  "phone": "",
+  "location": "",
+  "summary": "",
+  "education": [{ "degree": "", "institution": "", "startYear": 2020, "endYear": 2024, "gpa": "" }],
+  "experience": [{ "title": "", "company": "", "startDate": "", "endDate": "", "bullets": [] }],
+  "projects": [{ "name": "", "description": "", "tech": [], "link": "", "bullets": [] }],
+  "skills": [],
+  "languages": [{ "name": "", "level": "Fluent" }],
+  "certifications": []
+}
+Fill every field you can infer. Leave unknown fields as empty string / empty array. Never output markdown.`,
+    },
+    { role: "user", content: `CV TEXT:\n${text.slice(0, 8000)}` },
+  ]);
+  return JSON.parse(raw.replace(/```json|```/g, "").trim()) as CV;
+}
+
 // Generate Cover Letter
 export async function generateCoverLetter(cv: CV, job: Job): Promise<string> {
   return ask([
