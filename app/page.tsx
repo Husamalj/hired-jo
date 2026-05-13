@@ -122,18 +122,20 @@ function ScrollHero() {
           </div>
         </div>
 
-        {/* Scene 3 — video has Hired.jo baked in, just show the CTA buttons */}
-        <div className="absolute inset-0 flex items-center justify-center"
+        {/* Scene 3 — CTA buttons sitting in the golden lower third */}
+        <div className="absolute inset-x-0 bottom-16 flex justify-center"
           style={{ opacity: s3, transition: "opacity 0.4s ease", pointerEvents: s3 > 0.5 ? "auto" : "none" }}>
-          <div className="text-center px-8">
-            <div className="flex gap-4 flex-wrap justify-center items-center">
-              <Link href="/build" className="px-8 py-4 rounded-2xl gold-grad text-black font-bold text-lg">
-                Build my CV
-              </Link>
-              <Link href="/roast" className="px-8 py-4 rounded-2xl glass text-white font-bold text-lg">
-                Roast my CV
-              </Link>
-            </div>
+          <div className="flex gap-5 items-center"
+            style={{ filter: "drop-shadow(0 8px 32px rgba(0,0,0,0.6))" }}>
+            <Link href="/build"
+              className="px-10 py-5 rounded-2xl gold-grad text-black font-extrabold text-xl tracking-tight">
+              Build my CV
+            </Link>
+            <Link href="/roast"
+              className="px-10 py-5 rounded-2xl font-extrabold text-xl tracking-tight text-white"
+              style={{ background: "rgba(255,255,255,0.12)", border: "1.5px solid rgba(255,255,255,0.3)", backdropFilter: "blur(12px)" }}>
+              Roast my CV
+            </Link>
           </div>
         </div>
 
