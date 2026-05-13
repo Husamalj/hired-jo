@@ -17,19 +17,28 @@ function inferSeniority(title: string): "Intern" | "Junior" | "Mid" | "Senior" {
 }
 
 function inferSector(title: string, desc: string): string {
-  const t = (title + " " + desc).toLowerCase();
-  if (/software|developer|engineer|frontend|backend|fullstack|devops|cloud|mobile|react|node|python|data|ai|ml|cyber/.test(t)) return "Tech";
-  if (/finance|accounting|bank|audit|tax|invest/.test(t)) return "FinTech";
-  if (/marketing|social media|content|seo|brand|digital/.test(t)) return "Marketing";
-  if (/sales|business development|account manager/.test(t)) return "Sales";
-  if (/video|photo|film|camera|edit|production/.test(t)) return "Creative";
-  if (/design|ui|ux|graphic/.test(t)) return "Design";
-  if (/hr|human resource|recruit|talent/.test(t)) return "HR";
-  if (/health|medical|pharma|nurse|doctor/.test(t)) return "Healthcare";
-  if (/educat|teach|train|instruct/.test(t)) return "Education";
-  if (/legal|lawyer|law|compliance/.test(t)) return "Legal";
-  if (/operat|supply chain|logistics|warehouse/.test(t)) return "Transport";
-  if (/customer service|support|call center/.test(t)) return "Customer Service";
+  // Match on title first — more reliable than description or company name
+  const t = title.toLowerCase();
+  if (/software|developer|engineer|frontend|backend|fullstack|devops|cloud|mobile/.test(t)) return "Tech";
+  if (/data analyst|data scientist|data engineer|bi analyst|business intelligence/.test(t)) return "Tech";
+  if (/react|node|python|java|typescript|javascript|aws|docker|ml engineer|ai engineer/.test(t)) return "Tech";
+  if (/cyber|network engineer|it support|system admin|sysadmin/.test(t)) return "Tech";
+  if (/finance|accountant|auditor|tax|investment|banker|financial analyst/.test(t)) return "FinTech";
+  if (/marketing|social media|content|seo|brand|digital marketing/.test(t)) return "Marketing";
+  if (/sales|business development|account manager|sales executive/.test(t)) return "Sales";
+  if (/graphic design|ui designer|ux designer|art director|visual designer/.test(t)) return "Design";
+  if (/videograph|photograph|film|cinemat|video editor|motion/.test(t)) return "Creative";
+  if (/hr |human resource|recruiter|talent acquisition/.test(t)) return "HR";
+  if (/doctor|physician|nurse|pharmacist|medical|clinical|dentist/.test(t)) return "Healthcare";
+  if (/teacher|professor|instructor|lecturer|tutor/.test(t)) return "Education";
+  if (/lawyer|legal counsel|paralegal|compliance officer/.test(t)) return "Legal";
+  if (/logistics manager|supply chain manager|fleet manager|warehouse manager/.test(t)) return "Transport";
+  if (/customer service|call center|helpdesk|support agent/.test(t)) return "Customer Service";
+  // Only fall back to description if title gave no signal
+  const d = desc.toLowerCase();
+  if (/software|developer|engineer|data|ai|ml|cyber|cloud/.test(d)) return "Tech";
+  if (/finance|accounting|bank|audit/.test(d)) return "FinTech";
+  if (/marketing|seo|brand/.test(d)) return "Marketing";
   return "Other";
 }
 
