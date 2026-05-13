@@ -233,6 +233,7 @@ If a field is not present, use empty string or empty array.`,
       content: `Extract CV data from this text:\n\n${text}`,
     },
   ]);
-  const raw = result.replace(/```json|```/g, "").trim();
-  return JSON.parse(raw) as CV;
+  const match = result.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error("Could not extract CV data from the document.");
+  return JSON.parse(match[0]) as CV;
 }
