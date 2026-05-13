@@ -160,6 +160,12 @@ export default function RoastPage() {
                   <p className="text-white/50 text-sm">CV loaded for</p>
                   <p className="font-bold text-lg">{cv.fullName}</p>
                   <p className="text-white/40 text-sm">{cv.education?.[0]?.institution ?? ""}</p>
+                  <button
+                    onClick={() => setCv(null)}
+                    className="mt-2 text-xs text-white/30 hover:text-white/60 underline"
+                  >
+                    Upload a different CV
+                  </button>
                 </div>
                 <button
                   onClick={handleRoast}
