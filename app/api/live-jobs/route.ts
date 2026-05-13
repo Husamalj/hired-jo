@@ -2,9 +2,12 @@ import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { Job } from "@/lib/types";
 import staticJobs from "@/data/jobs.json";
+import { prisma } from "@/lib/db";
 
-let cache: { data: Job[]; ts: number } | null = null;
-const CACHE_MS = 60 * 60 * 1000;
+const REFRESH_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+// In-memory cache to avoid hitting DB on every request within the same warm instance
+let memCache: { data: Job[]; ts: number } | null = null;
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -17,7 +20,6 @@ function inferSeniority(title: string): "Intern" | "Junior" | "Mid" | "Senior" {
 }
 
 function inferSector(title: string, desc: string): string {
-  // Match on title first — more reliable than description or company name
   const t = title.toLowerCase();
   if (/software|developer|engineer|frontend|backend|fullstack|devops|cloud|mobile/.test(t)) return "Tech";
   if (/data analyst|data scientist|data engineer|bi analyst|business intelligence/.test(t)) return "Tech";
@@ -34,7 +36,6 @@ function inferSector(title: string, desc: string): string {
   if (/lawyer|legal counsel|paralegal|compliance officer/.test(t)) return "Legal";
   if (/logistics manager|supply chain manager|fleet manager|warehouse manager/.test(t)) return "Transport";
   if (/customer service|call center|helpdesk|support agent/.test(t)) return "Customer Service";
-  // Only fall back to description if title gave no signal
   const d = desc.toLowerCase();
   if (/software|developer|engineer|data|ai|ml|cyber|cloud/.test(d)) return "Tech";
   if (/finance|accounting|bank|audit/.test(d)) return "FinTech";
@@ -70,7 +71,7 @@ Only include real current listings with real URLs from ${site}. Do not invent jo
     return raw
       .filter((j) => j.title && j.company)
       .map((j, i): Job => ({
-        id:          String(offset + i),
+        id:          `${sourceName}-${country}-${offset + i}-${Date.now()}`,
         title:       j.title ?? "Untitled",
         company:     j.company ?? "Unknown",
         sector:      inferSector(j.title ?? "", j.description ?? ""),
@@ -122,7 +123,7 @@ async function fetchJSearch(query: string, offset: number): Promise<Job[]> {
           /uae|dubai|abu dhabi|sharjah/i.test((j.job_country ?? "") + (j.job_city ?? "")) ? "UAE" :
           /saudi|riyadh|jeddah/i.test((j.job_country ?? "") + (j.job_city ?? "")) ? "Saudi Arabia" : "Jordan";
         return {
-          id:          String(offset + i),
+          id:          `jsearch-${offset + i}`,
           title:       j.job_title ?? "Untitled",
           company:     j.employer_name ?? "Unknown",
           sector:      inferSector(j.job_title ?? "", j.job_description ?? ""),
@@ -145,46 +146,173 @@ async function fetchJSearch(query: string, offset: number): Promise<Job[]> {
   }
 }
 
-export async function GET() {
-  if (cache && Date.now() - cache.ts < CACHE_MS) {
-    return NextResponse.json(cache.data);
-  }
+function dbRowToJob(row: any): Job {
+  return {
+    id:                row.id,
+    title:             row.title,
+    company:           row.company,
+    sector:            row.sector,
+    city:              row.city,
+    country:           row.country,
+    seniority:         row.seniority as Job["seniority"],
+    skills:            Array.isArray(row.skills) ? row.skills : [],
+    salaryMin:         row.salaryMin ?? undefined,
+    salaryMax:         row.salaryMax ?? undefined,
+    remote:            row.remote,
+    internshipCountry: row.internshipCountry ?? undefined,
+    source:            row.source,
+    url:               row.url,
+    postedAt:          row.postedAt,
+    description:       row.description,
+  };
+}
 
-  // JSearch: 5 parallel queries covering Jordan, UAE, Saudi across sectors
+async function fetchFreshJobs(): Promise<Job[]> {
   const results = await Promise.allSettled([
-    fetchJSearch("jobs in Amman Jordan",                    10000),
-    fetchJSearch("software developer Jordan",               10100),
-    fetchJSearch("jobs in Dubai UAE",                       11000),
-    fetchJSearch("jobs in Riyadh Saudi Arabia",             12000),
+    fetchJSearch("jobs in Amman Jordan",                     10000),
+    fetchJSearch("software developer Jordan",                10100),
+    fetchJSearch("jobs in Dubai UAE",                        11000),
+    fetchJSearch("jobs in Riyadh Saudi Arabia",              12000),
     fetchJSearch("internship Jordan OR UAE OR Saudi Arabia", 13000),
+    fetchGeminiJobs("akhtaboot.com", "Akhtaboot", "Jordan",       20000),
+    fetchGeminiJobs("bayt.com",      "Bayt",      "Jordan",       20100),
+    fetchGeminiJobs("wuzzuf.net",    "Wuzzuf",    "Jordan",       20200),
+    fetchGeminiJobs("for9a.com",     "Fursa",     "Jordan",       20300),
+    fetchGeminiJobs("akhtaboot.com", "Akhtaboot", "UAE",          20400),
+    fetchGeminiJobs("bayt.com",      "Bayt",      "Saudi Arabia", 20500),
   ]);
 
-  const liveJobs: Job[] = results
+  const all: Job[] = results
     .filter((r) => r.status === "fulfilled")
     .flatMap((r) => (r as PromiseFulfilledResult<Job[]>).value);
 
-  // Deduplicate by title+company
   const seen = new Set<string>();
-  const deduped = liveJobs.filter((j) => {
+  return all.filter((j) => {
     const key = `${j.title.toLowerCase()}|${j.company.toLowerCase()}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
+}
 
-  // Fill remaining slots with static jobs not already covered
-  const staticFill = (staticJobs as Job[]).filter(
-    (s) =>
-      !deduped.some(
-        (l) =>
-          l.title.toLowerCase() === s.title.toLowerCase() &&
-          l.company.toLowerCase() === s.company.toLowerCase()
-      )
+async function syncJobsToDb(freshJobs: Job[]): Promise<Job[]> {
+  const existing = await prisma.cachedJob.findMany();
+
+  const freshKeySet = new Set(
+    freshJobs.map((j) => `${j.title.toLowerCase()}|${j.company.toLowerCase()}`)
+  );
+  const existingKeySet = new Set(
+    existing.map((r) => `${r.title.toLowerCase()}|${r.company.toLowerCase()}`)
   );
 
-  const merged = [...deduped, ...staticFill];
-  if (deduped.length > 0) {
-    cache = { data: merged, ts: Date.now() };
+  // Remove jobs gone from all sources
+  const toDelete = existing.filter(
+    (r) => !freshKeySet.has(`${r.title.toLowerCase()}|${r.company.toLowerCase()}`)
+  );
+  if (toDelete.length > 0) {
+    await prisma.cachedJob.deleteMany({
+      where: { id: { in: toDelete.map((r) => r.id) } },
+    });
   }
-  return NextResponse.json(merged);
+
+  // Insert brand-new jobs
+  const toInsert = freshJobs.filter(
+    (j) => !existingKeySet.has(`${j.title.toLowerCase()}|${j.company.toLowerCase()}`)
+  );
+  if (toInsert.length > 0) {
+    await prisma.cachedJob.createMany({
+      data: toInsert.map((j) => ({
+        id:                j.id,
+        title:             j.title,
+        company:           j.company,
+        sector:            j.sector,
+        city:              j.city,
+        country:           j.country,
+        seniority:         j.seniority,
+        skills:            j.skills,
+        salaryMin:         j.salaryMin ?? null,
+        salaryMax:         j.salaryMax ?? null,
+        remote:            j.remote,
+        internshipCountry: j.internshipCountry ?? null,
+        source:            j.source,
+        url:               j.url,
+        postedAt:          j.postedAt,
+        description:       j.description,
+        fetchedAt:         new Date(),
+      })),
+      skipDuplicates: true,
+    });
+  }
+
+  await prisma.jobsFetchMeta.upsert({
+    where:  { id: 1 },
+    update: { lastFetched: new Date() },
+    create: { id: 1, lastFetched: new Date() },
+  });
+
+  const updated = await prisma.cachedJob.findMany();
+  return updated.map(dbRowToJob);
+}
+
+async function seedStaticJobsIfEmpty(): Promise<void> {
+  const count = await prisma.cachedJob.count();
+  if (count > 0) return;
+  const jobs = staticJobs as Job[];
+  await prisma.cachedJob.createMany({
+    data: jobs.map((j) => ({
+      id:                j.id,
+      title:             j.title,
+      company:           j.company,
+      sector:            j.sector,
+      city:              j.city,
+      country:           j.country,
+      seniority:         j.seniority,
+      skills:            j.skills,
+      salaryMin:         j.salaryMin ?? null,
+      salaryMax:         j.salaryMax ?? null,
+      remote:            j.remote,
+      internshipCountry: j.internshipCountry ?? null,
+      source:            j.source,
+      url:               j.url ?? "",
+      postedAt:          j.postedAt,
+      description:       j.description,
+    })),
+    skipDuplicates: true,
+  });
+}
+
+export async function GET() {
+  if (memCache && Date.now() - memCache.ts < REFRESH_MS) {
+    return NextResponse.json(memCache.data);
+  }
+
+  await seedStaticJobsIfEmpty();
+
+  const meta = await prisma.jobsFetchMeta.findUnique({ where: { id: 1 } });
+  const lastFetched = meta?.lastFetched?.getTime() ?? 0;
+  const needsRefresh = Date.now() - lastFetched > REFRESH_MS;
+
+  let jobs: Job[];
+
+  if (needsRefresh) {
+    const freshJobs = await fetchFreshJobs();
+    if (freshJobs.length > 0) {
+      jobs = await syncJobsToDb(freshJobs);
+    } else {
+      // All live sources failed — keep existing DB data, advance timestamp
+      const rows = await prisma.cachedJob.findMany();
+      jobs = rows.map(dbRowToJob);
+      await prisma.jobsFetchMeta.upsert({
+        where:  { id: 1 },
+        update: { lastFetched: new Date() },
+        create: { id: 1, lastFetched: new Date() },
+      });
+    }
+  } else {
+    const rows = await prisma.cachedJob.findMany();
+    jobs = rows.map(dbRowToJob);
+  }
+
+  memCache = { data: jobs, ts: Date.now() };
+  return NextResponse.json(jobs);
 }

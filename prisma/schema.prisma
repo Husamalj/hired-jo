@@ -5,7 +5,6 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL")
 }
 
 model LeaderboardEntry {
@@ -25,4 +24,29 @@ model CofounderProfile {
   vibe      String
   embedding String?
   createdAt DateTime @default(now())
+}
+
+model CachedJob {
+  id                String   @id
+  title             String
+  company           String
+  sector            String
+  city              String
+  country           String
+  seniority         String
+  skills            Json
+  salaryMin         Int?
+  salaryMax         Int?
+  remote            Boolean  @default(false)
+  internshipCountry String?
+  source            String
+  url               String
+  postedAt          String
+  description       String
+  fetchedAt         DateTime @default(now())
+}
+
+model JobsFetchMeta {
+  id          Int      @id @default(1)
+  lastFetched DateTime @default(now())
 }
