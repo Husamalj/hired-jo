@@ -44,33 +44,98 @@ function loadCv(): CV | null {
   }
 }
 
-type Sector = "Tech" | "Transport" | "FinTech" | "Healthcare" | "Other";
+// ── Field detection ───────────────────────────────────────────────────────────
+// Sectors that have real Jordan job data
+type DataSector = "Tech" | "Transport" | "FinTech" | "Healthcare";
+// Fields we can detect but have no job data for
+type NoDataField =
+  | "Creative & Design"
+  | "Marketing & Media"
+  | "Legal"
+  | "Education"
+  | "Engineering (non-IT)"
+  | "Other";
 
-// Keywords that signal each sector — checked against job titles, education, and skills
-const SECTOR_SIGNALS: Record<Sector, string[]> = {
+type Field = DataSector | NoDataField;
+
+const FIELD_SIGNALS: Record<Field, string[]> = {
   Healthcare: [
     "doctor", "physician", "nurse", "medical", "health", "clinical", "hospital",
     "pharmacy", "pharmacist", "dentist", "surgeon", "medicine", "patient",
-    "radiology", "laboratory", "biomedical", "healthcare", "therapist",
+    "radiology", "laboratory", "biomedical", "therapist", "nutrition", "dietitian",
   ],
   FinTech: [
     "finance", "financial", "banking", "bank", "accountant", "accounting",
     "fintech", "investment", "audit", "tax", "insurance", "actuary",
-    "economics", "economist", "treasury", "compliance", "risk",
+    "economics", "economist", "treasury", "compliance", "risk", "cfa", "cpa",
   ],
   Transport: [
     "transport", "logistics", "supply chain", "fleet", "driver", "shipping",
-    "warehouse", "procurement", "operations", "delivery", "freight",
+    "warehouse", "procurement", "delivery", "freight", "customs",
   ],
   Tech: [
     "software", "developer", "engineer", "programming", "frontend", "backend",
-    "fullstack", "devops", "data", "ai", "machine learning", "web", "mobile",
-    "cybersecurity", "network", "cloud", "computer science", "it ", "ict",
+    "fullstack", "devops", "data scientist", "machine learning", "web developer",
+    "mobile developer", "cybersecurity", "network engineer", "cloud", "computer science",
+    "information technology", "it support", "ict",
+  ],
+  "Creative & Design": [
+    "photographer", "photography", "graphic design", "designer", "illustrator",
+    "videographer", "video editor", "animator", "motion", "ui designer", "ux designer",
+    "art director", "creative", "visual", "branding", "adobe", "photoshop",
+    "lightroom", "premiere", "after effects", "figma", "sketch",
+  ],
+  "Marketing & Media": [
+    "marketing", "social media", "content creator", "copywriter", "journalist",
+    "public relations", "pr ", "seo", "digital marketing", "advertising",
+    "media", "communications", "brand", "influencer", "campaign",
+  ],
+  Legal: [
+    "lawyer", "attorney", "legal", "law", "paralegal", "judge", "court",
+    "litigation", "contract", "compliance officer", "llb", "llm",
+  ],
+  Education: [
+    "teacher", "professor", "instructor", "lecturer", "tutor", "trainer",
+    "curriculum", "education", "school", "university faculty", "teaching",
+    "e-learning", "academic",
+  ],
+  "Engineering (non-IT)": [
+    "civil engineer", "mechanical engineer", "electrical engineer", "structural",
+    "architecture", "architect", "construction", "autocad", "solidworks",
+    "manufacturing", "industrial engineer", "chemical engineer",
   ],
   Other: [],
 };
 
-function detectSector(cv: CV): Sector {
+// Skills we recommend for fields without Jordan job data
+const FIELD_SKILLS: Partial<Record<NoDataField, string[]>> = {
+  "Creative & Design": [
+    "Adobe Photoshop", "Adobe Lightroom", "Adobe Premiere Pro", "After Effects",
+    "Figma", "Canva", "Illustration", "Brand Identity", "Color Theory",
+    "Typography", "Video Editing", "Photography Composition",
+  ],
+  "Marketing & Media": [
+    "Google Analytics", "Meta Ads", "SEO", "Content Strategy", "Copywriting",
+    "Email Marketing", "HubSpot", "Social Media Management", "Google Ads",
+    "A/B Testing", "CRM Tools",
+  ],
+  Legal: [
+    "Legal Research", "Contract Drafting", "Legal Writing", "Microsoft Word",
+    "Case Management", "Negotiation", "Compliance", "Legal Tech Tools",
+  ],
+  Education: [
+    "Curriculum Design", "Learning Management Systems", "Public Speaking",
+    "Instructional Design", "Google Classroom", "Assessment Design",
+    "Microsoft Office", "Presentation Skills",
+  ],
+  "Engineering (non-IT)": [
+    "AutoCAD", "SolidWorks", "MATLAB", "Project Management", "MS Project",
+    "Structural Analysis", "BIM", "Revit", "Technical Drawing",
+  ],
+  Other: [],
+};
+
+function detectField(cv: CV): Field {
   const haystack = [
     ...(cv.experience ?? []).map((e) => `${e.title} ${e.company}`),
     ...(cv.education ?? []).map((e) => `${e.degree} ${e.institution}`),
@@ -80,20 +145,22 @@ function detectSector(cv: CV): Sector {
     .join(" ")
     .toLowerCase();
 
-  const scores: Record<Sector, number> = { Tech: 0, Transport: 0, FinTech: 0, Healthcare: 0, Other: 0 };
-  for (const [sector, keywords] of Object.entries(SECTOR_SIGNALS) as [Sector, string[]][]) {
-    for (const kw of keywords) {
-      if (haystack.includes(kw)) scores[sector]++;
-    }
+  const scores: Record<Field, number> = {} as Record<Field, number>;
+  for (const [field, keywords] of Object.entries(FIELD_SIGNALS) as [Field, string[]][]) {
+    scores[field] = keywords.filter((kw) => haystack.includes(kw)).length;
   }
 
-  const best = (Object.entries(scores) as [Sector, number][]).sort((a, b) => b[1] - a[1])[0];
-  return best[1] > 0 ? best[0] : "Tech"; // default to Tech for ambiguous profiles
+  const best = (Object.entries(scores) as [Field, number][]).sort((a, b) => b[1] - a[1])[0];
+  // Only trust the detection if at least 1 keyword matched
+  return best[1] > 0 ? best[0] : "Other";
 }
 
-function getTopSkillsForSector(sector: Sector): string[] {
+function hasJobData(field: Field): field is DataSector {
+  return ["Tech", "Transport", "FinTech", "Healthcare"].includes(field);
+}
+
+function getTopSkillsFromJobs(sector: DataSector): string[] {
   const sectorJobs = jobs.filter((j) => j.sector === sector);
-  // fall back to all jobs if sector has too few entries
   const pool = sectorJobs.length >= 3 ? sectorJobs : jobs;
   const counts: Record<string, number> = {};
   pool.forEach((j) =>
@@ -115,21 +182,41 @@ export default function LearnPage() {
     setCv(loadCv());
   }, []);
 
-  const sector: Sector = cv ? detectSector(cv) : "Tech";
-  const topJobSkills = getTopSkillsForSector(sector);
+  const field: Field = cv ? detectField(cv) : "Tech";
   const cvSkills = (cv?.skills ?? []).map((s) => s.toLowerCase());
-  const gapSkills = topJobSkills.filter((s) => !cvSkills.includes(s));
 
-  // resources matched to gaps first, then sector-relevant others, then rest
-  const gapResources = resources.filter((r) =>
-    gapSkills.includes(r.skill.toLowerCase())
-  );
-  const otherResources = resources.filter(
-    (r) => !gapSkills.includes(r.skill.toLowerCase())
-  );
-  const displayResources = cv
-    ? [...gapResources, ...otherResources]
-    : resources;
+  // Gap detection differs based on whether we have real job data
+  let gapSkills: string[] = [];
+  let noDataMode = false;
+
+  if (!cv) {
+    // no CV — show general top skills
+    const counts: Record<string, number> = {};
+    jobs.forEach((j) =>
+      (j.skills ?? []).forEach((s: string) => {
+        const k = s.toLowerCase();
+        counts[k] = (counts[k] ?? 0) + 1;
+      })
+    );
+    gapSkills = Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 12)
+      .map(([s]) => s);
+  } else if (hasJobData(field)) {
+    const topSkills = getTopSkillsFromJobs(field);
+    gapSkills = topSkills.filter((s) => !cvSkills.includes(s));
+  } else {
+    noDataMode = true;
+    const fieldSkills = FIELD_SKILLS[field as NoDataField] ?? [];
+    gapSkills = fieldSkills
+      .filter((s) => !cvSkills.includes(s.toLowerCase()))
+      .map((s) => s.toLowerCase());
+  }
+
+  // For resources: show gap-matching ones first, then rest
+  const gapResources = resources.filter((r) => gapSkills.includes(r.skill.toLowerCase()));
+  const otherResources = resources.filter((r) => !gapSkills.includes(r.skill.toLowerCase()));
+  const displayResources = cv ? [...gapResources, ...otherResources] : resources;
 
   return (
     <>
@@ -154,9 +241,11 @@ export default function LearnPage() {
                 <p className="text-sm font-medium">{cv.fullName}</p>
                 <p className="text-xs text-white/40">
                   Detected field:{" "}
-                  <span className="text-purple-300 font-medium">{sector}</span>
-                  {gapSkills.length > 0
-                    ? ` · ${gapSkills.length} skill gap${gapSkills.length !== 1 ? "s" : ""} vs Jordan ${sector} jobs`
+                  <span className="text-purple-300 font-medium">{field}</span>
+                  {noDataMode
+                    ? " · no Jordan job data for this field yet — showing general skill recommendations"
+                    : gapSkills.length > 0
+                    ? ` · ${gapSkills.length} skill gap${gapSkills.length !== 1 ? "s" : ""} vs Jordan ${field} jobs`
                     : " · your skills cover the top demands"}
                 </p>
               </div>
@@ -175,22 +264,32 @@ export default function LearnPage() {
             </div>
           )}
 
-          {/* Skill gaps */}
+          {/* Skill gaps / recommendations */}
           {cv && gapSkills.length > 0 && (
             <div className="space-y-2">
               <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider">
-                Your Skill Gaps
+                {noDataMode ? "Recommended Skills for Your Field" : "Your Skill Gaps"}
               </h2>
               <div className="flex flex-wrap gap-2">
                 {gapSkills.slice(0, 12).map((s) => (
                   <span
                     key={s}
-                    className="px-3 py-1 rounded-full text-xs bg-red-500/10 text-red-300 border border-red-500/20 capitalize"
+                    className={`px-3 py-1 rounded-full text-xs border capitalize ${
+                      noDataMode
+                        ? "bg-purple-500/10 text-purple-300 border-purple-500/20"
+                        : "bg-red-500/10 text-red-300 border-red-500/20"
+                    }`}
                   >
                     {s}
                   </span>
                 ))}
               </div>
+              {noDataMode && (
+                <p className="text-xs text-white/30 pt-1">
+                  Our Jordan job database covers Tech, FinTech, Healthcare, and Transport.
+                  Skill suggestions for your field are based on general industry standards.
+                </p>
+              )}
             </div>
           )}
 
