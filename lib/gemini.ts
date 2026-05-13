@@ -12,17 +12,21 @@ interface Msg {
 async function ask(messages: Msg[]): Promise<string> {
   const system = messages.find((m) => m.role === "system")?.content ?? "";
   const turns = messages.filter((m) => m.role !== "system");
+  const last = turns[turns.length - 1];
 
-  const chat = model.startChat({
+  const m = genAI.getGenerativeModel({
+    model: "gemini-2.0-flash",
     systemInstruction: system,
-    history: turns.slice(0, -1).map((m) => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content }],
+  });
+
+  const chatSession = m.startChat({
+    history: turns.slice(0, -1).map((t) => ({
+      role: t.role === "assistant" ? "model" : "user",
+      parts: [{ text: t.content }],
     })),
   });
 
-  const last = turns[turns.length - 1];
-  const result = await chat.sendMessage(last?.content ?? "");
+  const result = await chatSession.sendMessage(last?.content ?? "");
   return result.response.text();
 }
 
