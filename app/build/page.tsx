@@ -360,7 +360,7 @@ export default function BuildPage() {
                   {thinking && (
                     <div className="flex justify-start">
                       <div className="px-4 py-2.5 rounded-2xl rounded-bl-sm bg-white/10 text-sm text-white/40">
-                        <span className="blink">●</span> thinking…
+                        <span className="blink">●</span> {stepId === "done" ? "Building your CV… this takes 10–20 seconds" : "thinking…"}
                       </div>
                     </div>
                   )}
