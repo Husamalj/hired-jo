@@ -123,7 +123,7 @@ function ScrollHero() {
         </div>
 
         {/* Scene 3 — video has Hired.jo baked in, just show the CTA buttons */}
-        <div className="absolute inset-0 flex items-end justify-center pb-20"
+        <div className="absolute inset-0 flex items-center justify-center"
           style={{ opacity: s3, transition: "opacity 0.4s ease", pointerEvents: s3 > 0.5 ? "auto" : "none" }}>
           <div className="text-center px-8">
             <div className="flex gap-4 flex-wrap justify-center items-center">
