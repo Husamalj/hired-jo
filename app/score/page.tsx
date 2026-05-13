@@ -9,6 +9,7 @@ export default function ScorePage() {
   const [alias, setAlias] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [hasCV, setHasCV] = useState(false);
 
   useEffect(() => {
@@ -29,7 +30,13 @@ export default function ScorePage() {
     const data = await res.json();
     setScore(data);
     setLoading(false);
-    if (submitAlias) setSubmitted(true);
+    if (submitAlias) {
+      if (data.dbError) {
+        setSaveError(`DB error: ${data.dbError}`);
+      } else {
+        setSubmitted(true);
+      }
+    }
   }
 
   async function handleSubmitToLeaderboard() {
@@ -91,6 +98,9 @@ export default function ScorePage() {
             See rankings →
           </a>
         </p>
+      )}
+      {saveError && (
+        <p className="mt-4 text-red-400 text-sm">{saveError}</p>
       )}
     </main>
     </>
