@@ -125,10 +125,10 @@ function ScrollHero() {
         {/* Scene 3 — CTA buttons sitting in the golden lower third */}
         <div className="absolute inset-x-0 bottom-16 flex justify-center"
           style={{ opacity: s3, transition: "opacity 0.4s ease", pointerEvents: s3 > 0.5 ? "auto" : "none" }}>
-          <div className="flex gap-5 items-center"
+          <div className="flex flex-col items-center gap-4"
             style={{ filter: "drop-shadow(0 8px 32px rgba(0,0,0,0.6))" }}>
             <Link href="/build"
-              className="px-10 py-5 rounded-2xl gold-grad text-black font-extrabold text-xl tracking-tight">
+              className="px-14 py-6 rounded-2xl gold-grad text-black font-extrabold text-2xl tracking-tight">
               Build my CV
             </Link>
             <Link href="/roast"
