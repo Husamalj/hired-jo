@@ -1,5 +1,10 @@
 {
   "installCommand": "pnpm install --no-frozen-lockfile",
   "buildCommand": "pnpm next build",
-  "devCommand": "pnpm dev"
+  "devCommand": "pnpm dev",
+  "functions": {
+    "app/api/build-cv/route.ts": {
+      "maxDuration": 60
+    }
+  }
 }
