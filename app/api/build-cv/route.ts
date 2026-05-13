@@ -131,12 +131,26 @@ Answers:
 Return ONLY valid JSON: { fullName, email, phone, location, summary, education, experience, projects, skills, skillCategories, achievements, languages, certifications, links }`;
 }
 
+function extractJson(raw: string): string {
+  // Strip markdown code fences
+  let text = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+  // Find the first { and last } to extract the JSON object
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start !== -1 && end !== -1 && end > start) {
+    text = text.slice(start, end + 1);
+  }
+  return text;
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const prompt = body.structured ? buildPrompt(body.structured) : buildLegacyPrompt(body.answers ?? []);
     const result = await model.generateContent(prompt);
-    const text = result.response.text().replace(/```json|```/g, "").trim();
+    const raw = result.response.text();
+    console.log("Gemini raw response (first 300 chars):", raw.slice(0, 300));
+    const text = extractJson(raw);
     const cv = JSON.parse(text);
     return NextResponse.json({ cv });
   } catch (e) {
