@@ -9,367 +9,190 @@ import type { CV } from "@/lib/types";
 
 type Msg = { role: "user" | "ai"; text: string };
 
-const QUESTIONS = [
-  "What's your full name?",
-  "Which university or institution are you at, and what's your field of study?",
-  "What year do you graduate, and what's your GPA (optional — just skip if you'd rather not)?",
-  "Tell me about your best project or work — what did you create or do?",
-  "What tools, devices, or software did you use in this work? (or type 'skip' if not relevant)",
-  "What was the result or impact? (any number works — clients, views, grade, downloads, revenue…)",
-  "Any work experience or internships? Describe briefly, or say 'none'.",
-  "List your top skills — technical, creative, or soft skills, separated by commas.",
-  "What languages do you speak?",
-];
-
-function detectField(uniMajorAnswer: string): "tech" | "creative" | "business" | "medical" | "other" {
-  const t = uniMajorAnswer.toLowerCase();
-  if (/computer|software|engineer|cs |programming|cyber|network|data science|it |information tech/.test(t)) return "tech";
-  if (/photo|film|cinema|visual|design|art|media|graphic|animation|video|creative|ux|ui |illustration|fashion|interior|architect/.test(t)) return "creative";
-  if (/business|marketing|finance|accounting|management|economics|commerce|mba/.test(t)) return "business";
-  if (/medicine|medical|pharmacy|nursing|dentist|health|clinical/.test(t)) return "medical";
-  return "other";
-}
-
-function getLinksQuestion(answers: string[]): string {
-  const field = detectField(answers[1] ?? "");
-  switch (field) {
-    case "tech":
-      return "Do you have a GitHub, LinkedIn, or personal portfolio site? (paste links or type 'skip')";
-    case "creative":
-      return "Do you have a Behance, Instagram, YouTube, or portfolio website? (paste links or type 'skip')";
-    case "business":
-      return "Do you have a LinkedIn or any professional profile link? (paste or type 'skip')";
-    case "medical":
-      return "Do you have a LinkedIn or any academic/professional profile? (paste or type 'skip')";
-    default:
-      return "Do you have a LinkedIn or any professional/portfolio link? (paste or type 'skip')";
-  }
-}
-
-async function stubChat(step: number): Promise<string> {
-  return QUESTIONS[step] ?? "Thanks! Your CV is ready.";
-}
-
-async function askAI(messages: Msg[]): Promise<{ done: boolean; reply?: string; cv?: CV }> {
-  try {
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      body: JSON.stringify({ messages }),
-      headers: { "Content-Type": "application/json" },
-    });
-    if (!res.ok) throw new Error("API error");
-    return await res.json();
-  } catch {
-    // fallback to stub if API not ready
-    const step = messages.filter(m => m.role === "ai").length;
-    return { done: false, reply: await stubChat(step) };
-  }
-}
-
-// Auto-correct common misspellings and normalize text
-const SKILL_CORRECTIONS: Record<string, string> = {
-  pythin: "Python", pyhton: "Python", phyton: "Python", "python3": "Python",
-  javascrip: "JavaScript", javscript: "JavaScript", javasript: "JavaScript",
-  typescirpt: "TypeScript", typscript: "TypeScript",
-  recat: "React", raect: "React",
-  "c++": "C++", cpp: "C++", "c plus plus": "C++",
-  ccna: "CCNA", html5: "HTML", css3: "CSS",
-  figam: "Figma", figm: "Figma",
-  photoshoop: "Photoshop", photshop: "Photoshop",
-  lightoom: "Lightroom", lightroon: "Lightroom",
-  premire: "Premiere Pro", "premiere pro": "Premiere Pro",
-  afterefects: "After Effects",
-  ilustrator: "Illustrator",
-  node: "Node.js", nodejs: "Node.js",
-  mongo: "MongoDB", mangodb: "MongoDB",
-  postgress: "PostgreSQL", posgres: "PostgreSQL", postgres: "PostgreSQL",
-  mysql: "MySQL", sqllite: "SQLite", sqlite: "SQLite",
-  dockerr: "Docker", kubernets: "Kubernetes",
-  tensorflow: "TensorFlow", tenserflow: "TensorFlow",
-  flutter: "Flutter", dart: "Dart",
-  git: "Git", github: "GitHub", giithub: "GitHub",
+type StructuredAnswers = {
+  template: "fresher" | "experienced";
+  name: string;
+  phone: string;
+  email: string;
+  location: string;
+  university: string;
+  gradYear: string;
+  targetRole: string;
+  experience: Array<{ company: string; role: string; dates: string; description: string }>;
+  projects: Array<{ name: string; description: string; tools: string; result: string }>;
+  technicalSkills: string;
+  softSkills: string;
+  certifications: string;
+  extras: string;
+  languages: string;
+  links: string;
 };
 
-function correctSkill(s: string): string {
-  const lower = s.toLowerCase().trim();
-  return SKILL_CORRECTIONS[lower] ?? s.trim();
-}
+type StepId =
+  | "name" | "phone" | "email" | "location" | "university" | "gradYear" | "targetRole"
+  | "hasExperience"
+  | `exp_company_${number}` | `exp_role_${number}` | `exp_dates_${number}` | `exp_desc_${number}` | `exp_more_${number}`
+  | `proj_name_${number}` | `proj_desc_${number}` | `proj_tools_${number}` | `proj_result_${number}` | `proj_more_${number}`
+  | "techSkills" | "softSkills" | "certifications" | "extras" | "languages" | "links" | "done";
 
-function toTitleCase(s: string): string {
-  return s.replace(/\b\w/g, c => c.toUpperCase());
-}
+function getQuestion(stepId: StepId): { question: string; hint: string } {
+  if (stepId === "name") return { question: "What's your full name?", hint: "e.g. Ahmad Khalid Al-Masri" };
+  if (stepId === "phone") return { question: "What's your phone number?", hint: "e.g. 0791234567" };
+  if (stepId === "email") return { question: "What's your email address?", hint: "e.g. ahmad@gmail.com" };
+  if (stepId === "location") return { question: "What city and country are you in?", hint: 'e.g. Amman, Jordan — or type "skip" to use Amman, Jordan' };
+  if (stepId === "university") return { question: "Which university are you at, and what's your major?", hint: "e.g. Hashemite University, Computer Engineering" };
+  if (stepId === "gradYear") return { question: "When do you graduate, and what's your GPA?", hint: 'e.g. 2026, 3.7 — type "skip GPA" if you\'d rather not include it' };
+  if (stepId === "targetRole") return { question: "What job role are you targeting?", hint: "e.g. Junior Software Engineer, Data Analyst, Graphic Designer" };
+  if (stepId === "hasExperience") return { question: "Do you have any jobs or internships?", hint: "Tap YES or NO below" };
 
-function cleanName(s: string): string {
-  return s.trim().replace(/\b\w/g, c => c.toUpperCase());
-}
-
-function isSkip(s: string): boolean {
-  return /^(skip|n\/a|none|no|not needed|not applicable|nothing|na|-)$/i.test(s.trim());
-}
-
-function parseLinks(raw: string): { label: string; url: string }[] {
-  const results: { label: string; url: string }[] = [];
-  const parts = raw.split(/[\s,]+/);
-  parts.forEach(p => {
-    const url = p.replace(/^https?:\/\//i, "").trim();
-    if (!url || url.length < 4) return;
-    if (/github\.com/i.test(url)) results.push({ label: "GitHub", url: `https://${url}` });
-    else if (/behance\.net/i.test(url)) results.push({ label: "Behance", url: `https://${url}` });
-    else if (/linkedin\.com/i.test(url)) results.push({ label: "LinkedIn", url: `https://${url}` });
-    else if (/youtube\.com|youtu\.be/i.test(url)) results.push({ label: "YouTube", url: `https://${url}` });
-    else if (/instagram\.com/i.test(url)) results.push({ label: "Instagram", url: `https://${url}` });
-    else if (/dribbble\.com/i.test(url)) results.push({ label: "Dribbble", url: `https://${url}` });
-    else results.push({ label: "Portfolio", url: `https://${url}` });
-  });
-  return results;
-}
-
-function buildSkillCategories(
-  field: string,
-  skillList: string[],
-  techList: string[]
-): { category: string; items: string[] }[] {
-  const all = [...new Set([...skillList, ...techList])];
-  if (all.length === 0) return [];
-
-  const softKeywords = /communication|teamwork|leadership|problem.solving|time management|creativity|storytelling|collaboration|presentation/i;
-  const equipKeywords = /canon|nikon|sony|dji|drone|camera|lens|microphone|gimbal|tripod/i;
-  const softwareKeywords = /photoshop|lightroom|premiere|after effects|illustrator|figma|indesign|davinci|resolve|final cut|audition/i;
-  const progKeywords = /python|javascript|typescript|react|node|java|c\+\+|sql|html|css|php|swift|kotlin|flutter/i;
-  const creativeKeywords = /photography|videography|cinematography|color grading|editing|retouching|illustration|animation|motion graphics|visual/i;
-
-  if (field === "creative") {
-    const software = all.filter(s => softwareKeywords.test(s));
-    const equipment = all.filter(s => equipKeywords.test(s));
-    const creative = all.filter(s => creativeKeywords.test(s) && !softwareKeywords.test(s) && !equipKeywords.test(s));
-    const soft = all.filter(s => softKeywords.test(s));
-    const rest = all.filter(s => !software.includes(s) && !equipment.includes(s) && !creative.includes(s) && !soft.includes(s));
-    return [
-      software.length ? { category: "Software", items: software } : null,
-      equipment.length ? { category: "Equipment", items: equipment } : null,
-      (creative.length || rest.length) ? { category: "Creative Skills", items: [...creative, ...rest] } : null,
-      soft.length ? { category: "Soft Skills", items: soft } : null,
-    ].filter(Boolean) as { category: string; items: string[] }[];
+  const expMatch = (stepId as string).match(/^exp_(\w+)_(\d+)$/);
+  if (expMatch) {
+    const [, sub, idx] = expMatch;
+    const n = parseInt(idx) + 1;
+    if (sub === "company") return { question: `Internship/Job ${n}: What's the company name?`, hint: "e.g. Mawdoo3, Zain, Orange Jordan" };
+    if (sub === "role") return { question: "What was your role or title there?", hint: "e.g. Software Engineering Intern, Marketing Assistant" };
+    if (sub === "dates") return { question: "When did you work there?", hint: "e.g. Jun 2024 – Aug 2024, or Summer 2025" };
+    if (sub === "desc") return { question: "What did you do there? Any results or numbers?", hint: "e.g. built an internal dashboard used by 50 employees, reduced report time by 30%" };
+    if (sub === "more") return { question: "Do you have another job or internship to add?", hint: `You've added ${n} so far (max 3). Tap YES or NO.` };
   }
 
-  if (field === "tech") {
-    const prog = all.filter(s => progKeywords.test(s));
-    const tools = all.filter(s => softwareKeywords.test(s) || /git|docker|linux|aws|firebase|figma/i.test(s));
-    const soft = all.filter(s => softKeywords.test(s));
-    const rest = all.filter(s => !prog.includes(s) && !tools.includes(s) && !soft.includes(s));
-    return [
-      prog.length ? { category: "Programming", items: prog } : null,
-      tools.length ? { category: "Tools & Technologies", items: tools } : null,
-      (soft.length || rest.length) ? { category: "Other Skills", items: [...rest, ...soft] } : null,
-    ].filter(Boolean) as { category: string; items: string[] }[];
+  const projMatch = (stepId as string).match(/^proj_(\w+)_(\d+)$/);
+  if (projMatch) {
+    const [, sub, idx] = projMatch;
+    const n = parseInt(idx) + 1;
+    if (sub === "name") return { question: `Project ${n}: What's the name of your project?`, hint: "Just the name — e.g. Attendance App, Portfolio Website, AI Traffic Model" };
+    if (sub === "desc") return { question: "What does it do? Describe it in one sentence.", hint: "e.g. A mobile app that tracks student attendance using QR codes" };
+    if (sub === "tools") return { question: "What tools or technologies did you use?", hint: 'e.g. Flutter, Firebase, Python — or type "skip"' };
+    if (sub === "result") return { question: "What was the result or impact?", hint: 'e.g. 300 active users, won 1st place at HU hackathon — or type "skip"' };
+    if (sub === "more") return { question: "Do you have another project to add?", hint: `You've added ${n} so far (max 4). Tap YES or NO.` };
   }
 
-  // Generic fallback — one flat category
-  return [{ category: "Skills", items: all }];
+  if (stepId === "techSkills") return { question: "List your technical skills, separated by commas.", hint: "e.g. Python, React, Figma, SQL, Adobe Premiere" };
+  if (stepId === "softSkills") return { question: "Any soft skills to add?", hint: 'e.g. Teamwork, Leadership, Public Speaking — or type "skip"' };
+  if (stepId === "certifications") return { question: "Do you have any certifications?", hint: 'e.g. Google Data Analytics | Google | 2024 — or type "skip"' };
+  if (stepId === "extras") return { question: "Any awards, hackathons, or volunteering to highlight?", hint: 'e.g. 1st place HU Hackathon 2025, volunteer tutor at local school — or type "skip"' };
+  if (stepId === "languages") return { question: "What languages do you speak and at what level?", hint: "e.g. Arabic (Native), English (Professional), French (Basic)" };
+  if (stepId === "links") return { question: "Do you have a GitHub, LinkedIn, or portfolio link?", hint: 'Paste one or more links — or type "skip"' };
+  return { question: "All done!", hint: "" };
 }
 
-function parseExperience(raw: string): CV["experience"] {
-  if (!raw.trim() || isSkip(raw)) return [];
+function isSkipAnswer(s: string) {
+  return /^(skip|none|no|n\/a|-)$/i.test(s.trim());
+}
 
-  // Try to extract company name — look for "at CompanyName" pattern
-  const atMatch = raw.match(/\bat\s+([A-Za-z0-9؀-ۿ&'.\- ]+?)(?:,|\.|$)/i);
-  const company = atMatch ? atMatch[1].trim() : raw.split(/,/)[0].trim();
+function getNextStep(
+  stepId: StepId,
+  answer: string,
+  expIndex: number,
+  projIndex: number
+): StepId {
+  if (stepId === "name") return "phone";
+  if (stepId === "phone") return "email";
+  if (stepId === "email") return "location";
+  if (stepId === "location") return "university";
+  if (stepId === "university") return "gradYear";
+  if (stepId === "gradYear") return "targetRole";
+  if (stepId === "targetRole") return "hasExperience";
+  if (stepId === "hasExperience") {
+    return /^yes$/i.test(answer.trim()) ? "exp_company_0" : "proj_name_0";
+  }
 
-  // Extract dates — look for year or season patterns
-  const yearMatch = raw.match(/\b(20\d{2})\b/);
-  const seasonMatch = raw.match(/\b(summer|winter|spring|fall)\s*(20\d{2})?/i);
-  const startDate = yearMatch ? `06/${yearMatch[1]}` : "06/2025";
-  const endDate = raw.match(/present|current|now/i) ? "Present" : `09/${yearMatch?.[1] ?? "2025"}`;
-
-  // Extract role
-  const roleMatch = raw.match(/^([^,@]+?)(?:\s+(?:intern|at|@)|,)/i);
-  const role = roleMatch ? roleMatch[1].trim() : "Software Engineering Intern";
-
-  // Build specific bullets from the raw experience text
-  const bullets: string[] = [];
-  const sentences = raw.split(/[.,;]/).map(s => s.trim()).filter(s => s.length > 8);
-  const actionWords = /covered|edited|shot|photographed|filmed|designed|built|developed|managed|created|wrote|produced|assisted|supported|handled|coordinated/i;
-  const actionSentences = sentences.filter(s => actionWords.test(s));
-  if (actionSentences.length > 0) {
-    actionSentences.slice(0, 3).forEach(s => {
-      const clean = s.charAt(0).toUpperCase() + s.slice(1);
-      bullets.push(clean + (clean.endsWith(".") ? "" : "."));
-    });
-  } else {
-    const numberMatches = raw.match(/\d+[\+%]?\s*\w+/g) ?? [];
-    if (numberMatches.length > 0) {
-      bullets.push(`Delivered measurable results at ${company}, including ${numberMatches.join(", ")}.`);
-    } else {
-      bullets.push(`Gained hands-on experience at ${company} in a professional environment.`);
-      if (sentences.length > 1) {
-        const extra = sentences[1].charAt(0).toUpperCase() + sentences[1].slice(1);
-        bullets.push(extra + (extra.endsWith(".") ? "" : "."));
-      }
+  const expMatch = (stepId as string).match(/^exp_(\w+)_(\d+)$/);
+  if (expMatch) {
+    const [, sub, idxStr] = expMatch;
+    const idx = parseInt(idxStr);
+    if (sub === "company") return `exp_role_${idx}` as StepId;
+    if (sub === "role") return `exp_dates_${idx}` as StepId;
+    if (sub === "dates") return `exp_desc_${idx}` as StepId;
+    if (sub === "desc") return `exp_more_${idx}` as StepId;
+    if (sub === "more") {
+      if (/^yes$/i.test(answer.trim()) && idx + 1 < 3) return `exp_company_${idx + 1}` as StepId;
+      return "proj_name_0";
     }
   }
 
-  return [{ title: role.length > 40 ? "Software Engineering Intern" : role, company, startDate, endDate, bullets }];
+  const projMatch = (stepId as string).match(/^proj_(\w+)_(\d+)$/);
+  if (projMatch) {
+    const [, sub, idxStr] = projMatch;
+    const idx = parseInt(idxStr);
+    if (sub === "name") return `proj_desc_${idx}` as StepId;
+    if (sub === "desc") return `proj_tools_${idx}` as StepId;
+    if (sub === "tools") return `proj_result_${idx}` as StepId;
+    if (sub === "result") return `proj_more_${idx}` as StepId;
+    if (sub === "more") {
+      if (/^yes$/i.test(answer.trim()) && idx + 1 < 4) return `proj_name_${idx + 1}` as StepId;
+      return "techSkills";
+    }
+  }
+
+  if (stepId === "techSkills") return "softSkills";
+  if (stepId === "softSkills") return "certifications";
+  if (stepId === "certifications") return "extras";
+  if (stepId === "extras") return "languages";
+  if (stepId === "languages") return "links";
+  if (stepId === "links") return "done";
+  return "done";
 }
 
-function buildCvFromAnswers(answers: string[]): CV {
-  const [
-    fullName = "",
-    uniMajor = "",
-    gradGpa = "",
-    projectDesc = "",
-    projectTech = "",
-    projectOutcome = "",
-    experience = "",
-    skills = "",
-    languages = "",
-    links = "",
-  ] = answers;
+function applyAnswer(
+  stepId: StepId,
+  answer: string,
+  data: StructuredAnswers,
+  expIndex: number,
+  projIndex: number
+): StructuredAnswers {
+  const d = { ...data };
+  if (stepId === "name") return { ...d, name: answer };
+  if (stepId === "phone") return { ...d, phone: answer };
+  if (stepId === "email") return { ...d, email: answer };
+  if (stepId === "location") return { ...d, location: isSkipAnswer(answer) ? "Amman, Jordan" : answer };
+  if (stepId === "university") return { ...d, university: answer };
+  if (stepId === "gradYear") return { ...d, gradYear: answer };
+  if (stepId === "targetRole") return { ...d, targetRole: answer };
+  if (stepId === "hasExperience") return { ...d, template: /^yes$/i.test(answer.trim()) ? "experienced" : "fresher" };
 
-  const field = detectField(uniMajor);
-
-  // Parse university and major
-  const uniParts = uniMajor.split(/,|\bat\b|-/i).map(s => s.trim()).filter(Boolean);
-  const university = toTitleCase(uniParts[0] ?? "Hashemite University");
-  const major = toTitleCase(uniParts[1] ?? "");
-
-  // Parse graduation year and GPA
-  const yearMatch = gradGpa.match(/\b(20\d{2})\b/);
-  const endYear = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear() + 1;
-  const gpaMatch = gradGpa.match(/[\d]+\.[\d]+/);
-  const gpa = gpaMatch ? gpaMatch[0] : undefined;
-  const showGpa = gpa && parseFloat(gpa) >= 2.8 ? gpa : undefined;
-
-  // Tech / tools
-  const techList = isSkip(projectTech)
-    ? []
-    : projectTech.split(/,|and/i).map(s => correctSkill(s)).filter(s => s.length > 1);
-
-  // Skills — auto-correct
-  const skillList = skills
-    .split(/,/)
-    .map(s => correctSkill(s))
-    .filter(s => s.length > 1 && !isSkip(s));
-
-  // Clean project name
-  const rawProjectName = projectDesc.replace(/^(i made |i built |i created |i developed |i designed )/i, "").split(/\.|,/)[0].trim();
-  const projectName = toTitleCase(rawProjectName).slice(0, 65) || "Personal Project";
-
-  // Project description — one clean sentence
-  const projectDescription = toTitleCase(
-    projectDesc.replace(/^(i made |i built |i created |i developed |i designed )/i, "").split(/\./)[0].trim()
-  );
-
-  // Project bullets from outcome
-  const projectBullets: string[] = [];
-  if (projectOutcome.trim() && !isSkip(projectOutcome)) {
-    const outcomes = projectOutcome.split(/[,;]/).map(s => s.trim()).filter(s => s.length > 5);
-    outcomes.forEach(o => {
-      const clean = o.charAt(0).toUpperCase() + o.slice(1);
-      // Enhance bare numbers: "15000 views on YouTube" → "Achieved 15,000+ views on YouTube"
-      const enhanced = clean
-        .replace(/^(\d{4,})\s+views/i, (_, n) => `Achieved ${parseInt(n).toLocaleString()}+ views`)
-        .replace(/^won\s+/i, "Received recognition for ")
-        .replace(/^screened\s+/i, "Selected for screening ");
-      projectBullets.push(enhanced + (enhanced.endsWith(".") ? "" : "."));
-    });
-  }
-  if (techList.length > 0) {
-    projectBullets.push(`Produced using ${techList.join(", ")}.`);
-  }
-  if (projectBullets.length === 0) {
-    projectBullets.push(`Independently designed and developed ${projectName}.`);
+  const expMatch = (stepId as string).match(/^exp_(\w+)_(\d+)$/);
+  if (expMatch) {
+    const [, sub, idxStr] = expMatch;
+    const idx = parseInt(idxStr);
+    const exps = [...d.experience];
+    if (!exps[idx]) exps[idx] = { company: "", role: "", dates: "", description: "" };
+    if (sub === "company") exps[idx] = { ...exps[idx], company: answer };
+    if (sub === "role") exps[idx] = { ...exps[idx], role: answer };
+    if (sub === "dates") exps[idx] = { ...exps[idx], dates: answer };
+    if (sub === "desc") exps[idx] = { ...exps[idx], description: answer };
+    return { ...d, experience: exps };
   }
 
-  // Achievements — extract from outcome
-  const achievements: string[] = [];
-  if (projectOutcome.trim() && !isSkip(projectOutcome)) {
-    const parts = projectOutcome.split(/[,;]/).map(s => s.trim()).filter(s => s.length > 5);
-    parts.forEach(p => {
-      if (/award|prize|winner|best|first|recogni|festival|screened/i.test(p)) {
-        achievements.push(toTitleCase(p.replace(/^won\s+/i, "")) + (p.endsWith(".") ? "" : "."));
-      } else if (/\d{3,}/.test(p)) {
-        const clean = p.charAt(0).toUpperCase() + p.slice(1);
-        achievements.push(clean + (clean.endsWith(".") ? "" : "."));
-      }
-    });
+  const projMatch = (stepId as string).match(/^proj_(\w+)_(\d+)$/);
+  if (projMatch) {
+    const [, sub, idxStr] = projMatch;
+    const idx = parseInt(idxStr);
+    const projs = [...d.projects];
+    if (!projs[idx]) projs[idx] = { name: "", description: "", tools: "", result: "" };
+    if (sub === "name") projs[idx] = { ...projs[idx], name: answer };
+    if (sub === "desc") projs[idx] = { ...projs[idx], description: answer };
+    if (sub === "tools") projs[idx] = { ...projs[idx], tools: answer };
+    if (sub === "result") projs[idx] = { ...projs[idx], result: answer };
+    return { ...d, projects: projs };
   }
 
-  // Rich field-aware summary (3 sentences)
-  const topSkills = skillList.slice(0, 3).join(", ") || techList.slice(0, 3).join(", ") || "professional tools";
-  const allTools = [...new Set([...techList, ...skillList])].slice(0, 5).join(", ");
-  const hasExp = !isSkip(experience) && experience.trim().length > 3;
-  const topAchievement = achievements[0] ?? (projectOutcome && !isSkip(projectOutcome) ? projectOutcome.split(/[,;]/)[0].trim() : "");
-
-  const fieldTargets: Record<string, string> = {
-    creative: "media production and visual content creation roles",
-    tech: "software development and engineering roles",
-    business: "business development and management roles",
-    medical: "healthcare and clinical roles",
-    other: "professional roles in their field",
-  };
-
-  const sentence1 = `${major || "Student"} at ${university}, graduating ${endYear}${showGpa ? ` with a GPA of ${showGpa}` : ""}.`;
-  const sentence2 = allTools.length > 0
-    ? `Experienced in ${allTools}.`
-    : `Skilled in ${topSkills}.`;
-  const sentence3 = topAchievement.length > 5
-    ? `${topAchievement.charAt(0).toUpperCase() + topAchievement.slice(1)}${topAchievement.endsWith(".") ? "" : "."}` +
-      (hasExp ? ` Gained practical experience through internship work.` : "")
-    : hasExp
-      ? `Gained practical industry experience through internship work, targeting ${fieldTargets[field]}.`
-      : `Strong academic and project background, targeting ${fieldTargets[field]}.`;
-
-  const summary = `${sentence1} ${sentence2} ${sentence3}`;
-
-  // Skill categories
-  const skillCategories = buildSkillCategories(field, skillList, techList);
-
-  // Parse links
-  const parsedLinks = isSkip(links) ? [] : parseLinks(links);
-
-
-
-  return {
-    fullName: cleanName(fullName),
-    email: "",
-    phone: "",
-    location: "Amman, Jordan",
-    summary,
-    education: [
-      {
-        degree: major ? `B.Sc. in ${major}` : "Bachelor's Degree",
-        institution: university,
-        startYear: endYear - 4,
-        endYear,
-        gpa: showGpa,
-      },
-    ],
-    experience: parseExperience(experience),
-    projects: [
-      {
-        name: projectName,
-        description: projectDescription,
-        tech: techList,
-        bullets: projectBullets,
-      },
-    ],
-    skills: [...new Set([...skillList, ...techList])],
-    skillCategories: skillCategories.length ? skillCategories : undefined,
-    achievements: achievements.length ? achievements : undefined,
-    links: parsedLinks.length ? parsedLinks : undefined,
-    languages: languages
-      .split(/,|and/i)
-      .map(s => s.trim())
-      .filter(Boolean)
-      .map(name => ({
-        name: toTitleCase(name),
-        level: /arabic|english|french|german|spanish/i.test(name)
-          ? ("Native" as const)
-          : ("Intermediate" as const),
-      })),
-    certifications: [],
-  };
+  if (stepId === "techSkills") return { ...d, technicalSkills: answer };
+  if (stepId === "softSkills") return { ...d, softSkills: answer };
+  if (stepId === "certifications") return { ...d, certifications: answer };
+  if (stepId === "extras") return { ...d, extras: answer };
+  if (stepId === "languages") return { ...d, languages: answer };
+  if (stepId === "links") return { ...d, links: answer };
+  return d;
 }
+
+const INITIAL_ANSWERS: StructuredAnswers = {
+  template: "fresher", name: "", phone: "", email: "", location: "",
+  university: "", gradYear: "", targetRole: "",
+  experience: [], projects: [],
+  technicalSkills: "", softSkills: "",
+  certifications: "", extras: "", languages: "", links: "",
+};
 
 export default function BuildPage() {
   const router = useRouter();
@@ -379,8 +202,10 @@ export default function BuildPage() {
   ]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
-  const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<string[]>([]);
+  const [stepId, setStepId] = useState<StepId>("name");
+  const [data, setData] = useState<StructuredAnswers>(INITIAL_ANSWERS);
+  const [expIndex, setExpIndex] = useState(0);
+  const [projIndex, setProjIndex] = useState(0);
   const [cv, setCv] = useState<CV | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -393,80 +218,62 @@ export default function BuildPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [msgs, thinking]);
 
-  // Ask first question on mount
   useEffect(() => {
-    const timer = setTimeout(async () => {
-      const q = await stubChat(0);
-      setMsgs(prev => [...prev, { role: "ai", text: q }]);
+    const timer = setTimeout(() => {
+      const { question, hint } = getQuestion("name");
+      setMsgs(prev => [...prev, { role: "ai", text: hint ? `${question}\n\n💡 ${hint}` : question }]);
     }, 700);
     return () => clearTimeout(timer);
   }, []);
 
-  async function send() {
-    const text = input.trim();
+  async function send(rawAnswer?: string) {
+    const text = (rawAnswer ?? input).trim();
     if (!text || thinking) return;
 
-    const newAnswers = [...answers, text];
-    setAnswers(newAnswers);
-    const newMsgs: Msg[] = [...msgs, { role: "user", text }];
+    const newData = applyAnswer(stepId, text, data, expIndex, projIndex);
+    setData(newData);
+
+    const userMsg = text === "yes" ? "✅ Yes" : text === "no" ? "❌ No" : text;
+    const newMsgs: Msg[] = [...msgs, { role: "user", text: userMsg }];
     setMsgs(newMsgs);
     setInput("");
-    setThinking(true);
 
-    const nextStep = step + 1;
-    setStep(nextStep);
+    // Update loop indices
+    const expMatch = (stepId as string).match(/^exp_\w+_(\d+)$/);
+    const projMatch = (stepId as string).match(/^proj_\w+_(\d+)$/);
+    if (expMatch) setExpIndex(parseInt(expMatch[1]));
+    if (projMatch) setProjIndex(parseInt(projMatch[1]));
 
-    if (nextStep > QUESTIONS.length) {
-      // Use Gemini to build a proper CV from raw answers
+    const nextStep = getNextStep(stepId, text, expIndex, projIndex);
+    setStepId(nextStep);
+
+    if (nextStep === "done") {
+      setThinking(true);
       try {
         const res = await fetch("/api/build-cv", {
           method: "POST",
-          body: JSON.stringify({ answers: newAnswers }),
+          body: JSON.stringify({ structured: newData }),
           headers: { "Content-Type": "application/json" },
         });
-        const data = await res.json();
+        const result = await res.json();
         setThinking(false);
-        if (data.cv) {
-          setMsgs(prev => [...prev, { role: "ai", text: "Perfect! Here's your professional CV. Review it below." }]);
-          setCv(data.cv);
-        } else {
-          throw new Error("No CV returned");
-        }
+        if (result.cv) {
+          setMsgs(prev => [...prev, { role: "ai", text: "Your CV is ready! Review it below and download when happy." }]);
+          setCv(result.cv);
+        } else throw new Error("no cv");
       } catch {
-        // Fallback to local parser if API fails
-        const builtCv = buildCvFromAnswers(newAnswers);
         setThinking(false);
-        setMsgs(prev => [...prev, { role: "ai", text: "Here's your CV. Review it below." }]);
-        setCv(builtCv);
+        setMsgs(prev => [...prev, { role: "ai", text: "Something went wrong building your CV. Please try again." }]);
       }
-    } else {
-      // Next question — last question is dynamic based on field
-      const q = nextStep === QUESTIONS.length
-        ? getLinksQuestion(newAnswers)
-        : await stubChat(nextStep);
-      setThinking(false);
-      setMsgs(prev => [...prev, { role: "ai", text: q }]);
+      return;
     }
-  }
 
-  function goBack() {
-    if (step === 0 || thinking) return;
-    const prevStep = step - 1;
-    // Remove last user message and the AI question that followed it
-    setMsgs(prev => {
-      // Remove trailing AI message (the current question) and the user's last answer
-      const trimmed = [...prev];
-      // Remove last AI message (current question shown after user answered)
-      if (trimmed[trimmed.length - 1]?.role === "ai") trimmed.pop();
-      // Remove last user message
-      if (trimmed[trimmed.length - 1]?.role === "user") {
-        setInput(trimmed[trimmed.length - 1].text);
-        trimmed.pop();
-      }
-      return trimmed;
-    });
-    setAnswers(prev => prev.slice(0, -1));
-    setStep(prevStep);
+    setThinking(true);
+    await new Promise(r => setTimeout(r, 400));
+    setThinking(false);
+    const { question, hint } = getQuestion(nextStep);
+    const msgText = hint ? `${question}\n\n💡 ${hint}` : question;
+    setMsgs(prev => [...prev, { role: "ai", text: msgText }]);
   }
 
   function saveAndScore() {
@@ -475,8 +282,15 @@ export default function BuildPage() {
     router.push("/score");
   }
 
-  const TOTAL_STEPS = QUESTIONS.length + 1; // +1 for dynamic links question
-  const progress = Math.min((step / TOTAL_STEPS) * 100, 100);
+  const FIXED_STEPS = 14;
+  const dynamicSteps = data.experience.length * 4 + data.projects.length * 4;
+  const totalSteps = FIXED_STEPS + dynamicSteps;
+  const STEP_ORDER = ["name","phone","email","location","university","gradYear","targetRole","hasExperience","techSkills","softSkills","certifications","extras","languages","links"];
+  const baseIdx = STEP_ORDER.indexOf(stepId as string);
+  const completedFixed = baseIdx >= 0 ? baseIdx : STEP_ORDER.length;
+  const progress = Math.min(((completedFixed) / totalSteps) * 100, 95);
+
+  const showYesNo = stepId === "hasExperience" || /^(exp|proj)_more_\d+$/.test(stepId as string);
 
   return (
     <div className="min-h-screen grain dot-grid">
@@ -517,7 +331,7 @@ export default function BuildPage() {
         {!cv && (
           <div className="mb-6">
             <div className="flex justify-between text-xs text-white/40 mb-1">
-              <span>Step {Math.min(step + 1, TOTAL_STEPS)} of {TOTAL_STEPS}</span>
+              <span>Step {Math.min(completedFixed + 1, totalSteps)} of {totalSteps}</span>
               <span>{Math.round(progress)}%</span>
             </div>
             <div className="h-1.5 rounded-full bg-white/10">
@@ -536,57 +350,76 @@ export default function BuildPage() {
             ) : (
               <>
                 {/* Chat window */}
-            <div className="glass rounded-2xl p-5 mb-4 h-[50vh] overflow-y-auto flex flex-col gap-3">
-              {msgs.map((m, i) => (
-                <div key={i} className={`flex chat-bubble ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                  <div className={m.role === "user"
-                    ? "px-4 py-2.5 rounded-2xl rounded-br-sm gold-grad text-black text-sm font-medium max-w-[80%]"
-                    : "px-4 py-2.5 rounded-2xl rounded-bl-sm bg-white/10 text-sm max-w-[80%]"
-                  }>
-                    {m.text}
-                  </div>
+                <div className="glass rounded-2xl p-5 mb-4 h-[50vh] overflow-y-auto flex flex-col gap-3">
+                  {msgs.map((m, i) => (
+                    <div key={i} className={`flex chat-bubble ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                      <div className={m.role === "user"
+                        ? "px-4 py-2.5 rounded-2xl rounded-br-sm gold-grad text-black text-sm font-medium max-w-[80%]"
+                        : "px-4 py-2.5 rounded-2xl rounded-bl-sm bg-white/10 text-sm max-w-[80%]"
+                      }>
+                        {m.text.split('\n').map((line, li) => (
+                          <span key={li}>
+                            {line.startsWith('💡')
+                              ? <span className="text-white/50 text-xs">{line}</span>
+                              : line}
+                            {li < m.text.split('\n').length - 1 && <br/>}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  {thinking && (
+                    <div className="flex justify-start">
+                      <div className="px-4 py-2.5 rounded-2xl rounded-bl-sm bg-white/10 text-sm text-white/40">
+                        <span className="blink">●</span> thinking…
+                      </div>
+                    </div>
+                  )}
+                  <div ref={bottomRef} />
                 </div>
-              ))}
-              {thinking && (
-                <div className="flex justify-start">
-                  <div className="px-4 py-2.5 rounded-2xl rounded-bl-sm bg-white/10 text-sm text-white/40">
-                    <span className="blink">●</span> thinking…
-                  </div>
-                </div>
-              )}
-              <div ref={bottomRef} />
-            </div>
 
-            {/* Input row */}
-            <div className="flex gap-2 items-center">
-              {step > 0 && (
-                <button
-                  onClick={goBack}
-                  disabled={thinking}
-                  title="Go back to previous question"
-                  className="shrink-0 px-3 py-3 rounded-xl bg-white/10 text-white/60 hover:bg-white/20 hover:text-white disabled:opacity-40 transition-colors text-sm font-medium"
-                >
-                  ←
-                </button>
-              )}
-              <VoiceRecorder onTranscript={setInput} />
-              <input
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && send()}
-                className="w-full px-4 py-3 rounded-xl bg-white/10 outline-none text-white placeholder:text-white/30"
-                placeholder="Type your answer…"
-                disabled={thinking}
-                autoFocus
-              />
-              <button
-                onClick={send}
-                disabled={thinking || !input.trim()}
-                className="gold-grad text-black font-bold px-5 py-3 rounded-xl disabled:opacity-40 shrink-0"
-              >
-                Send
-              </button>
-            </div>
+                {/* YES/NO buttons */}
+                {showYesNo && (
+                  <div className="flex gap-3 mb-3 justify-center">
+                    <button
+                      onClick={() => send("yes")}
+                      disabled={thinking}
+                      className="gold-grad text-black font-bold px-8 py-3 rounded-xl text-sm disabled:opacity-40"
+                    >
+                      Yes
+                    </button>
+                    <button
+                      onClick={() => send("no")}
+                      disabled={thinking}
+                      className="bg-white/10 text-white font-bold px-8 py-3 rounded-xl text-sm hover:bg-white/20 disabled:opacity-40"
+                    >
+                      No
+                    </button>
+                  </div>
+                )}
+
+                {/* Input row */}
+                {!showYesNo && (
+                  <div className="flex gap-2 items-center">
+                    <VoiceRecorder onTranscript={setInput} />
+                    <input
+                      value={input}
+                      onChange={e => setInput(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && send()}
+                      className="w-full px-4 py-3 rounded-xl bg-white/10 outline-none text-white placeholder:text-white/30"
+                      placeholder="Type your answer…"
+                      disabled={thinking}
+                      autoFocus
+                    />
+                    <button
+                      onClick={() => send()}
+                      disabled={thinking || !input.trim()}
+                      className="gold-grad text-black font-bold px-5 py-3 rounded-xl disabled:opacity-40 shrink-0"
+                    >
+                      Send
+                    </button>
+                  </div>
+                )}
               </>
             )}
           </>
