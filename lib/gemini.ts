@@ -1,26 +1,29 @@
-import Groq from "groq-sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { CV, Job, MatchResult, LearningStep } from "./types";
 
-const _k = ["gsk_hCIIEvjPU7AYJQhPa3fr", "WGdyb3FYBHKj6Ue5n0FtBm8xNssgq7ua"].join("");
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY || _k,
-});
-
-const MODEL = "llama-3.3-70b-versatile";
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
 interface Msg {
   role: "system" | "user" | "assistant";
   content: string;
 }
 
-async function ask(messages: Msg[], maxTokens = 4096): Promise<string> {
-  const completion = await groq.chat.completions.create({
-    messages,
-    model: MODEL,
-    temperature: 0.7,
-    max_tokens: maxTokens,
+async function ask(messages: Msg[]): Promise<string> {
+  const system = messages.find((m) => m.role === "system")?.content ?? "";
+  const turns = messages.filter((m) => m.role !== "system");
+
+  const chat = model.startChat({
+    systemInstruction: system,
+    history: turns.slice(0, -1).map((m) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
+    })),
   });
-  return completion.choices[0]?.message?.content || "";
+
+  const last = turns[turns.length - 1];
+  const result = await chat.sendMessage(last?.content ?? "");
+  return result.response.text();
 }
 
 // Chat (CV builder interview)
@@ -61,7 +64,7 @@ Write experience and project bullets as: action verb + specific deliverable + qu
 Write the summary as a confident 2-sentence elevator pitch.
 No placeholder text. No markdown in JSON string values.`;
 
-  const groqMessages: Msg[] = [
+  const geminiMessages: Msg[] = [
     { role: "system", content: SYSTEM },
     ...messages.map((m) => ({
       role: (m.role === "ai" ? "assistant" : "user") as "assistant" | "user",
@@ -69,7 +72,7 @@ No placeholder text. No markdown in JSON string values.`;
     })),
   ];
 
-  const text = await ask(groqMessages);
+  const text = await ask(geminiMessages);
 
   if (text.includes("[CV_READY]")) {
     const raw = text.split("[CV_READY]")[1].trim().replace(/```json|```/g, "").trim();
