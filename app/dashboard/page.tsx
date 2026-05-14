@@ -1,27 +1,127 @@
+import Link from "next/link";
+import {
+  ArrowRight,
+  BarChart3,
+  BriefcaseBusiness,
+  MapPin,
+  Radio,
+  Sparkles,
+  Target,
+  TrendingUp,
+} from "lucide-react";
 import { DashboardCharts } from "@/components/DashboardCharts";
 import { Navbar } from "@/components/Navbar";
+import jobs from "@/data/jobs.json";
 
 export default function DashboardPage() {
+  const totalJobs = jobs.length;
+  const cities = new Set(jobs.map((job) => job.city)).size;
+  const sectors = new Set(jobs.map((job) => job.sector)).size;
+  const juniorRoles = jobs.filter((job) => job.seniority === "Junior" || job.seniority === "Intern").length;
+  const topCity = Object.entries(
+    jobs.reduce<Record<string, number>>((acc, job) => {
+      acc[job.city] = (acc[job.city] ?? 0) + 1;
+      return acc;
+    }, {})
+  ).sort((a, b) => b[1] - a[1])[0];
+
+  const marketStats = [
+    { label: "Tracked roles", value: totalJobs, icon: BriefcaseBusiness, detail: "Prototype sample" },
+    { label: "Cities", value: cities, icon: MapPin, detail: topCity ? `${topCity[0]} leads` : "Jordan coverage" },
+    { label: "Sectors", value: sectors, icon: BarChart3, detail: "Tech and beyond" },
+    { label: "Entry-level", value: juniorRoles, icon: Target, detail: "Junior + internship roles" },
+  ];
+
   return (
     <>
       <Navbar />
-      <main className="px-8 py-8">
-      <div className="flex items-center gap-3 mb-1">
-        <h1 className="text-3xl font-bold">Jordan Job Market</h1>
-        {/* pulsing live badge */}
-        <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/15 border border-red-500/30 text-red-400 text-xs font-semibold">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
-          </span>
-          LIVE
-        </span>
-      </div>
-      <p className="text-white/60 mb-6">
-        Real jobs scraped from Akhtaboot, Bayt, Wuzzuf &amp; Fursa. Updated May 2026.
-      </p>
-      <DashboardCharts />
-    </main>
+      <main className="relative min-h-screen overflow-hidden px-5 md:px-8 py-8">
+        <div className="absolute inset-0 grain opacity-80" />
+        <div className="absolute inset-0 dot-grid opacity-20" />
+        <div className="paper-bg paper-bg-two hidden lg:block" />
+
+        <div className="relative z-10 max-w-7xl mx-auto space-y-7">
+          <section className="relative overflow-hidden rounded-[30px] border border-white/10 bg-white/[0.035] p-6 md:p-8 lg:p-10">
+            <div className="absolute inset-0 dot-grid opacity-20" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(245,184,46,.18),transparent_34%),radial-gradient(circle_at_88%_18%,rgba(91,63,200,.40),transparent_42%)]" />
+            <div className="relative grid lg:grid-cols-[1fr_360px] gap-8 items-end">
+              <div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-yellow-300/25 bg-yellow-300/10 px-3 py-1.5 text-xs uppercase tracking-[0.22em] text-yellow-200 mb-5">
+                  <Radio size={14} />
+                  Market dashboard
+                </div>
+                <h1 className="font-display text-4xl md:text-6xl font-extrabold text-grad leading-tight max-w-4xl">
+                  Jordan job signals, translated for students.
+                </h1>
+                <p className="mt-5 text-white/65 text-base md:text-lg leading-relaxed max-w-2xl">
+                  See which skills, cities, sectors, and seniority levels are shaping the local hiring market, then turn the signal into a sharper CV and job search.
+                </p>
+                <div className="mt-7 flex flex-wrap gap-3">
+                  <Link href="/jobs" className="gold-grad text-black font-extrabold px-5 py-3 rounded-2xl inline-flex items-center gap-2">
+                    Explore jobs <ArrowRight size={16} />
+                  </Link>
+                  <Link href="/score" className="glass text-white/75 hover:text-white font-bold px-5 py-3 rounded-2xl border border-white/10 inline-flex items-center gap-2">
+                    Check my fit <Target size={16} />
+                  </Link>
+                </div>
+              </div>
+
+              <aside className="glass rounded-[26px] p-5 md:p-6 relative overflow-hidden">
+                <div className="absolute inset-0 dot-grid opacity-15" />
+                <div className="relative space-y-5">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-white/35">Market pulse</p>
+                      <p className="font-display text-3xl font-extrabold gold-text-grad mt-1">Sample</p>
+                      <p className="text-sm text-white/50">Prototype job dataset</p>
+                    </div>
+                    <div className="h-12 w-12 rounded-2xl gold-grad text-black flex items-center justify-center pulse-ring">
+                      <TrendingUp size={23} />
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                    <div className="flex items-center gap-2 text-sm font-bold">
+                      <Sparkles size={16} className="text-yellow-200" />
+                      Judge-ready insight
+                    </div>
+                    <p className="mt-2 text-xs leading-relaxed text-white/45">
+                      The dashboard makes Hired.jo feel local: it shows the student what the market asks for before they write or improve a CV.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {marketStats.slice(0, 2).map((stat) => (
+                      <div key={stat.label} className="rounded-2xl bg-black/25 border border-white/10 p-3">
+                        <div className="font-display font-bold text-lg">{stat.value}</div>
+                        <div className="text-[11px] text-white/40">{stat.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </section>
+
+          <section className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {marketStats.map(({ label, value, icon: Icon, detail }) => (
+              <div key={label} className="glass rounded-[22px] p-4 relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-br from-yellow-300/8 via-transparent to-purple-500/10 opacity-0 group-hover:opacity-100 transition" />
+                <div className="relative flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-display text-3xl font-extrabold gold-text-grad">{value}</p>
+                    <p className="font-bold text-white/80 mt-1">{label}</p>
+                    <p className="text-xs text-white/38 mt-1">{detail}</p>
+                  </div>
+                  <div className="h-11 w-11 rounded-2xl bg-white/8 border border-white/10 text-yellow-100 flex items-center justify-center">
+                    <Icon size={20} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </section>
+
+          <DashboardCharts />
+        </div>
+      </main>
     </>
   );
 }

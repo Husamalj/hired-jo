@@ -1,6 +1,22 @@
 "use client";
-import { useState, useEffect } from "react";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import {
+  ArrowRight,
+  BookOpen,
+  CheckCircle2,
+  Compass,
+  ExternalLink,
+  FileText,
+  GraduationCap,
+  Layers3,
+  Lightbulb,
+  Route,
+  Sparkles,
+  Target,
+  Timer,
+} from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import type { CV } from "@/lib/types";
 import rawResources from "@/data/learning-resources.json";
@@ -44,10 +60,7 @@ function loadCv(): CV | null {
   }
 }
 
-// ── Field detection ───────────────────────────────────────────────────────────
-// Sectors that have real Jordan job data
 type DataSector = "Tech" | "Transport" | "FinTech" | "Healthcare";
-// Fields we can detect but have no job data for
 type NoDataField =
   | "Creative & Design"
   | "Marketing & Media"
@@ -107,7 +120,6 @@ const FIELD_SIGNALS: Record<Field, string[]> = {
   Other: [],
 };
 
-// Skills we recommend for fields without Jordan job data
 const FIELD_SKILLS: Partial<Record<NoDataField, string[]>> = {
   "Creative & Design": [
     "Adobe Photoshop", "Adobe Lightroom", "Adobe Premiere Pro", "After Effects",
@@ -137,8 +149,8 @@ const FIELD_SKILLS: Partial<Record<NoDataField, string[]>> = {
 
 function detectField(cv: CV): Field {
   const haystack = [
-    ...(cv.experience ?? []).map((e) => `${e.title} ${e.company}`),
-    ...(cv.education ?? []).map((e) => `${e.degree} ${e.institution}`),
+    ...(cv.experience ?? []).map((item) => `${item.title} ${item.company}`),
+    ...(cv.education ?? []).map((item) => `${item.degree} ${item.institution}`),
     ...(cv.skills ?? []),
     cv.summary ?? "",
   ]
@@ -147,11 +159,10 @@ function detectField(cv: CV): Field {
 
   const scores: Record<Field, number> = {} as Record<Field, number>;
   for (const [field, keywords] of Object.entries(FIELD_SIGNALS) as [Field, string[]][]) {
-    scores[field] = keywords.filter((kw) => haystack.includes(kw)).length;
+    scores[field] = keywords.filter((keyword) => haystack.includes(keyword)).length;
   }
 
   const best = (Object.entries(scores) as [Field, number][]).sort((a, b) => b[1] - a[1])[0];
-  // Only trust the detection if at least 1 keyword matched
   return best[1] > 0 ? best[0] : "Other";
 }
 
@@ -160,19 +171,33 @@ function hasJobData(field: Field): field is DataSector {
 }
 
 function getTopSkillsFromJobs(sector: DataSector): string[] {
-  const sectorJobs = jobs.filter((j) => j.sector === sector);
+  const sectorJobs = jobs.filter((job) => job.sector === sector);
   const pool = sectorJobs.length >= 3 ? sectorJobs : jobs;
   const counts: Record<string, number> = {};
-  pool.forEach((j) =>
-    (j.skills ?? []).forEach((s: string) => {
-      const k = s.toLowerCase();
-      counts[k] = (counts[k] ?? 0) + 1;
+  pool.forEach((job) =>
+    (job.skills ?? []).forEach((skill: string) => {
+      const key = skill.toLowerCase();
+      counts[key] = (counts[key] ?? 0) + 1;
     })
   );
   return Object.entries(counts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 20)
-    .map(([s]) => s);
+    .map(([skill]) => skill);
+}
+
+function normalizeText(text: string) {
+  return text
+    .replaceAll("\u00c3\u00a2\u00e2\u201a\u00ac\u00e2\u20ac\u009d", "-")
+    .replaceAll("\u00c3\u00a2\u00e2\u201a\u00ac\u00e2\u20ac\u0153", "-")
+    .replaceAll("\u00c3\u201a\u00c2\u00b7", "/")
+    .replaceAll("\u00c3\u00a2\u00e2\u20ac\u00a0\u00e2\u20ac\u2122", "->");
+}
+
+function languageLabel(language: string) {
+  if (language === "AR") return "Arabic";
+  if (language === "EN") return "English";
+  return "Both";
 }
 
 export default function LearnPage() {
@@ -183,208 +208,311 @@ export default function LearnPage() {
   }, []);
 
   const field: Field = cv ? detectField(cv) : "Tech";
-  const cvSkills = (cv?.skills ?? []).map((s) => s.toLowerCase());
+  const cvSkills = (cv?.skills ?? []).map((skill) => skill.toLowerCase());
 
-  // Gap detection differs based on whether we have real job data
   let gapSkills: string[] = [];
   let noDataMode = false;
 
   if (!cv) {
-    // no CV — show general top skills
     const counts: Record<string, number> = {};
-    jobs.forEach((j) =>
-      (j.skills ?? []).forEach((s: string) => {
-        const k = s.toLowerCase();
-        counts[k] = (counts[k] ?? 0) + 1;
+    jobs.forEach((job) =>
+      (job.skills ?? []).forEach((skill: string) => {
+        const key = skill.toLowerCase();
+        counts[key] = (counts[key] ?? 0) + 1;
       })
     );
     gapSkills = Object.entries(counts)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 12)
-      .map(([s]) => s);
+      .map(([skill]) => skill);
   } else if (hasJobData(field)) {
     const topSkills = getTopSkillsFromJobs(field);
-    gapSkills = topSkills.filter((s) => !cvSkills.includes(s));
+    gapSkills = topSkills.filter((skill) => !cvSkills.includes(skill));
   } else {
     noDataMode = true;
     const fieldSkills = FIELD_SKILLS[field as NoDataField] ?? [];
     gapSkills = fieldSkills
-      .filter((s) => !cvSkills.includes(s.toLowerCase()))
-      .map((s) => s.toLowerCase());
+      .filter((skill) => !cvSkills.includes(skill.toLowerCase()))
+      .map((skill) => skill.toLowerCase());
   }
 
-  // For resources: show gap-matching ones first, then rest
-  const gapResources = resources.filter((r) => gapSkills.includes(r.skill.toLowerCase()));
-  const otherResources = resources.filter((r) => !gapSkills.includes(r.skill.toLowerCase()));
+  const gapResources = resources.filter((resource) => gapSkills.includes(resource.skill.toLowerCase()));
+  const otherResources = resources.filter((resource) => !gapSkills.includes(resource.skill.toLowerCase()));
   const displayResources = cv ? [...gapResources, ...otherResources] : resources;
+  const totalHours = displayResources.reduce((sum, resource) => sum + resource.hours, 0);
+
+  const roadmapStats = [
+    { label: "Skill targets", value: gapSkills.length || resources.length, icon: Target },
+    { label: "Free courses", value: resources.filter((resource) => resource.free).length, icon: BookOpen },
+    { label: "Programs", value: certs.length, icon: GraduationCap },
+    { label: "Study hours", value: totalHours, icon: Timer },
+  ];
+
+  const fieldMessage = cv
+    ? noDataMode
+      ? `Detected ${field}. Showing general industry recommendations because the prototype job sample has limited coverage for this field.`
+      : gapSkills.length > 0
+      ? `${gapSkills.length} skill gap${gapSkills.length !== 1 ? "s" : ""} compared with the current ${field} job sample.`
+      : `Your CV already covers the top ${field} skill signals in the current job sample.`
+    : "Build or upload a CV to turn this into a personalized learning plan.";
 
   return (
     <>
       <Navbar />
-      <main className="min-h-screen grain px-6 py-10">
-        <div className="max-w-3xl mx-auto space-y-8">
-          <div>
-            <h1 className="font-display text-3xl font-bold text-grad">
-              Learning Roadmap
-            </h1>
-            <p className="text-white/50 text-sm mt-1">
-              Free courses and Jordan-accessible programs to close your skill gaps.
-            </p>
-          </div>
+      <main className="relative min-h-screen overflow-hidden px-5 md:px-8 py-8">
+        <div className="absolute inset-0 grain opacity-80" />
+        <div className="absolute inset-0 dot-grid opacity-20" />
+        <div className="paper-bg paper-bg-one hidden lg:block" />
 
-          {cv ? (
-            <div className="glass rounded-2xl p-4 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full gold-grad flex items-center justify-center text-black font-bold text-sm shrink-0">
-                {cv.fullName?.charAt(0) || "?"}
-              </div>
+        <div className="relative z-10 max-w-7xl mx-auto space-y-7">
+          <section className="relative overflow-hidden rounded-[30px] border border-white/10 bg-white/[0.035] p-6 md:p-8 lg:p-10">
+            <div className="absolute inset-0 dot-grid opacity-20" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(245,184,46,.18),transparent_34%),radial-gradient(circle_at_88%_18%,rgba(91,63,200,.40),transparent_42%)]" />
+            <div className="relative grid lg:grid-cols-[1fr_370px] gap-8 items-end">
               <div>
-                <p className="text-sm font-medium">{cv.fullName}</p>
-                <p className="text-xs text-white/40">
-                  Detected field:{" "}
-                  <span className="text-purple-300 font-medium">{field}</span>
-                  {noDataMode
-                    ? " · no Jordan job data for this field yet — showing general skill recommendations"
-                    : gapSkills.length > 0
-                    ? ` · ${gapSkills.length} skill gap${gapSkills.length !== 1 ? "s" : ""} vs Jordan ${field} jobs`
-                    : " · your skills cover the top demands"}
+                <div className="inline-flex items-center gap-2 rounded-full border border-yellow-300/25 bg-yellow-300/10 px-3 py-1.5 text-xs uppercase tracking-[0.22em] text-yellow-200 mb-5">
+                  <Route size={14} />
+                  Learning roadmap
+                </div>
+                <h1 className="font-display text-4xl md:text-6xl font-extrabold text-grad leading-tight max-w-4xl">
+                  Close the gap between your CV and the next role.
+                </h1>
+                <p className="mt-5 text-white/65 text-base md:text-lg leading-relaxed max-w-2xl">
+                  Hired.jo turns CV signals into a focused study plan: missing skills, free courses, and Jordan-accessible programs you can act on quickly.
                 </p>
+                <div className="mt-7 flex flex-wrap gap-3">
+                  <Link href="/build" className="gold-grad text-black font-extrabold px-5 py-3 rounded-2xl inline-flex items-center gap-2">
+                    Build CV <ArrowRight size={16} />
+                  </Link>
+                  <Link href="/jobs" className="glass text-white/75 hover:text-white font-bold px-5 py-3 rounded-2xl border border-white/10 inline-flex items-center gap-2">
+                    Browse jobs <Compass size={16} />
+                  </Link>
+                </div>
               </div>
-              <Link href="/score" className="ml-auto text-xs text-white/40 underline shrink-0">
-                See your score →
-              </Link>
-            </div>
-          ) : (
-            <div className="glass rounded-2xl p-4 flex items-center justify-between gap-3">
-              <p className="text-sm text-white/50">
-                Build your CV to see personalized gap analysis
-              </p>
-              <Link href="/build" className="gold-grad text-black font-bold px-4 py-2 rounded-xl text-xs shrink-0">
-                Build CV →
-              </Link>
-            </div>
-          )}
 
-          {/* Skill gaps / recommendations */}
-          {cv && gapSkills.length > 0 && (
-            <div className="space-y-2">
-              <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider">
-                {noDataMode ? "Recommended Skills for Your Field" : "Your Skill Gaps"}
-              </h2>
-              <div className="flex flex-wrap gap-2">
-                {gapSkills.slice(0, 12).map((s) => (
-                  <span
-                    key={s}
-                    className={`px-3 py-1 rounded-full text-xs border capitalize ${
-                      noDataMode
-                        ? "bg-purple-500/10 text-purple-300 border-purple-500/20"
-                        : "bg-red-500/10 text-red-300 border-red-500/20"
-                    }`}
-                  >
-                    {s}
-                  </span>
-                ))}
+              <aside className="glass rounded-[26px] p-5 md:p-6 relative overflow-hidden">
+                <div className="absolute inset-0 dot-grid opacity-15" />
+                <div className="relative space-y-5">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-white/35">Roadmap mode</p>
+                      <p className="font-display text-3xl font-extrabold gold-text-grad mt-1">{cv ? "Personal" : "Starter"}</p>
+                      <p className="text-sm text-white/50">{cv ? field : "General skill map"}</p>
+                    </div>
+                    <div className="h-12 w-12 rounded-2xl gold-grad text-black flex items-center justify-center">
+                      <Sparkles size={23} />
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                    <div className="flex items-center gap-2 text-sm font-bold">
+                      <Lightbulb size={16} className="text-yellow-200" />
+                      Learning signal
+                    </div>
+                    <p className="mt-2 text-xs leading-relaxed text-white/45">{fieldMessage}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-2xl bg-black/25 border border-white/10 p-3">
+                      <div className="font-display font-bold text-lg">{resources.length}</div>
+                      <div className="text-[11px] text-white/40">Courses</div>
+                    </div>
+                    <div className="rounded-2xl bg-black/25 border border-white/10 p-3">
+                      <div className="font-display font-bold text-lg">{certs.length}</div>
+                      <div className="text-[11px] text-white/40">Programs</div>
+                    </div>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </section>
+
+          <section className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {roadmapStats.map(({ label, value, icon: Icon }) => (
+              <div key={label} className="glass rounded-[22px] p-4 relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-br from-yellow-300/8 via-transparent to-purple-500/10 opacity-0 group-hover:opacity-100 transition" />
+                <div className="relative flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-display text-3xl font-extrabold gold-text-grad">{value}</p>
+                    <p className="font-bold text-white/80 mt-1">{label}</p>
+                  </div>
+                  <div className="h-11 w-11 rounded-2xl bg-white/8 border border-white/10 text-yellow-100 flex items-center justify-center">
+                    <Icon size={20} />
+                  </div>
+                </div>
               </div>
-              {noDataMode && (
-                <p className="text-xs text-white/30 pt-1">
-                  Our Jordan job database covers Tech, FinTech, Healthcare, and Transport.
-                  Skill suggestions for your field are based on general industry standards.
-                </p>
-              )}
-            </div>
-          )}
+            ))}
+          </section>
 
-          {/* Free courses */}
-          <div className="space-y-3">
-            <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider">
-              Free Courses
-            </h2>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {displayResources.map((r) => {
-                const isGap = gapSkills.includes(r.skill.toLowerCase());
-                return (
-                  <a
-                    key={r.id}
-                    href={r.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`glass rounded-xl p-4 space-y-2 hover:border-white/20 border transition-all ${
-                      isGap ? "border-yellow-400/30" : "border-transparent"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
+          <section className="grid lg:grid-cols-[360px_1fr] gap-5 items-start">
+            <aside className="glass rounded-[28px] p-5 md:p-6 sticky top-6 overflow-hidden">
+              <div className="absolute inset-0 dot-grid opacity-15" />
+              <div className="relative space-y-5">
+                {cv ? (
+                  <div className="rounded-[24px] border border-white/10 bg-black/25 p-5">
+                    <div className="flex items-center gap-3">
+                      <div className="h-12 w-12 rounded-2xl gold-grad text-black flex items-center justify-center font-display font-extrabold">
+                        {cv.fullName?.charAt(0) || "?"}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs uppercase tracking-[0.18em] text-white/35">CV loaded</p>
+                        <h2 className="font-display text-xl font-bold truncate">{cv.fullName || "Uploaded CV"}</h2>
+                      </div>
+                    </div>
+                    <p className="mt-4 text-sm leading-relaxed text-white/55">{fieldMessage}</p>
+                    <Link href="/score" className="mt-4 flex items-center justify-between rounded-2xl gold-grad px-5 py-4 text-black font-extrabold">
+                      See score <ArrowRight size={16} />
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="rounded-[24px] border border-white/10 bg-black/25 p-5">
+                    <div className="h-12 w-12 rounded-2xl gold-grad text-black flex items-center justify-center mb-4">
+                      <FileText size={23} />
+                    </div>
+                    <h2 className="font-display text-2xl font-bold">No CV loaded</h2>
+                    <p className="mt-2 text-sm leading-relaxed text-white/50">
+                      Start with a general roadmap now, or build a CV to reveal personalized gaps.
+                    </p>
+                    <Link href="/build" className="mt-4 flex items-center justify-between rounded-2xl gold-grad px-5 py-4 text-black font-extrabold">
+                      Build CV <ArrowRight size={16} />
+                    </Link>
+                  </div>
+                )}
+
+                <div className="rounded-[24px] border border-white/10 bg-black/25 p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Target size={18} className="text-yellow-200" />
+                    <h3 className="font-display text-xl font-bold">{noDataMode ? "Recommended skills" : "Skill targets"}</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {gapSkills.slice(0, 12).map((skill) => (
                       <span
-                        className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                          isGap
-                            ? "bg-yellow-400/15 text-yellow-300"
-                            : "bg-white/5 text-white/40"
+                        key={skill}
+                        className={`rounded-full border px-3 py-1.5 text-xs capitalize ${
+                          noDataMode
+                            ? "bg-purple-500/10 text-purple-200 border-purple-400/20"
+                            : "bg-yellow-300/10 text-yellow-100 border-yellow-300/20"
                         }`}
                       >
-                        {r.skill}
-                      </span>
-                      <span className="text-xs text-white/30 shrink-0">{r.hours}h</span>
-                    </div>
-                    <p className="text-sm font-medium text-white/90 leading-snug">{r.title}</p>
-                    <div className="flex items-center gap-2 text-xs text-white/40">
-                      <span>{r.provider}</span>
-                      <span>·</span>
-                      <span>{r.language === "AR" ? "Arabic" : r.language === "EN" ? "English" : "Both"}</span>
-                      {r.free && (
-                        <>
-                          <span>·</span>
-                          <span className="text-green-400">Free</span>
-                        </>
-                      )}
-                    </div>
-                  </a>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Jordan programs & certs */}
-          <div className="space-y-3">
-            <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider">
-              Jordan Programs & Certifications
-            </h2>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {certs.map((c) => (
-                <a
-                  key={c.id}
-                  href={c.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="glass rounded-xl p-4 space-y-2 hover:border-white/20 border border-transparent transition-all"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 font-medium">
-                      {c.provider}
-                    </span>
-                    {c.free && (
-                      <span className="text-xs text-green-400 shrink-0">Free</span>
-                    )}
-                  </div>
-                  <p className="text-sm font-medium text-white/90 leading-snug">{c.name}</p>
-                  <p className="text-xs text-white/40 leading-relaxed line-clamp-2">{c.description}</p>
-                  <div className="flex flex-wrap gap-1 pt-1">
-                    {c.fields.slice(0, 3).map((f) => (
-                      <span key={f} className="text-xs px-2 py-0.5 rounded-md bg-white/5 text-white/30">
-                        {f}
+                        {skill}
                       </span>
                     ))}
                   </div>
-                </a>
-              ))}
-            </div>
-          </div>
+                  {noDataMode && (
+                    <p className="text-xs text-white/35 leading-relaxed mt-4">
+                      These suggestions are general industry recommendations, not verified local job counts.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </aside>
 
-          <div className="flex flex-wrap gap-3 pb-4">
-            <Link href="/score" className="gold-grad text-black font-bold px-5 py-2.5 rounded-xl text-sm">
-              My Score →
-            </Link>
-            <Link href="/jobs" className="purple-grad text-white font-bold px-5 py-2.5 rounded-xl text-sm">
-              Browse Jobs →
-            </Link>
-          </div>
+            <div className="space-y-5">
+              <section className="glass rounded-[28px] p-5 md:p-6 relative overflow-hidden">
+                <div className="absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+                <div className="relative">
+                  <div className="flex items-start justify-between gap-4 mb-5">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-yellow-200/80">Free courses</p>
+                      <h2 className="font-display text-2xl md:text-3xl font-bold text-grad mt-1">Study the highest-impact gaps first.</h2>
+                    </div>
+                    <span className="rounded-full border border-white/10 bg-white/8 px-3 py-1 text-xs text-white/45">
+                      {displayResources.length} resources
+                    </span>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-3">
+                    {displayResources.map((resource) => {
+                      const isGap = gapSkills.includes(resource.skill.toLowerCase());
+                      return (
+                        <a
+                          key={resource.id}
+                          href={resource.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`group/card rounded-[22px] border p-4 transition hover:-translate-y-1 ${
+                            isGap
+                              ? "border-yellow-300/28 bg-yellow-300/8"
+                              : "border-white/10 bg-black/22 hover:border-white/20"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${isGap ? "gold-grad text-black" : "bg-white/8 text-white/50"}`}>
+                              {resource.skill}
+                            </span>
+                            <span className="inline-flex items-center gap-1 text-xs text-white/35 shrink-0">
+                              <Timer size={13} /> {resource.hours}h
+                            </span>
+                          </div>
+                          <p className="mt-4 font-display text-lg font-bold leading-snug text-white/90 group-hover/card:text-yellow-100">
+                            {normalizeText(resource.title)}
+                          </p>
+                          <div className="mt-4 flex items-center justify-between gap-3 text-xs text-white/42">
+                            <span>{resource.provider} / {languageLabel(resource.language)}</span>
+                            <span className="inline-flex items-center gap-1 text-green-300">
+                              {resource.free ? <CheckCircle2 size={13} /> : null}
+                              {resource.free ? "Free" : "Paid"}
+                            </span>
+                          </div>
+                          <div className="mt-3 flex items-center gap-1 text-xs font-bold text-yellow-100 opacity-0 group-hover/card:opacity-100 transition">
+                            Open resource <ExternalLink size={13} />
+                          </div>
+                        </a>
+                      );
+                    })}
+                  </div>
+                </div>
+              </section>
+
+              <section className="glass rounded-[28px] p-5 md:p-6 relative overflow-hidden">
+                <div className="absolute inset-0 dot-grid opacity-15" />
+                <div className="relative">
+                  <div className="flex items-start justify-between gap-4 mb-5">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-yellow-200/80">Programs and certifications</p>
+                      <h2 className="font-display text-2xl md:text-3xl font-bold text-grad mt-1">Local paths with stronger proof.</h2>
+                    </div>
+                    <Layers3 className="text-yellow-100/70 shrink-0" />
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-3">
+                    {certs.map((cert) => (
+                      <a
+                        key={cert.id}
+                        href={cert.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group/card rounded-[22px] border border-white/10 bg-black/22 p-4 transition hover:-translate-y-1 hover:border-yellow-300/25"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <span className="rounded-full bg-purple-500/15 px-2.5 py-1 text-xs font-bold text-purple-200">
+                            {cert.provider}
+                          </span>
+                          <span className={`text-xs shrink-0 ${cert.free ? "text-green-300" : "text-white/35"}`}>
+                            {cert.free ? "Free" : "Paid"}
+                          </span>
+                        </div>
+                        <p className="mt-4 font-display text-lg font-bold leading-snug text-white/90 group-hover/card:text-yellow-100">
+                          {normalizeText(cert.name)}
+                        </p>
+                        <p className="mt-2 text-sm leading-relaxed text-white/48 line-clamp-2">
+                          {normalizeText(cert.description)}
+                        </p>
+                        <div className="mt-4 flex flex-wrap gap-1.5">
+                          {cert.fields.slice(0, 3).map((fieldName) => (
+                            <span key={fieldName} className="rounded-lg bg-white/6 px-2 py-1 text-[11px] text-white/38">
+                              {fieldName}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="mt-3 flex items-center gap-1 text-xs font-bold text-yellow-100 opacity-0 group-hover/card:opacity-100 transition">
+                          Open program <ExternalLink size={13} />
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            </div>
+          </section>
         </div>
       </main>
     </>
