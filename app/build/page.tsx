@@ -206,6 +206,15 @@ const INITIAL_ANSWERS: StructuredAnswers = {
   links: "",
 };
 
+const DRAFT_KEY = "hired_cv_draft";
+
+function loadDraft(): { msgs: Msg[]; stepId: StepId; data: StructuredAnswers } | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
 export default function BuildPage() {
   const router = useRouter();
   const [mode, setMode] = useState<"chat" | "form">("chat");
@@ -229,11 +238,20 @@ export default function BuildPage() {
   }, [msgs, thinking]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const { question, hint } = getQuestion("name");
-      setMsgs((prev) => [...prev, { role: "ai", text: hint ? `${question}\n\nTip: ${hint}` : question }]);
-    }, 700);
-    return () => clearTimeout(timer);
+    const draft = loadDraft();
+    if (draft && draft.stepId !== "name") {
+      setMsgs(draft.msgs);
+      setStepId(draft.stepId);
+      setData(draft.data);
+      const { question, hint } = getQuestion(draft.stepId);
+      setMsgs((prev) => [...prev, { role: "ai", text: `Welcome back! Continuing where you left off.\n\n${hint ? `${question}\n\nTip: ${hint}` : question}` }]);
+    } else {
+      const timer = setTimeout(() => {
+        const { question, hint } = getQuestion("name");
+        setMsgs((prev) => [...prev, { role: "ai", text: hint ? `${question}\n\nTip: ${hint}` : question }]);
+      }, 700);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   async function send(rawAnswer?: string) {
@@ -244,10 +262,15 @@ export default function BuildPage() {
     setData(newData);
 
     const userMsg = text === "yes" ? "Yes" : text === "no" ? "No" : text;
-    setMsgs([...msgs, { role: "user", text: userMsg }]);
+    const newMsgs = [...msgs, { role: "user" as const, text: userMsg }];
+    setMsgs(newMsgs);
     setInput("");
 
     const nextStep = getNextStep(stepId, text);
+    if (nextStep !== "done") {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ msgs: newMsgs, stepId: nextStep, data: newData }));
+    }
+
     setStepId(nextStep);
 
     if (nextStep === "done") {
@@ -264,6 +287,7 @@ export default function BuildPage() {
           setMsgs((prev) => [...prev, { role: "ai", text: "Your CV is ready. Review it below and download when it looks right." }]);
           setCv(result.cv);
           localStorage.setItem("hired_cv", JSON.stringify(result.cv));
+          localStorage.removeItem(DRAFT_KEY);
         } else {
           throw new Error(result.detail ?? "No CV returned.");
         }
