@@ -130,8 +130,7 @@ export function SourceFilter({
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search sources..."
-                autoFocus
+                placeholder="Filter sources (optional)..."
                 className="w-full pl-9 pr-8 py-2 rounded-xl bg-black/35 border border-white/10 outline-none text-xs text-white placeholder:text-white/30 focus:border-yellow-300/45"
               />
               {query && (

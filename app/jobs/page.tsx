@@ -4,6 +4,7 @@ import { BriefcaseBusiness, Building2, GraduationCap, MapPin, Search, SlidersHor
 import { JobCard } from "@/components/JobCard";
 import { Navbar } from "@/components/Navbar";
 import { SourceFilter, sourceMatches, COMPANY_PAGES_VALUE } from "@/components/SourceFilter";
+import { FilterDropdown } from "@/components/FilterDropdown";
 import type { Job } from "@/lib/types";
 
 function sortOtherLast(arr: string[]) {
@@ -244,7 +245,7 @@ export default function JobsPage() {
             </div>
           </section>
 
-          <section className="glass rounded-[28px] p-4 md:p-5 overflow-hidden relative">
+          <section className="glass rounded-[28px] p-4 md:p-5 relative">
             <div className="absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
             <div className="relative space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-4">
@@ -315,41 +316,52 @@ export default function JobsPage() {
                   <span className="text-[11px] uppercase tracking-[0.16em] text-white/35 block">Source</span>
                   <SourceFilter value={source} onChange={setSource} sources={sourceCounts} />
                 </div>
-                <label className="space-y-1.5">
-                  <span className="text-[11px] uppercase tracking-[0.16em] text-white/35">Sector</span>
-                  <select value={sector} onChange={(e) => setSector(e.target.value)} className={sel}>
-                    {SECTORS.map((o) => <option key={o} value={o}>{o === "All" ? "All Sectors" : o}</option>)}
-                  </select>
-                </label>
+                <div className="space-y-1.5">
+                  <span className="text-[11px] uppercase tracking-[0.16em] text-white/35 block">Sector</span>
+                  <FilterDropdown
+                    value={sector}
+                    onChange={setSector}
+                    options={SECTORS.map((o) => ({ value: o, label: o === "All" ? "All Sectors" : o }))}
+                  />
+                </div>
                 {!isInternships && (
                   <>
-                    <label className="space-y-1.5">
-                      <span className="text-[11px] uppercase tracking-[0.16em] text-white/35">Country</span>
-                      <select value={country} onChange={(e) => handleCountryChange(e.target.value)} className={sel}>
-                        {COUNTRIES.map((o) => <option key={o} value={o}>{o === "All" ? "All Countries" : o}</option>)}
-                      </select>
-                    </label>
-                    <label className="space-y-1.5">
-                      <span className="text-[11px] uppercase tracking-[0.16em] text-white/35">City</span>
-                      <select value={city} onChange={(e) => setCity(e.target.value)} className={sel} disabled={country === "All"}>
-                        {cityOptions.map((o) => <option key={o} value={o}>{o === "All" ? "All Cities" : o}</option>)}
-                      </select>
-                    </label>
-                    <label className="space-y-1.5">
-                      <span className="text-[11px] uppercase tracking-[0.16em] text-white/35">Level</span>
-                      <select value={seniority} onChange={(e) => setSeniority(e.target.value)} className={sel}>
-                        {SENIORITIES.map((o) => <option key={o} value={o}>{o === "All" ? "All Levels" : o}</option>)}
-                      </select>
-                    </label>
+                    <div className="space-y-1.5">
+                      <span className="text-[11px] uppercase tracking-[0.16em] text-white/35 block">Country</span>
+                      <FilterDropdown
+                        value={country}
+                        onChange={handleCountryChange}
+                        options={COUNTRIES.map((o) => ({ value: o, label: o === "All" ? "All Countries" : o }))}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <span className="text-[11px] uppercase tracking-[0.16em] text-white/35 block">City</span>
+                      <FilterDropdown
+                        value={city}
+                        onChange={setCity}
+                        disabled={country === "All"}
+                        options={cityOptions.map((o) => ({ value: o, label: o === "All" ? "All Cities" : o }))}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <span className="text-[11px] uppercase tracking-[0.16em] text-white/35 block">Level</span>
+                      <FilterDropdown
+                        value={seniority}
+                        onChange={setSeniority}
+                        options={SENIORITIES.map((o) => ({ value: o, label: o === "All" ? "All Levels" : o }))}
+                      />
+                    </div>
                   </>
                 )}
                 {isInternships && (
-                  <label className="space-y-1.5">
-                    <span className="text-[11px] uppercase tracking-[0.16em] text-white/35">Location</span>
-                    <select value={intLoc} onChange={(e) => setIntLoc(e.target.value)} className={sel}>
-                      {INT_LOCS.map((o) => <option key={o} value={o}>{o}</option>)}
-                    </select>
-                  </label>
+                  <div className="space-y-1.5">
+                    <span className="text-[11px] uppercase tracking-[0.16em] text-white/35 block">Location</span>
+                    <FilterDropdown
+                      value={intLoc}
+                      onChange={setIntLoc}
+                      options={INT_LOCS.map((o) => ({ value: o, label: o }))}
+                    />
+                  </div>
                 )}
               </div>
             </div>
