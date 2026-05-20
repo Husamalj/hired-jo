@@ -71,8 +71,8 @@ async function fetchJSearch(query: string, source: Job["source"], offset: number
           (j.job_description ?? "").slice(0, 200)
         ).toLowerCase();
         const country =
-          /\buae\b|dubai|abu dhabi|sharjah|emirates/.test(locBlob) ? "UAE" :
-          /saudi arabia|saudi national|riyadh|jeddah|jubail|dammam|\bmecca\b|\bksa\b/.test(locBlob) ? "Saudi Arabia" :
+          /\buae\b|dubai|abu[- ]?dhabi|sharjah|emirates/.test(locBlob) ? "UAE" :
+          /saudi|riyadh|jeddah|jubail|dammam|\bmecca\b|\bksa\b/.test(locBlob) ? "Saudi Arabia" :
           /jordan|amman|irbid|zarqa|aqaba/.test(locBlob) ? "Jordan" :
           "Jordan"; // default fallback
         // Use the actual job board name from JSearch's job_publisher field.
