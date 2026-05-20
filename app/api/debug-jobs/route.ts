@@ -6,9 +6,11 @@ export async function GET() {
   const geminiKey = process.env.GEMINI_API_KEY;
 
   // Step 1: check env vars
+  const dbUrl = process.env.DATABASE_URL;
   const envCheck = {
     RAPIDAPI_KEY: key ? `SET (starts with ${key.slice(0, 8)}...)` : "MISSING",
     GEMINI_API_KEY: geminiKey ? "SET" : "MISSING",
+    DATABASE_URL: dbUrl ? `SET (starts with ${dbUrl.slice(0, 20)}...)` : "MISSING",
   };
 
   // Step 2: check DB
