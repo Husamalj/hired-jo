@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { Job } from "@/lib/types";
 import { prisma } from "@/lib/db";
 
 const REFRESH_MS = 2 * 60 * 60 * 1000;
 
 let memCache: { data: Job[]; ts: number } | null = null;
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 function inferSeniority(title: string): "Intern" | "Junior" | "Mid" | "Senior" {
   const t = title.toLowerCase();
@@ -41,56 +38,12 @@ function inferSector(title: string, desc: string): string {
   return "Other";
 }
 
-type JobSource = "Akhtaboot" | "Bayt" | "Wuzzuf" | "Fursa" | "LinkedIn";
-
-async function fetchGeminiJobs(site: string, sourceName: JobSource, country: string, offset: number): Promise<Job[]> {
-  try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      tools: [{ googleSearch: {} } as any],
-    });
-    const timeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("timeout")), 7000)
-    );
-    const result = await Promise.race([
-      model.generateContent(
-        `Search ${site} right now and find 10 recently posted jobs in ${country}.
-Return ONLY a valid JSON array, no markdown. Each item:
-{"title":"...","company":"...","city":"...","country":"${country}","description":"2-sentence summary","url":"direct listing URL","postedAt":"YYYY-MM-DD"}
-Only real current listings. Do not invent jobs.`
-      ),
-      timeout,
-    ]);
-    const text = result.response.text().replace(/```json|```/g, "").trim();
-    const match = text.match(/\[[\s\S]*\]/);
-    if (!match) return [];
-    const raw: any[] = JSON.parse(match[0]);
-    return raw.filter((j) => j.title && j.company).map((j, i): Job => ({
-      id:          `${sourceName}-${country}-${offset + i}`,
-      title:       j.title ?? "Untitled",
-      company:     j.company ?? "Unknown",
-      sector:      inferSector(j.title ?? "", j.description ?? ""),
-      city:        j.city || (country === "UAE" ? "Dubai" : country === "Saudi Arabia" ? "Riyadh" : "Amman"),
-      country,
-      seniority:   inferSeniority(j.title ?? ""),
-      skills:      [],
-      remote:      false,
-      source:      sourceName,
-      url:         j.url ?? "",
-      postedAt:    j.postedAt === "today" ? new Date().toISOString().slice(0, 10) : (j.postedAt ?? ""),
-      description: (j.description ?? "").slice(0, 300),
-    }));
-  } catch {
-    return [];
-  }
-}
-
-async function fetchJSearch(query: string, offset: number): Promise<Job[]> {
+async function fetchJSearch(query: string, source: Job["source"], offset: number): Promise<Job[]> {
   const key = process.env.RAPIDAPI_KEY;
   if (!key) return [];
   try {
     const controller = new AbortController();
-    setTimeout(() => controller.abort(), 4000);
+    setTimeout(() => controller.abort(), 5000);
     const res = await fetch(
       `https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(query)}&num_pages=1&date_posted=all`,
       { headers: { "x-rapidapi-host": "jsearch.p.rapidapi.com", "x-rapidapi-key": key }, signal: controller.signal }
@@ -100,7 +53,7 @@ async function fetchJSearch(query: string, offset: number): Promise<Job[]> {
     const seen = new Set<string>();
     return json.data
       .filter((j: any) => { if (seen.has(j.job_id)) return false; seen.add(j.job_id); return true; })
-      .map((j: any, i: number): Job | null => {
+      .map((j: any, i: number): Job => {
         const skills: string[] =
           j.job_required_skills ??
           (j.job_highlights?.Qualifications ?? []).join(" ")
@@ -113,37 +66,36 @@ async function fetchJSearch(query: string, offset: number): Promise<Job[]> {
           title: j.job_title ?? "Untitled",
           company: j.employer_name ?? "Unknown",
           sector: inferSector(j.job_title ?? "", j.job_description ?? ""),
-          city: j.job_city || "Amman",
+          city: j.job_city || (country === "UAE" ? "Dubai" : country === "Saudi Arabia" ? "Riyadh" : "Amman"),
           country,
           seniority: inferSeniority(j.job_title ?? ""),
           skills: [...new Set(skills)].slice(0, 8),
           salaryMin: j.job_min_salary ?? undefined,
           salaryMax: j.job_max_salary ?? undefined,
           remote: j.job_is_remote ?? false,
-          source: "LinkedIn" as const,
+          source,
           url: j.job_apply_link ?? "",
           postedAt: j.job_posted_at_datetime_utc?.slice(0, 10) ?? "",
           description: (j.job_description ?? "").slice(0, 300),
         };
-      }).filter(Boolean) as Job[];
+      });
   } catch {
     return [];
   }
 }
 
 async function fetchAllJobs(): Promise<Job[]> {
+  // JSearch only — Gemini grounding was causing Vercel 10s timeout
   const results = await Promise.allSettled([
-    fetchJSearch("jobs in Amman Jordan",                     10000),
-    fetchJSearch("software developer Jordan",                10100),
-    fetchJSearch("jobs in Dubai UAE",                        11000),
-    fetchJSearch("jobs in Riyadh Saudi Arabia",              12000),
-    fetchJSearch("internship Jordan OR UAE OR Saudi Arabia", 13000),
-    fetchGeminiJobs("akhtaboot.com", "Akhtaboot", "Jordan",       20000),
-    fetchGeminiJobs("bayt.com",      "Bayt",      "Jordan",       20100),
-    fetchGeminiJobs("wuzzuf.net",    "Wuzzuf",    "Jordan",       20200),
-    fetchGeminiJobs("for9a.com",     "Fursa",     "Jordan",       20300),
-    fetchGeminiJobs("akhtaboot.com", "Akhtaboot", "UAE",          20400),
-    fetchGeminiJobs("bayt.com",      "Bayt",      "Saudi Arabia", 20500),
+    fetchJSearch("jobs in Amman Jordan",                          "LinkedIn", 10000),
+    fetchJSearch("software developer jobs Jordan",                "LinkedIn", 10100),
+    fetchJSearch("marketing finance HR jobs Jordan",              "LinkedIn", 10200),
+    fetchJSearch("jobs in Dubai UAE",                             "LinkedIn", 11000),
+    fetchJSearch("jobs in Riyadh Saudi Arabia",                   "LinkedIn", 12000),
+    fetchJSearch("internship Jordan OR UAE OR Saudi Arabia",      "LinkedIn", 13000),
+    fetchJSearch("akhtaboot jobs Jordan",                         "Akhtaboot", 20000),
+    fetchJSearch("bayt jobs Jordan OR UAE OR Saudi Arabia",       "Bayt",     20100),
+    fetchJSearch("wuzzuf jobs Jordan",                            "Wuzzuf",   20200),
   ]);
 
   const all: Job[] = results
@@ -220,10 +172,9 @@ export async function GET() {
     if (fresh.length > 0) {
       jobs = await syncToDb(fresh);
     } else {
-      // All sources failed — return whatever is in DB, don't update timestamp so we retry next request
       const rows = await prisma.cachedJob.findMany();
       jobs = rows.map(dbRowToJob);
-      // Only advance the clock if DB has something — otherwise keep retrying
+      // Don't advance the clock when DB is empty — keep retrying
       if (rows.length > 0) {
         await prisma.jobsFetchMeta.upsert({
           where: { id: 1 }, update: { lastFetched: new Date() }, create: { id: 1, lastFetched: new Date() },
