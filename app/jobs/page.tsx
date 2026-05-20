@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from "react";
 import { BriefcaseBusiness, Building2, GraduationCap, MapPin, Search, SlidersHorizontal, Sparkles, Target, Wifi } from "lucide-react";
 import { JobCard } from "@/components/JobCard";
 import { Navbar } from "@/components/Navbar";
-import staticJobs from "../../data/jobs.json";
 import type { Job } from "@/lib/types";
 
 function sortOtherLast(arr: string[]) {
@@ -30,7 +29,7 @@ const CITIES_BY_COUNTRY: Record<string, string[]> = {
 const sel = "w-full px-4 py-3 rounded-2xl bg-black/25 border border-white/10 outline-none text-sm text-white appearance-none cursor-pointer transition hover:border-white/20 focus:border-yellow-300/45";
 
 export default function JobsPage() {
-  const [allJobs, setAllJobs]       = useState<Job[]>(staticJobs as Job[]);
+  const [allJobs, setAllJobs]       = useState<Job[]>([]);
   const [liveLoading, setLiveLoading] = useState(true);
   const [diverseLoading, setDiverseLoading] = useState(false);
   const [diverseJobs, setDiverseJobs] = useState<Job[]>([]);
