@@ -1,55 +1,81 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { Pool } from "@neondatabase/serverless";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-export async function GET() {
-  const key = process.env.RAPIDAPI_KEY;
-  const geminiKey = process.env.GEMINI_API_KEY;
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const testGemini = searchParams.get("testGemini"); // ?testGemini=akhtaboot
 
-  // Step 1: check env vars
-  const dbUrl = process.env.DATABASE_URL;
-  const envCheck = {
-    RAPIDAPI_KEY: key ? `SET (starts with ${key.slice(0, 8)}...)` : "MISSING",
-    GEMINI_API_KEY: geminiKey ? "SET" : "MISSING",
-    DATABASE_URL: dbUrl ? `SET (starts with ${dbUrl.slice(0, 20)}...)` : "MISSING",
-  };
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
 
-  // Step 2: test direct Pool connection (bypasses Prisma module caching)
-  let dbCount: any = "not tested";
-  let directPoolTest: any = "not tested";
+  // 1. DB breakdown by source
+  let sourceBreakdown: any = "failed";
+  let recentJobs: any = "failed";
+  let dbCount = 0;
   try {
-    const { Pool } = await import("@neondatabase/serverless");
-    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-    const result = await pool.query('SELECT COUNT(*) FROM "CachedJob"');
-    dbCount = parseInt(result.rows[0].count);
-    directPoolTest = "SUCCESS";
-    await pool.end();
-  } catch (e: any) {
-    directPoolTest = `FAILED: ${e.message}`;
-  }
-  const meta = null;
+    const src = await pool.query(`SELECT source, COUNT(*) as count FROM "CachedJob" GROUP BY source ORDER BY count DESC`);
+    sourceBreakdown = src.rows;
+    dbCount = src.rows.reduce((s: number, r: any) => s + parseInt(r.count), 0);
 
-  // Step 3: test one JSearch call
-  let jsearchResult: any = "not tested";
-  if (key) {
+    const recent = await pool.query(`SELECT title, company, source, country, city, "postedAt", "fetchedAt" FROM "CachedJob" ORDER BY "fetchedAt" DESC LIMIT 10`);
+    recentJobs = recent.rows;
+  } catch (e: any) {
+    sourceBreakdown = `DB ERROR: ${e.message}`;
+  }
+
+  // 2. JobsFetchMeta
+  let lastFetched: any = "unknown";
+  try {
+    const meta = await pool.query(`SELECT "lastFetched" FROM "JobsFetchMeta" WHERE id = 1`);
+    lastFetched = meta.rows[0]?.lastFetched ?? "never";
+  } catch {}
+
+  // 3. Optional: live test Gemini refresh for one source
+  let geminiTest: any = "not requested (add ?testGemini=akhtaboot to test)";
+  if (testGemini) {
     try {
-      const controller = new AbortController();
-      setTimeout(() => controller.abort(), 5000);
-      const res = await fetch(
-        `https://jsearch.p.rapidapi.com/search?query=jobs+in+Amman+Jordan&num_pages=1&date_posted=all`,
-        { headers: { "x-rapidapi-host": "jsearch.p.rapidapi.com", "x-rapidapi-key": key }, signal: controller.signal }
-      );
-      const json = await res.json();
-      jsearchResult = {
-        status: res.status,
-        hasData: Array.isArray(json.data),
-        count: Array.isArray(json.data) ? json.data.length : 0,
-        firstJob: Array.isArray(json.data) && json.data[0] ? json.data[0].job_title : null,
-        error: json.message ?? json.error ?? null,
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        tools: [{ googleSearch: {} } as any],
+      });
+      const SITES: Record<string, string> = {
+        akhtaboot: "akhtaboot.com",
+        bayt: "bayt.com/en/jordan/jobs",
+        fursa: "for9a.com",
+      };
+      const site = SITES[testGemini] ?? testGemini;
+      const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("8s timeout")), 8000));
+      const result = await Promise.race([
+        model.generateContent(
+          `Search ${site} right now and find 5 recently posted jobs in the Middle East.
+Return ONLY a valid JSON array, no markdown. Each item:
+{"title":"...","company":"...","city":"...","url":"...","postedAt":"YYYY-MM-DD"}
+Only real listings. Do not invent jobs.`
+        ),
+        timeout,
+      ]);
+      const text = result.response.text();
+      const match = text.match(/\[[\s\S]*\]/);
+      geminiTest = {
+        site,
+        rawLength: text.length,
+        rawPreview: text.slice(0, 400),
+        parsedCount: match ? (() => { try { return JSON.parse(match[0]).length; } catch { return "parse error"; } })() : 0,
+        parsed: match ? (() => { try { return JSON.parse(match[0]).slice(0, 3); } catch { return "parse error"; } })() : "no JSON array found",
       };
     } catch (e: any) {
-      jsearchResult = `FAILED: ${e.message}`;
+      geminiTest = `FAILED: ${e.message}`;
     }
   }
 
-  return NextResponse.json({ envCheck, directPoolTest, dbCount, jsearchResult });
+  await pool.end();
+
+  return NextResponse.json({
+    dbCount,
+    sourceBreakdown,
+    lastFetched,
+    recentJobs,
+    geminiTest,
+  });
 }
