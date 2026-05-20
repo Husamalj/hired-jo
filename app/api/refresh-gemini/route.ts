@@ -3,11 +3,16 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Pool } from "@neondatabase/serverless";
 import type { Job } from "@/lib/types";
 
-export const maxDuration = 60;
-
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 type JobSource = "Akhtaboot" | "Bayt" | "Wuzzuf" | "Fursa";
+
+const SOURCES: Record<string, { site: string; source: JobSource; country: string }> = {
+  akhtaboot: { site: "akhtaboot.com",  source: "Akhtaboot", country: "Jordan" },
+  bayt:      { site: "bayt.com",       source: "Bayt",      country: "Jordan" },
+  wuzzuf:    { site: "wuzzuf.net",     source: "Wuzzuf",    country: "Jordan" },
+  fursa:     { site: "for9a.com",      source: "Fursa",     country: "Jordan" },
+};
 
 function inferSeniority(title: string): "Intern" | "Junior" | "Mid" | "Senior" {
   const t = title.toLowerCase();
@@ -20,7 +25,7 @@ function inferSeniority(title: string): "Intern" | "Junior" | "Mid" | "Senior" {
 function inferSector(title: string): string {
   const t = title.toLowerCase();
   if (/software|developer|engineer|frontend|backend|fullstack|devops|cloud|mobile|react|node|python|java|typescript|aws|docker/.test(t)) return "Tech";
-  if (/data analyst|data scientist|bi analyst|ml engineer|ai engineer/.test(t)) return "Tech";
+  if (/data analyst|data scientist|bi analyst|ml|ai engineer/.test(t)) return "Tech";
   if (/finance|accountant|auditor|tax|investment|banker/.test(t)) return "FinTech";
   if (/marketing|social media|content|seo|brand/.test(t)) return "Marketing";
   if (/sales|business development|account manager/.test(t)) return "Sales";
@@ -31,24 +36,28 @@ function inferSector(title: string): string {
   return "Other";
 }
 
-async function fetchGeminiJobs(site: string, sourceName: JobSource, country: string, offset: number): Promise<Job[]> {
+async function fetchGeminiJobs(site: string, sourceName: JobSource, country: string): Promise<Job[]> {
   try {
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash",
       tools: [{ googleSearch: {} } as any],
     });
-    const result = await model.generateContent(
-      `Search ${site} right now and find 10 recently posted jobs in ${country}.
-Return ONLY a valid JSON array, no markdown, no explanation. Each item must have:
+    const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 8000));
+    const result = await Promise.race([
+      model.generateContent(
+        `Search ${site} right now and find 10 recently posted jobs in ${country}.
+Return ONLY a valid JSON array, no markdown. Each item:
 {"title":"...","company":"...","city":"...","description":"1-sentence summary","url":"direct job URL","postedAt":"YYYY-MM-DD"}
 Only real current listings. Do not invent jobs.`
-    );
+      ),
+      timeout,
+    ]);
     const text = result.response.text().replace(/```json|```/g, "").trim();
     const match = text.match(/\[[\s\S]*\]/);
     if (!match) return [];
     const raw: any[] = JSON.parse(match[0]);
     return raw.filter((j) => j.title && j.company).map((j, i): Job => ({
-      id:          `${sourceName}-${country}-${offset + i}-${Date.now()}`,
+      id:          `${sourceName}-${country}-${Date.now()}-${i}`,
       title:       j.title ?? "Untitled",
       company:     j.company ?? "Unknown",
       sector:      inferSector(j.title ?? ""),
@@ -67,30 +76,20 @@ Only real current listings. Do not invent jobs.`
   }
 }
 
-export async function POST() {
+// POST /api/refresh-gemini?source=akhtaboot  (one source per call)
+export async function POST(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const sourceKey = searchParams.get("source") ?? "akhtaboot";
+  const cfg = SOURCES[sourceKey];
+  if (!cfg) return NextResponse.json({ error: "unknown source" }, { status: 400 });
+
   const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
   try {
-    const results = await Promise.allSettled([
-      fetchGeminiJobs("akhtaboot.com", "Akhtaboot", "Jordan",       20000),
-      fetchGeminiJobs("bayt.com",      "Bayt",      "Jordan",       20100),
-      fetchGeminiJobs("wuzzuf.net",    "Wuzzuf",    "Jordan",       20200),
-      fetchGeminiJobs("for9a.com",     "Fursa",     "Jordan",       20300),
-      fetchGeminiJobs("akhtaboot.com", "Akhtaboot", "UAE",          20400),
-      fetchGeminiJobs("bayt.com",      "Bayt",      "Saudi Arabia", 20500),
-    ]);
+    const fresh = await fetchGeminiJobs(cfg.site, cfg.source, cfg.country);
+    if (fresh.length === 0) return NextResponse.json({ added: 0 });
 
-    const fresh: Job[] = results
-      .filter((r) => r.status === "fulfilled")
-      .flatMap((r) => (r as PromiseFulfilledResult<Job[]>).value);
-
-    if (fresh.length === 0) {
-      return NextResponse.json({ added: 0, message: "No jobs from Gemini" });
-    }
-
-    // Get existing jobs to avoid duplicates
     const existing = await pool.query(`SELECT title, company FROM "CachedJob"`);
     const existingKeys = new Set(existing.rows.map((r: any) => `${r.title.toLowerCase()}|${r.company.toLowerCase()}`));
-
     const toInsert = fresh.filter((j) => !existingKeys.has(`${j.title.toLowerCase()}|${j.company.toLowerCase()}`));
 
     for (const j of toInsert) {
@@ -104,7 +103,7 @@ export async function POST() {
       );
     }
 
-    return NextResponse.json({ added: toInsert.length, total: fresh.length });
+    return NextResponse.json({ added: toInsert.length });
   } finally {
     await pool.end();
   }
