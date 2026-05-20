@@ -3,9 +3,38 @@ export const runtime = "edge";
 import { NextResponse } from "next/server";
 import { Pool } from "@neondatabase/serverless";
 
-export async function GET() {
+async function testJSearchPublishers(query: string): Promise<any> {
+  const key = process.env.RAPIDAPI_KEY;
+  if (!key) return "no RAPIDAPI_KEY";
+  try {
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(), 6000);
+    const res = await fetch(
+      `https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(query)}&num_pages=1&date_posted=month`,
+      { headers: { "x-rapidapi-host": "jsearch.p.rapidapi.com", "x-rapidapi-key": key }, signal: ctrl.signal }
+    );
+    const json = await res.json();
+    if (!Array.isArray(json.data)) return { error: json.message ?? "no data array" };
+    const counts: Record<string, number> = {};
+    for (const j of json.data) {
+      const p = j.job_publisher ?? "unknown";
+      counts[p] = (counts[p] ?? 0) + 1;
+    }
+    return { count: json.data.length, publishers: counts };
+  } catch (e: any) {
+    return `FAILED: ${e.message}`;
+  }
+}
+
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const testQuery = searchParams.get("testQuery"); // ?testQuery=site:linkedin.com+jobs+Jordan
+
   const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
   try {
+    if (testQuery) {
+      return NextResponse.json({ query: testQuery, result: await testJSearchPublishers(testQuery) });
+    }
     // Source breakdown with fresh/stale split
     const breakdown = await pool.query(`
       SELECT

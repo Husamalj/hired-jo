@@ -146,12 +146,17 @@ async function fetchJSearch(query: string, offset: number): Promise<Job[]> {
 }
 
 async function fetchAllJobs(): Promise<Job[]> {
-  // 4 broad queries instead of 10 redundant ones. Source tagging is publisher-based now.
+  // 4 broad regional queries + 3 LinkedIn-targeted queries (Google Jobs
+  // doesn't reliably surface LinkedIn for ME regions, but explicit site/keyword
+  // queries sometimes return LinkedIn-published results).
   const results = await Promise.allSettled([
     fetchJSearch("jobs in Jordan",                                     10000),
     fetchJSearch("jobs in UAE Dubai",                                  11000),
     fetchJSearch("jobs in Saudi Arabia Riyadh",                        12000),
     fetchJSearch("internship Jordan UAE Saudi Arabia",                 13000),
+    fetchJSearch("site:linkedin.com jobs Jordan",                      14000),
+    fetchJSearch("site:linkedin.com jobs Dubai UAE",                   14100),
+    fetchJSearch("site:linkedin.com jobs Saudi Arabia",                14200),
   ]);
 
   const all: Job[] = results
