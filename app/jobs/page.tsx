@@ -245,7 +245,7 @@ export default function JobsPage() {
             </div>
           </section>
 
-          <section className="glass rounded-[28px] p-4 md:p-5 relative">
+          <section className="glass rounded-[28px] p-4 md:p-5 relative z-30">
             <div className="absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
             <div className="relative space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-4">
