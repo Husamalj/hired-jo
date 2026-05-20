@@ -49,12 +49,18 @@ async function fetchGeminiJobs(site: string, sourceName: JobSource, country: str
       model: "gemini-2.5-flash",
       tools: [{ googleSearch: {} } as any],
     });
-    const result = await model.generateContent(
-      `Search ${site} right now and find 10 recently posted jobs in ${country}.
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("timeout")), 7000)
+    );
+    const result = await Promise.race([
+      model.generateContent(
+        `Search ${site} right now and find 10 recently posted jobs in ${country}.
 Return ONLY a valid JSON array, no markdown. Each item:
 {"title":"...","company":"...","city":"...","country":"${country}","description":"2-sentence summary","url":"direct listing URL","postedAt":"YYYY-MM-DD"}
 Only real current listings. Do not invent jobs.`
-    );
+      ),
+      timeout,
+    ]);
     const text = result.response.text().replace(/```json|```/g, "").trim();
     const match = text.match(/\[[\s\S]*\]/);
     if (!match) return [];
@@ -84,7 +90,7 @@ async function fetchJSearch(query: string, offset: number): Promise<Job[]> {
   if (!key) return [];
   try {
     const controller = new AbortController();
-    setTimeout(() => controller.abort(), 6000);
+    setTimeout(() => controller.abort(), 4000);
     const res = await fetch(
       `https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(query)}&num_pages=1&date_posted=all`,
       { headers: { "x-rapidapi-host": "jsearch.p.rapidapi.com", "x-rapidapi-key": key }, signal: controller.signal }
@@ -214,12 +220,15 @@ export async function GET() {
     if (fresh.length > 0) {
       jobs = await syncToDb(fresh);
     } else {
-      // All sources failed — return whatever is in DB
+      // All sources failed — return whatever is in DB, don't update timestamp so we retry next request
       const rows = await prisma.cachedJob.findMany();
       jobs = rows.map(dbRowToJob);
-      await prisma.jobsFetchMeta.upsert({
-        where: { id: 1 }, update: { lastFetched: new Date() }, create: { id: 1, lastFetched: new Date() },
-      });
+      // Only advance the clock if DB has something — otherwise keep retrying
+      if (rows.length > 0) {
+        await prisma.jobsFetchMeta.upsert({
+          where: { id: 1 }, update: { lastFetched: new Date() }, create: { id: 1, lastFetched: new Date() },
+        });
+      }
     }
   } else {
     const rows = await prisma.cachedJob.findMany();
