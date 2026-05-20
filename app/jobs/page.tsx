@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BriefcaseBusiness, Building2, GraduationCap, MapPin, Search, SlidersHorizontal, Sparkles, Target, Wifi, ArrowDownUp } from "lucide-react";
 import { JobCard } from "@/components/JobCard";
 import { Navbar } from "@/components/Navbar";
+import { SourceFilter, sourceMatches, COMPANY_PAGES_VALUE } from "@/components/SourceFilter";
 import type { Job } from "@/lib/types";
 
 function sortOtherLast(arr: string[]) {
@@ -83,10 +84,10 @@ export default function JobsPage() {
   function handleCountryChange(c: string) { setCountry(c); setCity("All"); }
 
   // ------ Filter option lists derived from actual data ------
-  const SOURCES = useMemo(() => {
+  const sourceCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const j of allJobs) counts.set(j.source, (counts.get(j.source) ?? 0) + 1);
-    return ["All", ...Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).map(([s]) => s)];
+    return Array.from(counts.entries()).map(([source, count]) => ({ source, count }));
   }, [allJobs]);
 
   const SECTORS = useMemo(() => {
@@ -124,7 +125,7 @@ export default function JobsPage() {
 
       // Common filters
       if (sector !== "All" && j.sector !== sector) return false;
-      if (source !== "All" && j.source !== source) return false;
+      if (!sourceMatches(j.source, source)) return false;
 
       // Country/City/Level — apply for Jobs and All views (not Internships, which has its own location pill)
       if (!isInternships) {
@@ -155,7 +156,7 @@ export default function JobsPage() {
   const filterSummary = [
     type === "All" ? "jobs + internships" : type.toLowerCase(),
     sector === "All" ? "all sectors" : sector,
-    source === "All" ? "all sources" : source,
+    source === "All" ? "all sources" : source === COMPANY_PAGES_VALUE ? "company career pages" : source,
     isInternships ? (intLoc === "Anywhere" ? "anywhere" : intLoc) : country === "All" ? "all countries" : country,
     remoteOnly ? "remote only" : null,
   ].filter(Boolean);
@@ -310,12 +311,10 @@ export default function JobsPage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                <label className="space-y-1.5">
-                  <span className="text-[11px] uppercase tracking-[0.16em] text-white/35">Source</span>
-                  <select value={source} onChange={(e) => setSource(e.target.value)} className={sel}>
-                    {SOURCES.map((o) => <option key={o} value={o}>{o === "All" ? "All Sources" : o}</option>)}
-                  </select>
-                </label>
+                <div className="space-y-1.5">
+                  <span className="text-[11px] uppercase tracking-[0.16em] text-white/35 block">Source</span>
+                  <SourceFilter value={source} onChange={setSource} sources={sourceCounts} />
+                </div>
                 <label className="space-y-1.5">
                   <span className="text-[11px] uppercase tracking-[0.16em] text-white/35">Sector</span>
                   <select value={sector} onChange={(e) => setSector(e.target.value)} className={sel}>
