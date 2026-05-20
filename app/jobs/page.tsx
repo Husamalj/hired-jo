@@ -51,24 +51,7 @@ export default function JobsPage() {
   useEffect(() => {
     fetch("/api/live-jobs")
       .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setAllJobs(data);
-        // Fire one request per Jordanian source in parallel — each fits in Vercel's 10s limit
-        Promise.allSettled(
-          ["akhtaboot", "bayt", "wuzzuf", "fursa"].map((src) =>
-            fetch(`/api/refresh-gemini?source=${src}`, { method: "POST" }).then((r) => r.json())
-          )
-        ).then((results) => {
-          const totalAdded = results
-            .filter((r) => r.status === "fulfilled")
-            .reduce((sum, r) => sum + ((r as PromiseFulfilledResult<any>).value?.added ?? 0), 0);
-          if (totalAdded > 0) {
-            fetch("/api/live-jobs")
-              .then((r) => r.json())
-              .then((fresh) => { if (Array.isArray(fresh)) setAllJobs(fresh); });
-          }
-        }).catch(() => {});
-      })
+      .then((data) => { if (Array.isArray(data)) setAllJobs(data); })
       .catch(() => {})
       .finally(() => setLiveLoading(false));
   }, []);

@@ -65,14 +65,19 @@ async function fetchJSearch(query: string, source: Job["source"], offset: number
         const country =
           /uae|dubai|abu dhabi|sharjah/i.test((j.job_country ?? "") + (j.job_city ?? "")) ? "UAE" :
           /saudi|riyadh|jeddah/i.test((j.job_country ?? "") + (j.job_city ?? "")) ? "Saudi Arabia" : "Jordan";
-        // Use actual job board name from JSearch when available
-        const pub = (j.job_publisher ?? "").toLowerCase();
-        const detectedSource: Job["source"] =
-          /akhtaboot/.test(pub) ? "Akhtaboot" :
-          /bayt/.test(pub)      ? "Bayt" :
-          /wuzzuf/.test(pub)    ? "Wuzzuf" :
-          /for9a|fursa/.test(pub) ? "Fursa" :
-          source; // fallback to the query-level source tag
+        // Use the actual job board name from JSearch's job_publisher field.
+        // Normalize a few known ones for nicer display.
+        const rawPub: string = (j.job_publisher ?? "").trim();
+        const pubLower = rawPub.toLowerCase();
+        const detectedSource: string =
+          /akhtaboot/.test(pubLower)    ? "Akhtaboot" :
+          /bayt/.test(pubLower)         ? "Bayt" :
+          /wuzzuf/.test(pubLower)       ? "Wuzzuf" :
+          /for9a|fursa/.test(pubLower)  ? "Fursa" :
+          /linkedin/.test(pubLower)     ? "LinkedIn" :
+          /indeed/.test(pubLower)       ? "Indeed" :
+          /glassdoor/.test(pubLower)    ? "Glassdoor" :
+          rawPub || source;
         return {
           id: `jsearch-${offset + i}`,
           title: j.job_title ?? "Untitled",
@@ -184,8 +189,11 @@ async function syncToDb(pool: Pool, freshJobs: Job[]): Promise<Job[]> {
   }));
 }
 
-export async function GET() {
-  if (memCache && Date.now() - memCache.ts < REFRESH_MS) {
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const force = searchParams.get("force") === "1";
+
+  if (!force && memCache && Date.now() - memCache.ts < REFRESH_MS) {
     return NextResponse.json(memCache.data);
   }
 
@@ -195,7 +203,13 @@ export async function GET() {
     const lastFetched = metaRes.rows[0]?.lastFetched?.getTime() ?? 0;
     const countRes = await pool.query(`SELECT COUNT(*) FROM "CachedJob"`);
     const dbCount = parseInt(countRes.rows[0].count);
-    const needsRefresh = dbCount === 0 || Date.now() - lastFetched > REFRESH_MS;
+    const needsRefresh = force || dbCount === 0 || Date.now() - lastFetched > REFRESH_MS;
+
+    // On force refresh, wipe LinkedIn-tagged jobs so they get re-fetched with correct publisher names
+    if (force) {
+      await pool.query(`DELETE FROM "CachedJob" WHERE source = 'LinkedIn'`);
+      memCache = null;
+    }
 
     let jobs: Job[];
 

@@ -52,7 +52,7 @@ export type Job = {
   salaryMax?: number;
   description: string;
   postedAt: string;
-  source: "Akhtaboot" | "Bayt" | "Wuzzuf" | "Fursa" | "LinkedIn" | "Indeed" | "Glassdoor" | "Naukrigulf" | "GulfTalent" | "Tanqeeb";
+  source: string;
   url?: string;
   remote?: boolean;
   internshipCountry?: string;
