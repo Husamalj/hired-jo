@@ -32,7 +32,30 @@ export async function GET(req: Request) {
     lastFetched = meta.rows[0]?.lastFetched ?? "never";
   } catch {}
 
-  // 3. Optional: live test Gemini refresh for one source
+  // 3. Show what job_publisher values JSearch is actually returning
+  let jsearchPublishers: any = "not tested";
+  const rapidKey = process.env.RAPIDAPI_KEY;
+  if (rapidKey) {
+    try {
+      const ctrl = new AbortController();
+      setTimeout(() => ctrl.abort(), 6000);
+      const res = await fetch(
+        `https://jsearch.p.rapidapi.com/search?query=jobs+in+Jordan&num_pages=1&date_posted=all`,
+        { headers: { "x-rapidapi-host": "jsearch.p.rapidapi.com", "x-rapidapi-key": rapidKey }, signal: ctrl.signal }
+      );
+      const json = await res.json();
+      if (Array.isArray(json.data)) {
+        const publishers = json.data.map((j: any) => j.job_publisher ?? "unknown");
+        const counts: Record<string, number> = {};
+        for (const p of publishers) counts[p] = (counts[p] ?? 0) + 1;
+        jsearchPublishers = counts;
+      }
+    } catch (e: any) {
+      jsearchPublishers = `FAILED: ${e.message}`;
+    }
+  }
+
+  // 4. Optional: live test Gemini refresh for one source
   let geminiTest: any = "not requested (add ?testGemini=akhtaboot to test)";
   if (testGemini) {
     try {
@@ -78,6 +101,7 @@ Only real listings. Do not invent jobs.`
     sourceBreakdown,
     lastFetched,
     recentJobs,
+    jsearchPublishers,
     geminiTest,
   });
 }

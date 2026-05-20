@@ -65,6 +65,14 @@ async function fetchJSearch(query: string, source: Job["source"], offset: number
         const country =
           /uae|dubai|abu dhabi|sharjah/i.test((j.job_country ?? "") + (j.job_city ?? "")) ? "UAE" :
           /saudi|riyadh|jeddah/i.test((j.job_country ?? "") + (j.job_city ?? "")) ? "Saudi Arabia" : "Jordan";
+        // Use actual job board name from JSearch when available
+        const pub = (j.job_publisher ?? "").toLowerCase();
+        const detectedSource: Job["source"] =
+          /akhtaboot/.test(pub) ? "Akhtaboot" :
+          /bayt/.test(pub)      ? "Bayt" :
+          /wuzzuf/.test(pub)    ? "Wuzzuf" :
+          /for9a|fursa/.test(pub) ? "Fursa" :
+          source; // fallback to the query-level source tag
         return {
           id: `jsearch-${offset + i}`,
           title: j.job_title ?? "Untitled",
@@ -77,7 +85,7 @@ async function fetchJSearch(query: string, source: Job["source"], offset: number
           salaryMin: j.job_min_salary ?? undefined,
           salaryMax: j.job_max_salary ?? undefined,
           remote: j.job_is_remote ?? false,
-          source,
+          source: detectedSource,
           url: j.job_apply_link ?? "",
           postedAt: j.job_posted_at_datetime_utc?.slice(0, 10) ?? "",
           description: (j.job_description ?? "").slice(0, 300),
