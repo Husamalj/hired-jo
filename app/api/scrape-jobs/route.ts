@@ -430,7 +430,19 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "unknown source", valid: Object.keys(SCRAPERS) }, { status: 400 });
     }
 
-    const results = await Promise.allSettled(tasks.map((t) => t.fn()));
+    // Per-scraper hard timeout (12s). A slow/blocked source can't drag the
+    // whole 30s edge budget past the limit. Bayt + Wuzzuf are most likely to
+    // hang when Vercel IPs are blocked.
+    const SCRAPER_TIMEOUT_MS = 12_000;
+    const withTimeout = (key: string, fn: () => Promise<Job[]>): Promise<Job[]> =>
+      Promise.race([
+        fn(),
+        new Promise<Job[]>((_, reject) =>
+          setTimeout(() => reject(new Error(`${key} timed out at ${SCRAPER_TIMEOUT_MS}ms`)), SCRAPER_TIMEOUT_MS)
+        ),
+      ]);
+
+    const results = await Promise.allSettled(tasks.map((t) => withTimeout(t.key, t.fn)));
 
     const bySource: Record<string, Job[]> = {};
     results.forEach((r, idx) => {
@@ -446,20 +458,35 @@ export async function GET(req: Request) {
       }
     });
 
-    // Replace each scraped source's rows atomically (only if fetched > 0 — avoid wiping on transient failures)
+    // Replace each scraped source's rows atomically with a single multi-row INSERT.
+    // Was previously N+1 queries which compounded with the parallel scrapes and blew past
+    // the 30s edge budget when running ?all=1&force=1.
     for (const [sourceName, jobs] of Object.entries(bySource)) {
       if (jobs.length === 0) continue;
       await pool.query(`DELETE FROM "CachedJob" WHERE source = $1`, [sourceName]);
+
+      // Build a single parameterised multi-row insert
+      const cols = 16;
+      const valuesSql = jobs
+        .map((_, i) => {
+          const o = i * cols;
+          return `($${o+1},$${o+2},$${o+3},$${o+4},$${o+5},$${o+6},$${o+7},$${o+8},$${o+9},$${o+10},$${o+11},$${o+12},$${o+13},$${o+14},$${o+15},$${o+16},NOW())`;
+        })
+        .join(",");
+      const params: any[] = [];
       for (const j of jobs) {
-        await pool.query(
-          `INSERT INTO "CachedJob" (id, title, company, sector, city, country, seniority, skills, "salaryMin", "salaryMax", remote, "internshipCountry", source, url, "postedAt", description, "fetchedAt")
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,NOW())
-           ON CONFLICT (id) DO NOTHING`,
-          [j.id, j.title, j.company, j.sector, j.city, j.country, j.seniority,
-           JSON.stringify(j.skills), null, null, j.remote, null,
-           j.source, j.url, j.postedAt, j.description]
+        params.push(
+          j.id, j.title, j.company, j.sector, j.city, j.country, j.seniority,
+          JSON.stringify(j.skills), null, null, j.remote, null,
+          j.source, j.url, j.postedAt, j.description
         );
       }
+      await pool.query(
+        `INSERT INTO "CachedJob" (id, title, company, sector, city, country, seniority, skills, "salaryMin", "salaryMax", remote, "internshipCountry", source, url, "postedAt", description, "fetchedAt")
+         VALUES ${valuesSql}
+         ON CONFLICT (id) DO NOTHING`,
+        params
+      );
     }
 
     const counts = await pool.query(`SELECT source, COUNT(*) as count FROM "CachedJob" GROUP BY source ORDER BY count DESC`);
