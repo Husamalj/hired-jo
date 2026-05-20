@@ -106,15 +106,18 @@ Only real current listings. Do not invent jobs.`
   }
 }
 
-// GET /api/trigger-refresh  — runs all sources sequentially and reports
+// GET /api/trigger-refresh  — runs all sources in parallel (~22s, fits in 30s edge limit)
 export async function GET() {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
-  const report: any[] = [];
   try {
-    for (const key of ["akhtaboot", "bayt", "fursa"]) {
-      const r = await fetchAndSave(key, pool);
-      report.push(r);
-    }
+    const results = await Promise.allSettled([
+      fetchAndSave("akhtaboot", pool),
+      fetchAndSave("bayt", pool),
+      fetchAndSave("fursa", pool),
+    ]);
+    const report = results.map((r) =>
+      r.status === "fulfilled" ? r.value : { error: (r as PromiseRejectedResult).reason?.message }
+    );
     const count = await pool.query(`SELECT source, COUNT(*) as count FROM "CachedJob" GROUP BY source ORDER BY count DESC`);
     return NextResponse.json({ report, finalBreakdown: count.rows });
   } finally {
