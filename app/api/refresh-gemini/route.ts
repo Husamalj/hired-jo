@@ -1,3 +1,5 @@
+export const runtime = "edge";
+
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Pool } from "@neondatabase/serverless";
@@ -42,7 +44,7 @@ async function fetchGeminiJobs(site: string, sourceName: JobSource, country: str
       model: "gemini-2.5-flash",
       tools: [{ googleSearch: {} } as any],
     });
-    const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 8000));
+    const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 22000));
     const result = await Promise.race([
       model.generateContent(
         `Search ${site} right now and find 10 recently posted jobs in the Middle East (Jordan, UAE, Saudi Arabia).
