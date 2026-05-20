@@ -13,9 +13,20 @@ export async function GET() {
     DATABASE_URL: dbUrl ? `SET (starts with ${dbUrl.slice(0, 20)}...)` : "MISSING",
   };
 
-  // Step 2: check DB
-  const dbCount = await prisma.cachedJob.count().catch((e: any) => `DB ERROR: ${e.message}`);
-  const meta = await prisma.jobsFetchMeta.findUnique({ where: { id: 1 } }).catch(() => null);
+  // Step 2: test direct Pool connection (bypasses Prisma module caching)
+  let dbCount: any = "not tested";
+  let directPoolTest: any = "not tested";
+  try {
+    const { Pool } = await import("@neondatabase/serverless");
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    const result = await pool.query('SELECT COUNT(*) FROM "CachedJob"');
+    dbCount = parseInt(result.rows[0].count);
+    directPoolTest = "SUCCESS";
+    await pool.end();
+  } catch (e: any) {
+    directPoolTest = `FAILED: ${e.message}`;
+  }
+  const meta = null;
 
   // Step 3: test one JSearch call
   let jsearchResult: any = "not tested";
@@ -40,5 +51,5 @@ export async function GET() {
     }
   }
 
-  return NextResponse.json({ envCheck, dbCount, lastFetched: meta?.lastFetched ?? null, jsearchResult });
+  return NextResponse.json({ envCheck, directPoolTest, dbCount, jsearchResult });
 }
