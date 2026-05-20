@@ -135,8 +135,13 @@ async function syncToDb(pool: Pool, freshJobs: Job[]): Promise<Job[]> {
   const existingKeySet = new Set(existing.rows.map((r: any) => `${r.title.toLowerCase()}|${r.company.toLowerCase()}`));
   const freshKeySet = new Set(freshJobs.map((j) => `${j.title.toLowerCase()}|${j.company.toLowerCase()}`));
 
-  // Delete gone jobs
-  const toDelete = existing.rows.filter((r: any) => !freshKeySet.has(`${r.title.toLowerCase()}|${r.company.toLowerCase()}`));
+  // Only delete LinkedIn-sourced jobs that are no longer in JSearch results.
+  // Gemini-sourced jobs (Akhtaboot, Bayt, Wuzzuf, Fursa) are managed by /api/refresh-gemini
+  // and must NOT be wiped out here — JSearch doesn't index those sites.
+  const toDelete = existing.rows.filter((r: any) =>
+    r.source === "LinkedIn" &&
+    !freshKeySet.has(`${r.title.toLowerCase()}|${r.company.toLowerCase()}`)
+  );
   if (toDelete.length > 0) {
     const ids = toDelete.map((r: any) => r.id);
     await pool.query(`DELETE FROM "CachedJob" WHERE id = ANY($1)`, [ids]);

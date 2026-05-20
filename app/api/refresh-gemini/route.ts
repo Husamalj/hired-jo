@@ -45,13 +45,10 @@ async function fetchGeminiJobs(site: string, sourceName: JobSource, country: str
     const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 8000));
     const result = await Promise.race([
       model.generateContent(
-        `Search the website ${site} right now and find 10 recently posted job listings located ONLY in ${country}.
-IMPORTANT: Every job must be physically located in ${country}. Do NOT include jobs from Saudi Arabia, UAE, Egypt, or any other country.
-For Bayt searches, filter strictly to Jordan only — ignore any results from other Arab countries.
-City must be a real Jordanian city (Amman, Zarqa, Irbid, Aqaba, etc.).
-Return ONLY a valid JSON array, no markdown, no explanation. Each item:
-{"title":"...","company":"...","city":"Amman","description":"1-sentence summary","url":"direct job URL on ${site}","postedAt":"YYYY-MM-DD"}
-Only real current listings. Do not invent jobs. If you cannot find 10 Jordan-only jobs, return fewer — never include non-Jordan jobs to fill the count.`
+        `Search ${site} right now and find 10 recently posted jobs in the Middle East (Jordan, UAE, Saudi Arabia).
+Return ONLY a valid JSON array, no markdown. Each item:
+{"title":"...","company":"...","city":"...","description":"1-sentence summary","url":"direct job URL","postedAt":"YYYY-MM-DD"}
+Only real current listings. Do not invent jobs.`
       ),
       timeout,
     ]);
@@ -59,16 +56,7 @@ Only real current listings. Do not invent jobs. If you cannot find 10 Jordan-onl
     const match = text.match(/\[[\s\S]*\]/);
     if (!match) return [];
     const raw: any[] = JSON.parse(match[0]);
-    const JORDAN_CITIES = /amman|zarqa|irbid|aqaba|salt|madaba|jerash|ajloun|karak|tafilah|ma'an|mafraq|jordan/i;
-    const NON_JORDAN = /riyadh|jeddah|mecca|medina|dammam|dubai|abu dhabi|sharjah|cairo|egypt|saudi/i;
-    return raw
-      .filter((j) => j.title && j.company)
-      .filter((j) => {
-        const city = (j.city ?? "").toLowerCase();
-        if (NON_JORDAN.test(city)) return false;
-        return true;
-      })
-      .map((j, i): Job => ({
+    return raw.filter((j) => j.title && j.company).map((j, i): Job => ({
       id:          `${sourceName}-${country}-${Date.now()}-${i}`,
       title:       j.title ?? "Untitled",
       company:     j.company ?? "Unknown",
