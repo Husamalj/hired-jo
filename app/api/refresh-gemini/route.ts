@@ -58,21 +58,35 @@ Only real current listings. Do not invent jobs.`
     const match = text.match(/\[[\s\S]*\]/);
     if (!match) return [];
     const raw: any[] = JSON.parse(match[0]);
-    return raw.filter((j) => j.title && j.company).map((j, i): Job => ({
-      id:          `${sourceName}-${country}-${Date.now()}-${i}`,
-      title:       j.title ?? "Untitled",
-      company:     j.company ?? "Unknown",
-      sector:      inferSector(j.title ?? ""),
-      city:        j.city || (country === "UAE" ? "Dubai" : country === "Saudi Arabia" ? "Riyadh" : "Amman"),
-      country,
-      seniority:   inferSeniority(j.title ?? ""),
-      skills:      [],
-      remote:      false,
-      source:      sourceName,
-      url:         j.url ?? "",
-      postedAt:    j.postedAt === "today" ? new Date().toISOString().slice(0, 10) : (j.postedAt ?? ""),
-      description: (j.description ?? "").slice(0, 300),
-    }));
+    return raw.filter((j) => j.title && j.company).map((j, i): Job => {
+      // Gemini sometimes returns "City, Country" in the city field — split it out
+      const rawCity: string = j.city ?? "";
+      const parts = rawCity.split(",").map((s: string) => s.trim());
+      const cityPart = parts[0] || "";
+      const countryHint = (parts[1] ?? "").toLowerCase();
+      const inferredCountry =
+        /uae|dubai|abu dhabi|sharjah|emirates/.test(countryHint + " " + cityPart.toLowerCase()) ? "UAE" :
+        /saudi|ksa|riyadh|jeddah|mecca/.test(countryHint + " " + cityPart.toLowerCase()) ? "Saudi Arabia" :
+        /jordan|amman|irbid|zarqa|aqaba/.test(countryHint + " " + cityPart.toLowerCase()) ? "Jordan" :
+        country; // fallback to the source's default country
+      const finalCity = cityPart || (inferredCountry === "UAE" ? "Dubai" : inferredCountry === "Saudi Arabia" ? "Riyadh" : "Amman");
+
+      return {
+        id:          `${sourceName}-${inferredCountry}-${Date.now()}-${i}`,
+        title:       j.title ?? "Untitled",
+        company:     j.company ?? "Unknown",
+        sector:      inferSector(j.title ?? ""),
+        city:        finalCity,
+        country:     inferredCountry,
+        seniority:   inferSeniority(j.title ?? ""),
+        skills:      [],
+        remote:      false,
+        source:      sourceName,
+        url:         j.url ?? "",
+        postedAt:    j.postedAt === "today" ? new Date().toISOString().slice(0, 10) : (j.postedAt ?? ""),
+        description: (j.description ?? "").slice(0, 300),
+      };
+    });
   } catch {
     return [];
   }
