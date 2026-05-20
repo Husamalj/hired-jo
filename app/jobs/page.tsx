@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { BriefcaseBusiness, Building2, GraduationCap, MapPin, Search, SlidersHorizontal, Sparkles, Target, Wifi } from "lucide-react";
+import { BriefcaseBusiness, Building2, GraduationCap, MapPin, Search, SlidersHorizontal, Sparkles, Target, Wifi, ArrowDownUp } from "lucide-react";
 import { JobCard } from "@/components/JobCard";
 import { Navbar } from "@/components/Navbar";
 import type { Job } from "@/lib/types";
@@ -15,18 +15,17 @@ function sortOtherLast(arr: string[]) {
 
 const TYPES       = ["All", "Jobs", "Internships"];
 const SENIORITIES = ["All", "Junior", "Mid", "Senior"];
-const COUNTRIES   = ["All", "Jordan", "UAE", "Saudi Arabia", "Palestine"];
-const APPLY_FROM  = ["Jordan", "UAE", "Saudi Arabia", "Palestine"];
-const INT_LOCS    = ["All", "Remote", "Jordan", "UAE", "Saudi Arabia", "Palestine", "UK"];
-
-const CITIES_BY_COUNTRY: Record<string, string[]> = {
-  Jordan:       ["Amman","Irbid","Zarqa","Balqa","Madaba","Jerash","Ajloun","Mafraq","Karak","Tafilah","Ma'an","Aqaba"],
-  UAE:          ["Dubai","Abu Dhabi","Sharjah","Ajman","Ras Al Khaimah","Fujairah","Umm Al Quwain"],
-  "Saudi Arabia": ["Riyadh","Jeddah","Mecca","Medina","Dammam","Al Khobar","Dhahran","Tabuk","Abha","Taif","Jubail","Yanbu","Najran","Hail","Khamis Mushait","Buraidah","Al Ahsa"],
-  Palestine:    ["Ramallah","Jerusalem","Nablus","Hebron","Bethlehem","Jericho","Jenin","Tulkarm","Qalqilya","Tubas","Salfit","Gaza City","Khan Yunis","Rafah","Deir al-Balah","Jabalia"],
-};
+const COUNTRIES   = ["All", "Jordan", "UAE", "Saudi Arabia", "Egypt", "Palestine"];
+const INT_LOCS    = ["Anywhere", "Jordan", "UAE", "Saudi Arabia", "Egypt"];
 
 const sel = "w-full px-4 py-3 rounded-2xl bg-black/25 border border-white/10 outline-none text-sm text-white appearance-none cursor-pointer transition hover:border-white/20 focus:border-yellow-300/45";
+
+function daysAgo(iso: string): number {
+  if (!iso) return Infinity;
+  const t = Date.parse(iso);
+  if (isNaN(t)) return Infinity;
+  return Math.floor((Date.now() - t) / 86_400_000);
+}
 
 export default function JobsPage() {
   const [allJobs, setAllJobs]       = useState<Job[]>([]);
@@ -40,14 +39,15 @@ export default function JobsPage() {
   const [country, setCountry]       = useState("All");
   const [city, setCity]             = useState("All");
   const [seniority, setSeniority]   = useState("All");
-  const [applyFrom, setApplyFrom]   = useState("Jordan");
-  const [intLoc, setIntLoc]         = useState("All");
+  const [intLoc, setIntLoc]         = useState("Anywhere");
+  const [remoteOnly, setRemoteOnly] = useState(false);
+  const [sortNewest, setSortNewest] = useState(true);
   const [search, setSearch]         = useState("");
 
   const isInternships = type === "Internships";
   const isJobs        = type === "Jobs";
 
-  // Fetch live jobs on mount
+  // Fetch live jobs + fire background scrape
   useEffect(() => {
     fetch("/api/live-jobs")
       .then((r) => r.json())
@@ -55,11 +55,10 @@ export default function JobsPage() {
       .catch(() => {})
       .finally(() => setLiveLoading(false));
 
-    // Background scrape of Akhtaboot RSS + For9a (free, no API keys).
-    // Refreshes the list when new sources land in the DB.
+    // Background scrape of Akhtaboot RSS + For9a + Bayt + Wuzzuf (free, no API keys)
     fetch("/api/scrape-jobs?all=1")
       .then((r) => r.json())
-      .then(() => fetch("/api/live-jobs?force=1"))
+      .then(() => fetch("/api/live-jobs"))
       .then((r) => r.json())
       .then((fresh) => { if (Array.isArray(fresh)) setAllJobs(fresh); })
       .catch(() => {});
@@ -83,40 +82,51 @@ export default function JobsPage() {
 
   function handleCountryChange(c: string) { setCountry(c); setCity("All"); }
 
-  const cityOptions = useMemo(() => {
-    if (country === "All") return ["All"];
-    return ["All", ...(CITIES_BY_COUNTRY[country] ?? [])];
-  }, [country]);
-
-  const SOURCES  = useMemo(() => ["All", ...Array.from(new Set(allJobs.map((j) => j.source)))], [allJobs]);
-  const SECTORS  = useMemo(() => {
-    const fromJobs = Array.from(new Set(allJobs.map((j) => j.sector)));
-    const always = ["Tech","Finance","Marketing","Sales","Design","Creative","HR","Healthcare","Education","Legal","Operations","Customer Service","Construction","Other"];
-    const merged = Array.from(new Set([...fromJobs, ...always]));
-    return ["All", ...sortOtherLast(merged.filter((s) => s !== "All"))];
+  // ------ Filter option lists derived from actual data ------
+  const SOURCES = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const j of allJobs) counts.set(j.source, (counts.get(j.source) ?? 0) + 1);
+    return ["All", ...Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).map(([s]) => s)];
   }, [allJobs]);
 
+  const SECTORS = useMemo(() => {
+    const fromJobs = Array.from(new Set(allJobs.map((j) => j.sector).filter(Boolean)));
+    return ["All", ...sortOtherLast(fromJobs)];
+  }, [allJobs]);
+
+  const cityOptions = useMemo(() => {
+    if (country === "All") return ["All"];
+    const cities = Array.from(new Set(
+      allJobs.filter((j) => j.country === country).map((j) => j.city).filter(Boolean)
+    )).sort();
+    return ["All", ...cities];
+  }, [country, allJobs]);
+
+  // ------ Filtering ------
   const sourcePool = useMemo(
     () => sector === "Other" ? [...allJobs, ...diverseJobs] : allJobs,
     [allJobs, diverseJobs, sector]
   );
 
-  const filtered = useMemo(() =>
-    sourcePool.filter((j) => {
+  const filtered = useMemo(() => {
+    const out = sourcePool.filter((j) => {
+      // Type
       if (isInternships && j.seniority !== "Intern") return false;
       if (isJobs        && j.seniority === "Intern") return false;
 
-      if (isInternships) {
-        if (!j.remote && j.country !== applyFrom) return false;
-        if (intLoc !== "All") {
-          if (intLoc === "Remote" && !j.remote) return false;
-          if (intLoc !== "Remote" && (j as any).internshipCountry !== intLoc && !j.remote) return false;
-        }
+      // Remote toggle (works in all type modes)
+      if (remoteOnly && !j.remote) return false;
+
+      // Internship-specific location pill
+      if (isInternships && intLoc !== "Anywhere") {
+        if (j.country !== intLoc && !j.remote) return false;
       }
 
-      if (sector !== "All" && j.sector   !== sector)   return false;
-      if (source !== "All" && j.source   !== source)   return false;
+      // Common filters
+      if (sector !== "All" && j.sector !== sector) return false;
+      if (source !== "All" && j.source !== source) return false;
 
+      // Country/City/Level — apply for Jobs and All views (not Internships, which has its own location pill)
       if (!isInternships) {
         if (country   !== "All" && j.country   !== country)   return false;
         if (city      !== "All" && j.city      !== city)      return false;
@@ -128,9 +138,15 @@ export default function JobsPage() {
         if (!j.title.toLowerCase().includes(q) && !j.company.toLowerCase().includes(q)) return false;
       }
       return true;
-    }),
-    [sourcePool, type, sector, source, country, city, seniority, applyFrom, intLoc, search]
-  );
+    });
+
+    // Sort by newest postedAt first (or oldest)
+    return out.sort((a, b) => {
+      const da = daysAgo(a.postedAt);
+      const db = daysAgo(b.postedAt);
+      return sortNewest ? da - db : db - da;
+    });
+  }, [sourcePool, type, sector, source, country, city, seniority, intLoc, remoteOnly, search, sortNewest]);
 
   const internCount = useMemo(() => sourcePool.filter((j) => j.seniority === "Intern").length, [sourcePool]);
   const remoteCount = useMemo(() => sourcePool.filter((j) => j.remote).length, [sourcePool]);
@@ -140,8 +156,9 @@ export default function JobsPage() {
     type === "All" ? "jobs + internships" : type.toLowerCase(),
     sector === "All" ? "all sectors" : sector,
     source === "All" ? "all sources" : source,
-    isInternships ? `from ${applyFrom}` : country === "All" ? "all countries" : country,
-  ];
+    isInternships ? (intLoc === "Anywhere" ? "anywhere" : intLoc) : country === "All" ? "all countries" : country,
+    remoteOnly ? "remote only" : null,
+  ].filter(Boolean);
 
   return (
     <>
@@ -239,7 +256,7 @@ export default function JobsPage() {
                     <p className="text-xs text-white/42">{filterSummary.join(" / ")}</p>
                   </div>
                 </div>
-                <div className="text-xs text-white/35">{liveSourceCount} sources / updates every 30 min</div>
+                <div className="text-xs text-white/35">{liveSourceCount} sources / refreshes every 2 hours</div>
               </div>
 
               <div className="grid min-w-0 lg:grid-cols-[minmax(0,1.4fr)_auto] gap-3 items-center">
@@ -269,7 +286,30 @@ export default function JobsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+              {/* Quick toggles: Remote + Sort — visible in every type mode */}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRemoteOnly((v) => !v)}
+                  className={`inline-flex items-center gap-1.5 rounded-2xl px-3 py-2 text-xs font-bold transition ${
+                    remoteOnly
+                      ? "gold-grad text-black"
+                      : "border border-white/10 bg-black/25 text-white/65 hover:text-white"
+                  }`}
+                >
+                  <Wifi size={14} /> Remote only
+                  <span className={remoteOnly ? "text-black/70" : "text-white/40"}>({remoteCount})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSortNewest((v) => !v)}
+                  className="inline-flex items-center gap-1.5 rounded-2xl border border-white/10 bg-black/25 px-3 py-2 text-xs font-bold text-white/65 hover:text-white transition"
+                >
+                  <ArrowDownUp size={14} /> Sort: {sortNewest ? "Newest" : "Oldest"}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                 <label className="space-y-1.5">
                   <span className="text-[11px] uppercase tracking-[0.16em] text-white/35">Source</span>
                   <select value={source} onChange={(e) => setSource(e.target.value)} className={sel}>
@@ -305,20 +345,12 @@ export default function JobsPage() {
                   </>
                 )}
                 {isInternships && (
-                  <>
-                    <label className="space-y-1.5">
-                      <span className="text-[11px] uppercase tracking-[0.16em] text-white/35">I'm in</span>
-                      <select value={applyFrom} onChange={(e) => setApplyFrom(e.target.value)} className={sel}>
-                        {APPLY_FROM.map((o) => <option key={o} value={o}>{o}</option>)}
-                      </select>
-                    </label>
-                    <label className="space-y-1.5">
-                      <span className="text-[11px] uppercase tracking-[0.16em] text-white/35">Location</span>
-                      <select value={intLoc} onChange={(e) => setIntLoc(e.target.value)} className={sel}>
-                        {INT_LOCS.map((o) => <option key={o} value={o}>{o === "All" ? "Anywhere" : o}</option>)}
-                      </select>
-                    </label>
-                  </>
+                  <label className="space-y-1.5">
+                    <span className="text-[11px] uppercase tracking-[0.16em] text-white/35">Location</span>
+                    <select value={intLoc} onChange={(e) => setIntLoc(e.target.value)} className={sel}>
+                      {INT_LOCS.map((o) => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </label>
                 )}
               </div>
             </div>
