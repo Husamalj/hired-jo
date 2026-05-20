@@ -6,122 +6,290 @@ import type { Job } from "@/lib/types";
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
+const FRESHNESS_DAYS = 60;
+const FRESHNESS_MS = FRESHNESS_DAYS * 24 * 60 * 60 * 1000;
+
 function inferSeniority(title: string): "Intern" | "Junior" | "Mid" | "Senior" {
   const t = title.toLowerCase();
-  if (/intern|internship|trainee/.test(t)) return "Intern";
-  if (/senior|sr\.|lead|principal|head|director|manager|chief/.test(t)) return "Senior";
-  if (/junior|jr\.|entry|graduate|fresh/.test(t)) return "Junior";
+  if (/\bintern\b|internship|trainee/.test(t)) return "Intern";
+  if (/\bsenior\b|\bsr\.|\blead\b|\bprincipal\b|\bhead of\b|\bdirector\b|\bvp\b|\bchief\b/.test(t)) return "Senior";
+  if (/\bjunior\b|\bjr\.|\bentry\b|\bgraduate\b|\bfresh\b/.test(t)) return "Junior";
   return "Mid";
 }
 
-function inferSector(title: string, communities = ""): string {
-  const t = (title + " " + communities).toLowerCase();
-  if (/software|developer|engineer|frontend|backend|fullstack|devops|cloud|mobile|react|node|python|java|typescript|aws|docker|data|information technology/.test(t)) return "Tech";
-  if (/finance|accountant|auditor|tax|investment|banker|accounting/.test(t)) return "FinTech";
-  if (/marketing|social media|content|seo|brand|pr /.test(t)) return "Marketing";
-  if (/sales|business development|account manager|procurement|logistics/.test(t)) return "Sales";
-  if (/graphic design|ui designer|ux designer|art director|design/.test(t)) return "Design";
-  if (/hr |human resource|recruiter|talent/.test(t)) return "HR";
-  if (/doctor|nurse|pharmacist|medical|clinical|healthcare/.test(t)) return "Healthcare";
-  if (/teacher|instructor|lecturer|tutor|academic|education/.test(t)) return "Education";
-  if (/legal|lawyer|paralegal/.test(t)) return "Legal";
-  if (/customer service|call center|secretary|administration/.test(t)) return "Customer Service";
-  if (/construction|civil|architect/.test(t)) return "Construction";
+function inferSector(title: string, extra = ""): string {
+  const t = (title + " " + extra).toLowerCase();
+  if (/software|developer|engineer|frontend|backend|fullstack|devops|cloud|mobile|react|node|python|java(?!\s*national)|typescript|aws|docker|data analyst|data scientist|ml engineer|ai engineer|cyber|network engineer|it support|information technology/.test(t)) return "Tech";
+  if (/finance|accountant|auditor|tax|investment|banker|accounting/.test(t)) return "Finance";
+  if (/marketing|social media|content|seo|brand|public relations|\bpr\s/.test(t)) return "Marketing";
+  if (/sales|business development|account manager|sales executive|sales specialist/.test(t)) return "Sales";
+  if (/graphic design|ui designer|ux designer|art director|visual designer|product designer/.test(t)) return "Design";
+  if (/hr |human resource|recruiter|talent acquisition/.test(t)) return "HR";
+  if (/doctor|nurse|pharmacist|medical|clinical|dentist|healthcare/.test(t)) return "Healthcare";
+  if (/teacher|professor|instructor|lecturer|tutor|academic|education/.test(t)) return "Education";
+  if (/lawyer|legal counsel|paralegal/.test(t)) return "Legal";
+  if (/customer service|call center|secretary|administration|receptionist/.test(t)) return "Customer Service";
+  if (/construction|civil engineer|architect|site engineer/.test(t)) return "Construction";
+  if (/logistics|supply chain|procurement|warehouse/.test(t)) return "Operations";
   return "Other";
+}
+
+function isFreshIso(iso: string): boolean {
+  if (!iso) return false;
+  const t = Date.parse(iso);
+  return !isNaN(t) && Date.now() - t < FRESHNESS_MS;
 }
 
 // ---------- Akhtaboot RSS ----------
 async function scrapeAkhtaboot(country: "Jordan" | "UAE" | "Saudi Arabia"): Promise<Job[]> {
   const slug = country === "Jordan" ? "jordan" : country === "UAE" ? "uae" : "saudi-arabia";
-  const res = await fetch(`https://www.akhtaboot.com/en/${slug}/jobs.rss`, {
-    headers: { "User-Agent": UA, Accept: "application/rss+xml,application/xml" },
-  });
-  if (!res.ok) return [];
-  const xml = await res.text();
+  try {
+    const res = await fetch(`https://www.akhtaboot.com/en/${slug}/jobs.rss`, {
+      headers: { "User-Agent": UA, Accept: "application/rss+xml,application/xml" },
+    });
+    if (!res.ok) return [];
+    const xml = await res.text();
+    const items = xml.split(/<item>/).slice(1).map((s) => s.split("</item>")[0]);
 
-  // Split into <item>...</item> blocks
-  const items = xml.split(/<item>/).slice(1).map((s) => s.split("</item>")[0]);
-
-  const grab = (block: string, tag: string): string => {
-    const m = block.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`));
-    return m ? m[1].replace(/<!\[CDATA\[|\]\]>/g, "").trim() : "";
-  };
-
-  return items.slice(0, 25).map((block, i): Job => {
-    const title = grab(block, "title");
-    const link = grab(block, "link");
-    const company = grab(block, "company");
-    const city = grab(block, "city") || "Amman";
-    const communities = grab(block, "communities");
-    const pubDate = grab(block, "pubDate");
-    const id = grab(block, "id") || String(i);
-    return {
-      id: `akhtaboot-${slug}-${id}`,
-      title: title.replace(/&amp;/g, "&").trim(),
-      company: company || "Confidential",
-      sector: inferSector(title, communities),
-      city,
-      country,
-      seniority: inferSeniority(title),
-      skills: [],
-      remote: false,
-      source: "Akhtaboot",
-      url: link,
-      postedAt: pubDate ? new Date(pubDate).toISOString().slice(0, 10) : "",
-      description: communities ? `Field: ${communities}` : "",
+    const grab = (block: string, tag: string): string => {
+      const m = block.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`));
+      return m ? m[1].replace(/<!\[CDATA\[|\]\]>/g, "").trim() : "";
     };
-  });
+
+    return items
+      .map((block, i): Job => {
+        const title = grab(block, "title").replace(/&amp;/g, "&").trim();
+        const link = grab(block, "link");
+        const company = grab(block, "company");
+        const city = grab(block, "city") || (country === "UAE" ? "Dubai" : country === "Saudi Arabia" ? "Riyadh" : "Amman");
+        const communities = grab(block, "communities");
+        const pubDate = grab(block, "pubDate");
+        const id = grab(block, "id") || String(i);
+        const iso = pubDate ? new Date(pubDate).toISOString().slice(0, 10) : "";
+        return {
+          id: `akhtaboot-${slug}-${id}`,
+          title,
+          company: company || "Confidential",
+          sector: inferSector(title, communities),
+          city,
+          country,
+          seniority: inferSeniority(title),
+          skills: [],
+          remote: /\bremote\b|\bwork from home\b/i.test(title + communities),
+          source: "Akhtaboot",
+          url: link,
+          postedAt: iso,
+          description: communities ? `Field: ${communities}` : "",
+        };
+      })
+      .filter((j) => j.title && isFreshIso(j.postedAt))
+      .slice(0, 30);
+  } catch {
+    return [];
+  }
 }
 
-// ---------- For9a __NEXT_DATA__ ----------
+// ---------- For9a / Fursa __NEXT_DATA__ ----------
 async function scrapeFor9a(): Promise<Job[]> {
-  const res = await fetch("https://www.for9a.com/en/opportunity/recently-added", {
-    headers: { "User-Agent": UA, Accept: "text/html" },
-  });
-  if (!res.ok) return [];
-  const html = await res.text();
-  const m = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
-  if (!m) return [];
+  try {
+    const res = await fetch("https://www.for9a.com/en/opportunity/recently-added", {
+      headers: { "User-Agent": UA, Accept: "text/html" },
+    });
+    if (!res.ok) return [];
+    const html = await res.text();
+    const m = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+    if (!m) return [];
+    const data = JSON.parse(m[1]);
+    const opps: any[] = data?.props?.pageProps?.opportunities?.data ?? [];
 
-  let data: any;
-  try { data = JSON.parse(m[1]); } catch { return []; }
+    return opps
+      .map((o, i): Job => {
+        const title: string = o.title ?? "Untitled";
+        const url: string = o.url ?? "";
+        const country =
+          /jordan/i.test(title) ? "Jordan" :
+          /\buae\b|dubai|abu[- ]?dhabi|emirates/i.test(title) ? "UAE" :
+          /saudi|riyadh|jeddah|\bksa\b/i.test(title) ? "Saudi Arabia" :
+          "Jordan";
+        // For9a opportunities are usually scholarships/internships/programs
+        const deadline = o.deadline ?? "";
+        // Use today's date as postedAt since 'recently-added' page guarantees freshness
+        const postedAt = new Date().toISOString().slice(0, 10);
+        return {
+          id: `fursa-${o.id ?? i}`,
+          title,
+          company: "For9a Opportunity",
+          sector: inferSector(title),
+          city: country === "UAE" ? "Dubai" : country === "Saudi Arabia" ? "Riyadh" : "Amman",
+          country,
+          seniority: /scholarship|fellowship|internship|training/i.test(title) ? "Intern" : inferSeniority(title),
+          skills: [],
+          remote: o.is_remote === true || o.is_remote === "True",
+          source: "Fursa",
+          url,
+          postedAt,
+          description: deadline ? `Application deadline: ${deadline}` : "",
+        };
+      })
+      .filter((j) => j.title && j.url)
+      .slice(0, 30);
+  } catch {
+    return [];
+  }
+}
 
-  const opps: any[] = data?.props?.pageProps?.opportunities?.data ?? [];
-  return opps.slice(0, 25).map((o, i): Job => {
-    const title: string = o.title ?? "Untitled";
-    const url: string = o.url ?? "";
-    const country =
-      /jordan/i.test(title) ? "Jordan" :
-      /\buae\b|dubai|abu[- ]?dhabi|emirates/i.test(title) ? "UAE" :
-      /saudi|riyadh|jeddah|\bksa\b/i.test(title) ? "Saudi Arabia" :
-      "Jordan";
-    return {
-      id: `fursa-${o.id ?? i}`,
-      title,
-      company: "For9a Opportunity",
-      sector: inferSector(title),
-      city: country === "UAE" ? "Dubai" : country === "Saudi Arabia" ? "Riyadh" : "Amman",
-      country,
-      seniority: inferSeniority(title),
-      skills: [],
-      remote: o.is_remote === true || o.is_remote === "True",
-      source: "Fursa",
-      url,
-      postedAt: o.deadline ?? "",
-      description: o.deadline ? `Application deadline: ${o.deadline}` : "",
-    };
-  });
+// ---------- Bayt HTML scraper ----------
+// Bayt structure: <li data-js-job data-job-id="..."> ... <h2><a href="/en/<country>/jobs/SLUG-ID/">TITLE</a></h2>
+//   ... <a href="/en/company/...">COMPANY</a> ... <span>CITY</span>, <span>COUNTRY</span>
+//   ... data-automation-jobActiveDate="UNIX_TIMESTAMP"
+async function scrapeBayt(country: "Jordan" | "UAE" | "Saudi Arabia"): Promise<Job[]> {
+  const slug = country === "Jordan" ? "jordan" : country === "UAE" ? "uae" : "saudi-arabia";
+  try {
+    const res = await fetch(`https://www.bayt.com/en/${slug}/jobs/`, {
+      headers: { "User-Agent": UA, Accept: "text/html" },
+    });
+    if (!res.ok) return [];
+    const html = await res.text();
+
+    // Split into job-card blocks
+    const items = html.split(/<li[^>]*\bdata-js-job\b/).slice(1).map((s) => s.split("</li>")[0]);
+
+    return items
+      .map((block, i): Job => {
+        const idMatch = block.match(/data-job-id="(\d+)"/);
+        const id = idMatch ? idMatch[1] : String(i);
+
+        const titleMatch = block.match(/<a[^>]*data-js-aid="jobID"[^>]*href="([^"]+)"[^>]*>\s*([\s\S]*?)\s*<\/a>/);
+        const url = titleMatch ? `https://www.bayt.com${titleMatch[1]}` : "";
+        const title = titleMatch ? titleMatch[2].replace(/\s+/g, " ").replace(/&amp;/g, "&").trim() : "";
+
+        const companyMatch = block.match(/<a[^>]*class="t-default t-bold"[^>]*>([^<]+)<\/a>/);
+        const company = companyMatch ? companyMatch[1].trim() : "Confidential";
+
+        const cityMatch = block.match(/href="\/en\/[a-z-]+\/jobs\/jobs-in-[^"]+"[^>]*>\s*<span>([^<]+)<\/span>/);
+        const city = cityMatch ? cityMatch[1].trim() : (country === "UAE" ? "Dubai" : country === "Saudi Arabia" ? "Riyadh" : "Amman");
+
+        const tsMatch = block.match(/data-automation-jobActiveDate="(\d+)"/);
+        const postedAt = tsMatch ? new Date(parseInt(tsMatch[1]) * 1000).toISOString().slice(0, 10) : "";
+
+        const descMatch = block.match(/<div[^>]*class="jb-descr[^"]*"[^>]*>([\s\S]*?)<\/div>/);
+        const description = descMatch
+          ? descMatch[1].replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim().slice(0, 300)
+          : "";
+
+        return {
+          id: `bayt-${slug}-${id}`,
+          title,
+          company,
+          sector: inferSector(title, description),
+          city,
+          country,
+          seniority: inferSeniority(title),
+          skills: [],
+          remote: /\bremote\b|work from home/i.test(title + " " + description),
+          source: "Bayt",
+          url,
+          postedAt,
+          description,
+        };
+      })
+      .filter((j) => j.title && j.url && isFreshIso(j.postedAt))
+      .slice(0, 30);
+  } catch {
+    return [];
+  }
+}
+
+// ---------- Wuzzuf HTML scraper (regional: Egypt + Gulf) ----------
+async function scrapeWuzzuf(): Promise<Job[]> {
+  try {
+    const res = await fetch("https://wuzzuf.net/jobs/p/", {
+      headers: { "User-Agent": UA, Accept: "text/html" },
+    });
+    if (!res.ok) return [];
+    const html = await res.text();
+
+    // Wuzzuf wraps each job in a <div class="css-XYZ"> that contains <h2><a href="/jobs/p/SLUG">TITLE</a></h2>.
+    // Anchor on the title pattern, then walk forward ~2500 chars for the rest of the card.
+    const titleRegex = /<h2[^>]*><[^>]*><a[^>]+href="(\/jobs\/p\/[^"]+)"[^>]*>([^<]+)<\/a>[\s\S]*?<\/h2>/g;
+    const jobs: Job[] = [];
+    let match: RegExpExecArray | null;
+    let i = 0;
+    while ((match = titleRegex.exec(html)) !== null && jobs.length < 30) {
+      const slugUrl = match[1];
+      const title = match[2].trim();
+      const cardStart = match.index;
+      const card = html.slice(cardStart, cardStart + 3000);
+
+      // Company link pattern: <a href="https://wuzzuf.net/jobs/careers/...">COMPANY -</a>
+      const companyMatch = card.match(/href="https:\/\/wuzzuf\.net\/jobs\/careers\/[^"]+"[^>]*>([^<]+?)\s*-?\s*<\/a>/);
+      const company = companyMatch ? companyMatch[1].trim() : "Confidential";
+
+      // Location span: "<span class='...'>CITY, COUNTRY</span>" or similar with comments inside
+      const locMatch = card.match(/<span[^>]*>([^<]*(?:Egypt|Saudi|UAE|Jordan|Bahrain|Kuwait|Qatar|Oman)[^<]*)<\/span>/i);
+      const loc = locMatch ? locMatch[1].replace(/<!--[^>]*-->/g, "").replace(/\s+/g, " ").trim() : "";
+      const locLower = loc.toLowerCase();
+      const country =
+        /uae|dubai|abu dhabi|emirates/i.test(locLower) ? "UAE" :
+        /saudi|riyadh|jeddah/i.test(locLower) ? "Saudi Arabia" :
+        /jordan|amman/i.test(locLower) ? "Jordan" :
+        /egypt|cairo|alexandria|giza/i.test(locLower) ? "Egypt" :
+        /bahrain/i.test(locLower) ? "Bahrain" :
+        /kuwait/i.test(locLower) ? "Kuwait" :
+        /qatar|doha/i.test(locLower) ? "Qatar" :
+        "Egypt";
+      const city = loc.split(",")[0]?.trim() || (country === "Egypt" ? "Cairo" : "Cairo");
+
+      // "55 minutes ago" / "2 days ago" / "1 month ago" — convert to ISO
+      const postedMatch = card.match(/>(\d+)\s+(minute|hour|day|week|month)s?\s+ago</i);
+      let postedAt = "";
+      if (postedMatch) {
+        const n = parseInt(postedMatch[1]);
+        const unit = postedMatch[2].toLowerCase();
+        const ms =
+          unit === "minute" ? n * 60_000 :
+          unit === "hour"   ? n * 3_600_000 :
+          unit === "day"    ? n * 86_400_000 :
+          unit === "week"   ? n * 7 * 86_400_000 :
+          unit === "month"  ? n * 30 * 86_400_000 : 0;
+        postedAt = new Date(Date.now() - ms).toISOString().slice(0, 10);
+      }
+
+      jobs.push({
+        id: `wuzzuf-${slugUrl.replace(/[^a-z0-9]/gi, "-").slice(0, 60)}-${i}`,
+        title,
+        company,
+        sector: inferSector(title),
+        city,
+        country,
+        seniority: inferSeniority(title),
+        skills: [],
+        remote: /\bremote\b/i.test(title),
+        source: "Wuzzuf",
+        url: `https://wuzzuf.net${slugUrl}`,
+        postedAt,
+        description: "",
+      });
+      i++;
+    }
+
+    return jobs.filter((j) => isFreshIso(j.postedAt));
+  } catch {
+    return [];
+  }
 }
 
 const SCRAPERS: Record<string, () => Promise<Job[]>> = {
   akhtaboot:    () => scrapeAkhtaboot("Jordan"),
   akhtaboot_ae: () => scrapeAkhtaboot("UAE"),
   akhtaboot_sa: () => scrapeAkhtaboot("Saudi Arabia"),
+  bayt:         () => scrapeBayt("Jordan"),
+  bayt_ae:      () => scrapeBayt("UAE"),
+  bayt_sa:      () => scrapeBayt("Saudi Arabia"),
   fursa:        () => scrapeFor9a(),
+  wuzzuf:       () => scrapeWuzzuf(),
 };
 
-// GET /api/scrape-jobs?source=akhtaboot|akhtaboot_ae|akhtaboot_sa|fursa  (single source)
-// GET /api/scrape-jobs?all=1  (all sources in parallel)
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const all = searchParams.get("all") === "1";
@@ -143,7 +311,6 @@ export async function GET(req: Request) {
 
     const results = await Promise.allSettled(tasks.map((t) => t.fn()));
 
-    // Group jobs by their Job["source"] tag so we can replace each source cleanly
     const bySource: Record<string, Job[]> = {};
     results.forEach((r, idx) => {
       const key = tasks[idx].key;
@@ -158,8 +325,9 @@ export async function GET(req: Request) {
       }
     });
 
-    // Replace each scraped source's rows atomically
+    // Replace each scraped source's rows atomically (only if fetched > 0 — avoid wiping on transient failures)
     for (const [sourceName, jobs] of Object.entries(bySource)) {
+      if (jobs.length === 0) continue;
       await pool.query(`DELETE FROM "CachedJob" WHERE source = $1`, [sourceName]);
       for (const j of jobs) {
         await pool.query(
