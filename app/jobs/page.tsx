@@ -51,8 +51,23 @@ export default function JobsPage() {
   useEffect(() => {
     fetch("/api/live-jobs")
       .then((r) => r.json())
-      .then((data) => { if (Array.isArray(data)) setAllJobs(data); })
-      .catch(() => {/* keep static fallback */})
+      .then((data) => {
+        if (Array.isArray(data)) setAllJobs(data);
+        // Fire Gemini refresh in background (Akhtaboot/Bayt/Wuzzuf/Fursa)
+        // Don't await — it takes up to 30s, jobs trickle in on next reload
+        fetch("/api/refresh-gemini", { method: "POST" })
+          .then((r) => r.json())
+          .then((result) => {
+            if (result.added > 0) {
+              // Gemini added new jobs — reload from DB
+              return fetch("/api/live-jobs")
+                .then((r) => r.json())
+                .then((fresh) => { if (Array.isArray(fresh)) setAllJobs(fresh); });
+            }
+          })
+          .catch(() => {});
+      })
+      .catch(() => {})
       .finally(() => setLiveLoading(false));
   }, []);
 
