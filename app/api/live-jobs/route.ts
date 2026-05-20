@@ -62,9 +62,19 @@ async function fetchJSearch(query: string, source: Job["source"], offset: number
           j.job_required_skills ??
           (j.job_highlights?.Qualifications ?? []).join(" ")
             .match(/\b(React|Node\.js|Python|Java|SQL|TypeScript|JavaScript|AWS|Docker|Git|Excel|Figma|Flutter|Kotlin|Swift|PHP|Laravel|Angular|Vue|MongoDB|PostgreSQL)\b/g) ?? [];
+        // Combine all location signals: explicit fields + URL + title + description
+        const locBlob = (
+          (j.job_country ?? "") + " " +
+          (j.job_city ?? "") + " " +
+          (j.job_apply_link ?? "") + " " +
+          (j.job_title ?? "") + " " +
+          (j.job_description ?? "").slice(0, 200)
+        ).toLowerCase();
         const country =
-          /uae|dubai|abu dhabi|sharjah/i.test((j.job_country ?? "") + (j.job_city ?? "")) ? "UAE" :
-          /saudi|riyadh|jeddah/i.test((j.job_country ?? "") + (j.job_city ?? "")) ? "Saudi Arabia" : "Jordan";
+          /\buae\b|dubai|abu dhabi|sharjah|emirates|\bare\b/.test(locBlob) ? "UAE" :
+          /saudi|riyadh|jeddah|jubail|dammam|mecca|medina|\bksa\b|\bsau\b/.test(locBlob) ? "Saudi Arabia" :
+          /jordan|amman|irbid|zarqa|aqaba|\bjor\b/.test(locBlob) ? "Jordan" :
+          "Jordan"; // default fallback
         // Use the actual job board name from JSearch's job_publisher field.
         // Normalize a few known ones for nicer display.
         const rawPub: string = (j.job_publisher ?? "").trim();
@@ -83,7 +93,11 @@ async function fetchJSearch(query: string, source: Job["source"], offset: number
           title: j.job_title ?? "Untitled",
           company: j.employer_name ?? "Unknown",
           sector: inferSector(j.job_title ?? "", j.job_description ?? ""),
-          city: j.job_city || (country === "UAE" ? "Dubai" : country === "Saudi Arabia" ? "Riyadh" : "Amman"),
+          city: j.job_city || (
+            country === "UAE" ? (/abu dhabi/.test(locBlob) ? "Abu Dhabi" : /sharjah/.test(locBlob) ? "Sharjah" : "Dubai") :
+            country === "Saudi Arabia" ? (/jeddah/.test(locBlob) ? "Jeddah" : /jubail/.test(locBlob) ? "Jubail" : /dammam/.test(locBlob) ? "Dammam" : "Riyadh") :
+            "Amman"
+          ),
           country,
           seniority: inferSeniority(j.job_title ?? ""),
           skills: [...new Set(skills)].slice(0, 8),
