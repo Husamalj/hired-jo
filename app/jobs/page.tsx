@@ -54,6 +54,15 @@ export default function JobsPage() {
       .then((data) => { if (Array.isArray(data)) setAllJobs(data); })
       .catch(() => {})
       .finally(() => setLiveLoading(false));
+
+    // Background scrape of Akhtaboot RSS + For9a (free, no API keys).
+    // Refreshes the list when new sources land in the DB.
+    fetch("/api/scrape-jobs?all=1")
+      .then((r) => r.json())
+      .then(() => fetch("/api/live-jobs?force=1"))
+      .then((r) => r.json())
+      .then((fresh) => { if (Array.isArray(fresh)) setAllJobs(fresh); })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
