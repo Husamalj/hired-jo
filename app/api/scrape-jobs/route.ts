@@ -200,6 +200,77 @@ async function scrapeBayt(country: "Jordan" | "UAE" | "Saudi Arabia"): Promise<J
   }
 }
 
+// ---------- LinkedIn public guest job search ----------
+// Uses LinkedIn's no-auth public endpoint that powers their public job pages.
+// GeoIds discovered via their typeahead API and verified to return correct country results.
+const LINKEDIN_GEO: Record<"Jordan" | "UAE" | "Saudi Arabia", string> = {
+  "Jordan": "103710677",
+  "UAE": "104305776",
+  "Saudi Arabia": "100459316",
+};
+
+async function scrapeLinkedIn(country: "Jordan" | "UAE" | "Saudi Arabia"): Promise<Job[]> {
+  const geoId = LINKEDIN_GEO[country];
+  try {
+    const res = await fetch(
+      `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=&geoId=${geoId}&start=0`,
+      { headers: { "User-Agent": UA, Accept: "text/html" } }
+    );
+    if (!res.ok) return [];
+    const html = await res.text();
+
+    // Each job is wrapped in <div class="base-card ..." data-entity-urn="urn:li:jobPosting:ID">
+    // The card contains title (h3.base-search-card__title), company (h4.base-search-card__subtitle > a),
+    // location (span.job-search-card__location), and posted date (time.job-search-card__listdate datetime=)
+    const cardRegex = /<div class="base-card[^"]*"[^>]*data-entity-urn="urn:li:jobPosting:(\d+)"[\s\S]*?(?=<div class="base-card|<\/li>)/g;
+
+    const jobs: Job[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = cardRegex.exec(html)) !== null && jobs.length < 25) {
+      const id = m[1];
+      const card = m[0];
+
+      const titleMatch = card.match(/<h3 class="base-search-card__title">\s*([\s\S]*?)\s*<\/h3>/);
+      const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim() : "";
+
+      const companyMatch = card.match(/<h4 class="base-search-card__subtitle">\s*<a[^>]*>\s*([^<]+?)\s*<\/a>/);
+      const company = companyMatch ? companyMatch[1].replace(/&amp;/g, "&").trim() : "Confidential";
+
+      const locMatch = card.match(/<span class="job-search-card__location">\s*([^<]+?)\s*<\/span>/);
+      const locRaw = locMatch ? locMatch[1].replace(/&amp;/g, "&").trim() : "";
+      const city = locRaw.split(",")[0]?.trim() || (country === "UAE" ? "Dubai" : country === "Saudi Arabia" ? "Riyadh" : "Amman");
+
+      const dateMatch = card.match(/<time class="job-search-card__listdate[^"]*"[^>]*datetime="([^"]+)"/);
+      const postedAt = dateMatch ? dateMatch[1] : "";
+
+      const urlMatch = card.match(/<a class="base-card__full-link[^"]*"[^>]*href="([^"]+)"/);
+      const url = urlMatch ? urlMatch[1].split("?")[0] : "";
+
+      if (!title || !url) continue;
+
+      jobs.push({
+        id: `linkedin-${country.replace(/\s/g, "")}-${id}`,
+        title,
+        company,
+        sector: inferSector(title),
+        city,
+        country,
+        seniority: inferSeniority(title),
+        skills: [],
+        remote: /\bremote\b/i.test(title + " " + locRaw),
+        source: "LinkedIn",
+        url,
+        postedAt,
+        description: "",
+      });
+    }
+
+    return jobs.filter((j) => isFreshIso(j.postedAt));
+  } catch {
+    return [];
+  }
+}
+
 // ---------- Wuzzuf HTML scraper (regional: Egypt + Gulf) ----------
 async function scrapeWuzzuf(): Promise<Job[]> {
   try {
@@ -280,6 +351,9 @@ async function scrapeWuzzuf(): Promise<Job[]> {
 }
 
 const SCRAPERS: Record<string, () => Promise<Job[]>> = {
+  linkedin:     () => scrapeLinkedIn("Jordan"),
+  linkedin_ae:  () => scrapeLinkedIn("UAE"),
+  linkedin_sa:  () => scrapeLinkedIn("Saudi Arabia"),
   akhtaboot:    () => scrapeAkhtaboot("Jordan"),
   akhtaboot_ae: () => scrapeAkhtaboot("UAE"),
   akhtaboot_sa: () => scrapeAkhtaboot("Saudi Arabia"),
