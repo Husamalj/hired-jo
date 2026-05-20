@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
+import { Pool } from "@neondatabase/serverless";
 import type { Job } from "@/lib/types";
-import { prisma } from "@/lib/db";
 
 const REFRESH_MS = 2 * 60 * 60 * 1000;
 
 let memCache: { data: Job[]; ts: number } | null = null;
+
+function getPool() {
+  return new Pool({ connectionString: process.env.DATABASE_URL! });
+}
 
 function inferSeniority(title: string): "Intern" | "Junior" | "Mid" | "Senior" {
   const t = title.toLowerCase();
@@ -85,17 +89,16 @@ async function fetchJSearch(query: string, source: Job["source"], offset: number
 }
 
 async function fetchAllJobs(): Promise<Job[]> {
-  // JSearch only — Gemini grounding was causing Vercel 10s timeout
   const results = await Promise.allSettled([
-    fetchJSearch("jobs in Amman Jordan",                          "LinkedIn", 10000),
-    fetchJSearch("software developer jobs Jordan",                "LinkedIn", 10100),
-    fetchJSearch("marketing finance HR jobs Jordan",              "LinkedIn", 10200),
-    fetchJSearch("jobs in Dubai UAE",                             "LinkedIn", 11000),
-    fetchJSearch("jobs in Riyadh Saudi Arabia",                   "LinkedIn", 12000),
-    fetchJSearch("internship Jordan OR UAE OR Saudi Arabia",      "LinkedIn", 13000),
+    fetchJSearch("jobs in Amman Jordan",                          "LinkedIn",  10000),
+    fetchJSearch("software developer jobs Jordan",                "LinkedIn",  10100),
+    fetchJSearch("marketing finance HR jobs Jordan",              "LinkedIn",  10200),
+    fetchJSearch("jobs in Dubai UAE",                             "LinkedIn",  11000),
+    fetchJSearch("jobs in Riyadh Saudi Arabia",                   "LinkedIn",  12000),
+    fetchJSearch("internship Jordan OR UAE OR Saudi Arabia",      "LinkedIn",  13000),
     fetchJSearch("akhtaboot jobs Jordan",                         "Akhtaboot", 20000),
-    fetchJSearch("bayt jobs Jordan OR UAE OR Saudi Arabia",       "Bayt",     20100),
-    fetchJSearch("wuzzuf jobs Jordan",                            "Wuzzuf",   20200),
+    fetchJSearch("bayt jobs Jordan OR UAE OR Saudi Arabia",       "Bayt",      20100),
+    fetchJSearch("wuzzuf jobs Jordan",                            "Wuzzuf",    20200),
   ]);
 
   const all: Job[] = results
@@ -111,48 +114,60 @@ async function fetchAllJobs(): Promise<Job[]> {
   });
 }
 
-function dbRowToJob(row: any): Job {
-  return {
-    id: row.id, title: row.title, company: row.company, sector: row.sector,
-    city: row.city, country: row.country, seniority: row.seniority as Job["seniority"],
-    skills: Array.isArray(row.skills) ? row.skills : [],
-    salaryMin: row.salaryMin ?? undefined, salaryMax: row.salaryMax ?? undefined,
-    remote: row.remote, internshipCountry: row.internshipCountry ?? undefined,
-    source: row.source, url: row.url, postedAt: row.postedAt, description: row.description,
-  };
+async function getDbJobs(pool: Pool): Promise<Job[]> {
+  const res = await pool.query(`SELECT * FROM "CachedJob"`);
+  return res.rows.map((r: any) => ({
+    id: r.id, title: r.title, company: r.company, sector: r.sector,
+    city: r.city, country: r.country, seniority: r.seniority as Job["seniority"],
+    skills: Array.isArray(r.skills) ? r.skills : [],
+    salaryMin: r.salaryMin ?? undefined,
+    salaryMax: r.salaryMax ?? undefined,
+    remote: r.remote,
+    internshipCountry: r.internshipCountry ?? undefined,
+    source: r.source, url: r.url, postedAt: r.postedAt,
+    description: r.description,
+  }));
 }
 
-async function syncToDb(freshJobs: Job[]): Promise<Job[]> {
-  const existing = await prisma.cachedJob.findMany();
+async function syncToDb(pool: Pool, freshJobs: Job[]): Promise<Job[]> {
+  const existing = await pool.query(`SELECT id, title, company FROM "CachedJob"`);
+  const existingKeySet = new Set(existing.rows.map((r: any) => `${r.title.toLowerCase()}|${r.company.toLowerCase()}`));
   const freshKeySet = new Set(freshJobs.map((j) => `${j.title.toLowerCase()}|${j.company.toLowerCase()}`));
-  const existingKeySet = new Set(existing.map((r) => `${r.title.toLowerCase()}|${r.company.toLowerCase()}`));
 
-  const toDelete = existing.filter((r) => !freshKeySet.has(`${r.title.toLowerCase()}|${r.company.toLowerCase()}`));
+  // Delete gone jobs
+  const toDelete = existing.rows.filter((r: any) => !freshKeySet.has(`${r.title.toLowerCase()}|${r.company.toLowerCase()}`));
   if (toDelete.length > 0) {
-    await prisma.cachedJob.deleteMany({ where: { id: { in: toDelete.map((r) => r.id) } } });
+    const ids = toDelete.map((r: any) => r.id);
+    await pool.query(`DELETE FROM "CachedJob" WHERE id = ANY($1)`, [ids]);
   }
 
+  // Insert new jobs
   const toInsert = freshJobs.filter((j) => !existingKeySet.has(`${j.title.toLowerCase()}|${j.company.toLowerCase()}`));
-  if (toInsert.length > 0) {
-    await prisma.cachedJob.createMany({
-      data: toInsert.map((j) => ({
-        id: j.id, title: j.title, company: j.company, sector: j.sector,
-        city: j.city, country: j.country, seniority: j.seniority,
-        skills: j.skills, salaryMin: j.salaryMin ?? null, salaryMax: j.salaryMax ?? null,
-        remote: j.remote, internshipCountry: j.internshipCountry ?? null,
-        source: j.source, url: j.url, postedAt: j.postedAt, description: j.description,
-        fetchedAt: new Date(),
-      })),
-      skipDuplicates: true,
-    });
+  for (const j of toInsert) {
+    await pool.query(
+      `INSERT INTO "CachedJob" (id, title, company, sector, city, country, seniority, skills, "salaryMin", "salaryMax", remote, "internshipCountry", source, url, "postedAt", description, "fetchedAt")
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,NOW())
+       ON CONFLICT (id) DO NOTHING`,
+      [j.id, j.title, j.company, j.sector, j.city, j.country, j.seniority,
+       JSON.stringify(j.skills), j.salaryMin ?? null, j.salaryMax ?? null,
+       j.remote, j.internshipCountry ?? null, j.source, j.url, j.postedAt, j.description]
+    );
   }
 
-  await prisma.jobsFetchMeta.upsert({
-    where: { id: 1 }, update: { lastFetched: new Date() }, create: { id: 1, lastFetched: new Date() },
-  });
+  // Update fetch timestamp
+  await pool.query(
+    `INSERT INTO "JobsFetchMeta" (id, "lastFetched") VALUES (1, NOW()) ON CONFLICT (id) DO UPDATE SET "lastFetched" = NOW()`
+  );
 
-  const updated = await prisma.cachedJob.findMany();
-  return updated.map(dbRowToJob);
+  const updated = await pool.query(`SELECT * FROM "CachedJob"`);
+  return updated.rows.map((r: any) => ({
+    id: r.id, title: r.title, company: r.company, sector: r.sector,
+    city: r.city, country: r.country, seniority: r.seniority as Job["seniority"],
+    skills: Array.isArray(r.skills) ? r.skills : (typeof r.skills === "string" ? JSON.parse(r.skills) : []),
+    salaryMin: r.salaryMin ?? undefined, salaryMax: r.salaryMax ?? undefined,
+    remote: r.remote, internshipCountry: r.internshipCountry ?? undefined,
+    source: r.source, url: r.url, postedAt: r.postedAt, description: r.description,
+  }));
 }
 
 export async function GET() {
@@ -160,32 +175,35 @@ export async function GET() {
     return NextResponse.json(memCache.data);
   }
 
-  const meta = await prisma.jobsFetchMeta.findUnique({ where: { id: 1 } });
-  const lastFetched = meta?.lastFetched?.getTime() ?? 0;
-  const dbCount = await prisma.cachedJob.count();
-  const needsRefresh = dbCount === 0 || Date.now() - lastFetched > REFRESH_MS;
+  const pool = getPool();
+  try {
+    const metaRes = await pool.query(`SELECT "lastFetched" FROM "JobsFetchMeta" WHERE id = 1`);
+    const lastFetched = metaRes.rows[0]?.lastFetched?.getTime() ?? 0;
+    const countRes = await pool.query(`SELECT COUNT(*) FROM "CachedJob"`);
+    const dbCount = parseInt(countRes.rows[0].count);
+    const needsRefresh = dbCount === 0 || Date.now() - lastFetched > REFRESH_MS;
 
-  let jobs: Job[];
+    let jobs: Job[];
 
-  if (needsRefresh) {
-    const fresh = await fetchAllJobs();
-    if (fresh.length > 0) {
-      jobs = await syncToDb(fresh);
-    } else {
-      const rows = await prisma.cachedJob.findMany();
-      jobs = rows.map(dbRowToJob);
-      // Don't advance the clock when DB is empty — keep retrying
-      if (rows.length > 0) {
-        await prisma.jobsFetchMeta.upsert({
-          where: { id: 1 }, update: { lastFetched: new Date() }, create: { id: 1, lastFetched: new Date() },
-        });
+    if (needsRefresh) {
+      const fresh = await fetchAllJobs();
+      if (fresh.length > 0) {
+        jobs = await syncToDb(pool, fresh);
+      } else {
+        jobs = await getDbJobs(pool);
+        if (jobs.length > 0) {
+          await pool.query(
+            `INSERT INTO "JobsFetchMeta" (id, "lastFetched") VALUES (1, NOW()) ON CONFLICT (id) DO UPDATE SET "lastFetched" = NOW()`
+          );
+        }
       }
+    } else {
+      jobs = await getDbJobs(pool);
     }
-  } else {
-    const rows = await prisma.cachedJob.findMany();
-    jobs = rows.map(dbRowToJob);
-  }
 
-  memCache = { data: jobs, ts: Date.now() };
-  return NextResponse.json(jobs);
+    memCache = { data: jobs, ts: Date.now() };
+    return NextResponse.json(jobs);
+  } finally {
+    await pool.end();
+  }
 }
