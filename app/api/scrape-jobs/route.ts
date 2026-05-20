@@ -146,10 +146,22 @@ async function scrapeBayt(country: "Jordan" | "UAE" | "Saudi Arabia"): Promise<J
   const slug = country === "Jordan" ? "jordan" : country === "UAE" ? "uae" : "saudi-arabia";
   try {
     const res = await fetch(`https://www.bayt.com/en/${slug}/jobs/`, {
-      headers: { "User-Agent": UA, Accept: "text/html" },
+      headers: {
+        "User-Agent": UA,
+        Accept: "text/html,application/xhtml+xml",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+      },
     });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      console.error(`[bayt-${slug}] HTTP ${res.status}`);
+      return [];
+    }
     const html = await res.text();
+    if (html.length < 5000) {
+      console.error(`[bayt-${slug}] suspiciously small body: ${html.length} bytes`);
+      return [];
+    }
 
     // Split into job-card blocks
     const items = html.split(/<li[^>]*\bdata-js-job\b/).slice(1).map((s) => s.split("</li>")[0]);
@@ -275,10 +287,21 @@ async function scrapeLinkedIn(country: "Jordan" | "UAE" | "Saudi Arabia"): Promi
 async function scrapeWuzzuf(): Promise<Job[]> {
   try {
     const res = await fetch("https://wuzzuf.net/jobs/p/", {
-      headers: { "User-Agent": UA, Accept: "text/html" },
+      headers: {
+        "User-Agent": UA,
+        Accept: "text/html,application/xhtml+xml",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
     });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      console.error(`[wuzzuf] HTTP ${res.status}`);
+      return [];
+    }
     const html = await res.text();
+    if (html.length < 5000) {
+      console.error(`[wuzzuf] suspiciously small body: ${html.length} bytes`);
+      return [];
+    }
 
     // Wuzzuf wraps each job in a <div class="css-XYZ"> that contains <h2><a href="/jobs/p/SLUG">TITLE</a></h2>.
     // Anchor on the title pattern, then walk forward ~2500 chars for the rest of the card.
@@ -364,15 +387,39 @@ const SCRAPERS: Record<string, () => Promise<Job[]>> = {
   wuzzuf:       () => scrapeWuzzuf(),
 };
 
+const SCRAPE_THROTTLE_MS = 2 * 60 * 60 * 1000; // 2 hours
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const all = searchParams.get("all") === "1";
   const sourceKey = searchParams.get("source");
+  const force = searchParams.get("force") === "1";
 
   const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
   const report: any[] = [];
 
   try {
+    // Throttle: skip re-scraping if any scraped row was inserted in the last 2 hours.
+    // This prevents the counts from changing on every page refresh.
+    if (!force) {
+      const lastScrape = await pool.query(`
+        SELECT MAX("fetchedAt") AS last
+        FROM "CachedJob"
+        WHERE source IN ('LinkedIn','Akhtaboot','Bayt','Wuzzuf','Fursa')
+      `);
+      const lastTs = lastScrape.rows[0]?.last;
+      if (lastTs && Date.now() - new Date(lastTs).getTime() < SCRAPE_THROTTLE_MS) {
+        const counts = await pool.query(`SELECT source, COUNT(*) as count FROM "CachedJob" GROUP BY source ORDER BY count DESC`);
+        const minsAgo = Math.floor((Date.now() - new Date(lastTs).getTime()) / 60_000);
+        const nextInMins = Math.max(0, Math.floor(SCRAPE_THROTTLE_MS / 60_000) - minsAgo);
+        return NextResponse.json({
+          skipped: true,
+          reason: `Last scrape ran ${minsAgo} min ago — next refresh in ~${nextInMins} min. Add ?force=1 to override.`,
+          finalBreakdown: counts.rows,
+        });
+      }
+    }
+
     const tasks: { key: string; fn: () => Promise<Job[]> }[] = all
       ? Object.entries(SCRAPERS).map(([key, fn]) => ({ key, fn }))
       : sourceKey && SCRAPERS[sourceKey]
