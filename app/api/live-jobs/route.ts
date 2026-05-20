@@ -91,16 +91,15 @@ async function fetchJSearch(query: string, source: Job["source"], offset: number
 async function fetchAllJobs(): Promise<Job[]> {
   const results = await Promise.allSettled([
     fetchJSearch("jobs in Amman Jordan",                          "LinkedIn",  10000),
-    fetchJSearch("software engineer developer Jordan",            "LinkedIn",  10100),
-    fetchJSearch("marketing sales finance jobs Jordan",           "LinkedIn",  10200),
-    fetchJSearch("graphic design HR operations jobs Amman",       "LinkedIn",  10300),
+    fetchJSearch("software developer jobs Jordan",                "LinkedIn",  10100),
+    fetchJSearch("marketing finance HR jobs Jordan",              "LinkedIn",  10200),
     fetchJSearch("jobs in Dubai UAE",                             "LinkedIn",  11000),
     fetchJSearch("jobs in Riyadh Saudi Arabia",                   "LinkedIn",  12000),
-    fetchJSearch("internship trainee Jordan",                     "LinkedIn",  13000),
-    fetchJSearch("site:akhtaboot.com jobs Jordan",                "Akhtaboot", 20000),
-    fetchJSearch("site:bayt.com jobs Jordan",                     "Bayt",      20100),
-    fetchJSearch("site:wuzzuf.net jobs Jordan",                   "Wuzzuf",    20200),
-    fetchJSearch("site:for9a.com jobs Jordan",                    "Fursa",     20300),
+    fetchJSearch("internship Jordan OR UAE OR Saudi Arabia",      "LinkedIn",  13000),
+    fetchJSearch("akhtaboot jobs Jordan",                         "Akhtaboot", 20000),
+    fetchJSearch("bayt jobs Jordan OR UAE OR Saudi Arabia",       "Bayt",      20100),
+    fetchJSearch("wuzzuf jobs Jordan",                            "Wuzzuf",    20200),
+    fetchJSearch("for9a fursa jobs Jordan",                       "Fursa",     20300),
   ]);
 
   const all: Job[] = results
