@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Building2, CheckCircle2, ExternalLink, MapPin, Sparkles, Target, X } from "lucide-react";
+import { Building2, CheckCircle2, ExternalLink, MapPin, Sparkles, Target, X, Clock } from "lucide-react";
 import type { Job, MatchResult } from "@/lib/types";
 
 function linkedInSearchUrl(job: Job): string {
@@ -10,29 +10,58 @@ function linkedInSearchUrl(job: Job): string {
   return `https://www.linkedin.com/jobs/search/?keywords=${keywords}%20${company}&location=${location}`;
 }
 
+// Only use the stored URL if it points to an actual job posting, not a search/listing page.
+// Otherwise we'd send users to a random page and they couldn't tell why.
+function hasDirectJobUrl(job: Job): boolean {
+  const u = job.url ?? "";
+  if (!u.startsWith("http")) return false;
+  // Reject obvious search/listing fallbacks
+  if (/\/jobs\/?(\?|$)/.test(u) && !/\d{4,}/.test(u)) return false;
+  return true;
+}
+
 function applyUrl(job: Job): string {
-  if (job.url && job.url.startsWith("http")) return job.url;
+  if (hasDirectJobUrl(job)) return job.url!;
+  // Source-specific listing pages are better than a useless empty search
   const q = encodeURIComponent(job.title);
-  const company = encodeURIComponent(job.company);
   const country = job.country === "UAE" ? "uae" : job.country === "Saudi Arabia" ? "saudi-arabia" : "jordan";
   switch (job.source) {
-    case "Akhtaboot":
-      return `https://www.akhtaboot.com/en/${country}/jobs?q=${q}+${company}`;
-    case "Bayt":
-      return `https://www.bayt.com/en/${country}/jobs/?q=${q}`;
-    case "Wuzzuf":
-      return `https://wuzzuf.net/search/jobs/?q=${q}&a=hpb`;
-    case "Fursa":
-      return `https://www.for9a.com/search?q=${q}`;
-    case "Naukrigulf":
-      return `https://www.naukrigulf.com/jobs-in-${country}?q=${q}`;
-    case "GulfTalent":
-      return `https://www.gulftalent.com/jobs?search=${q}`;
-    case "Tanqeeb":
-      return `https://www.tanqeeb.com/jobs?q=${q}`;
-    default:
-      return linkedInSearchUrl(job);
+    case "Akhtaboot":  return `https://www.akhtaboot.com/en/${country}/jobs?q=${q}`;
+    case "Bayt":       return `https://www.bayt.com/en/${country}/jobs/?keyword=${q}`;
+    case "Wuzzuf":     return `https://wuzzuf.net/search/jobs/?q=${q}`;
+    case "Fursa":      return `https://www.for9a.com/en/jobs/countries/JO`;
+    case "Naukrigulf": return `https://www.naukrigulf.com/jobs-in-${country}?q=${q}`;
+    case "GulfTalent": return `https://www.gulftalent.com/jobs?search=${q}`;
+    default:           return linkedInSearchUrl(job);
   }
+}
+
+function daysAgo(iso: string): number | null {
+  if (!iso) return null;
+  const t = Date.parse(iso);
+  if (isNaN(t)) return null;
+  return Math.floor((Date.now() - t) / 86_400_000);
+}
+
+function postedLabel(iso: string): string {
+  const d = daysAgo(iso);
+  if (d === null) return "";
+  if (d <= 0) return "Today";
+  if (d === 1) return "1 day ago";
+  if (d < 7) return `${d} days ago`;
+  if (d < 30) return `${Math.floor(d / 7)}w ago`;
+  return `${Math.floor(d / 30)}mo ago`;
+}
+
+// Salary detection: JSearch usually returns USD annual, scrapers don't set salary at all.
+// Hide salary unless we have a known currency hint; otherwise just show sector.
+function salaryLabel(job: Job): string | null {
+  if (!job.salaryMin) return null;
+  const min = job.salaryMin;
+  const max = job.salaryMax ?? min;
+  // Heuristic: >5000 = likely annual USD, <5000 = likely monthly local
+  if (min > 5000) return `$${(min / 1000).toFixed(0)}k–$${(max / 1000).toFixed(0)}k / yr`;
+  return `${min}–${max} / mo`;
 }
 
 const seniorityColor: Record<string, string> = {
@@ -71,7 +100,11 @@ export function JobCard({ job, cv }: { job: Job; cv?: any }) {
     }
   }
 
-  const salary = job.salaryMin ? `${job.salaryMin}-${job.salaryMax ?? job.salaryMin} JOD/month` : job.remote ? "Remote / paid" : null;
+  const salary = salaryLabel(job);
+  const age = daysAgo(job.postedAt);
+  const ageLabel = postedLabel(job.postedAt);
+  const ageStale = age !== null && age > 30;
+  const company = job.company === "Undisclosed" || !job.company ? "Confidential" : job.company;
 
   return (
     <div
@@ -93,10 +126,22 @@ export function JobCard({ job, cv }: { job: Job; cv?: any }) {
               <span className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${seniorityColor[job.seniority] ?? "bg-white/10 text-white/60 border-white/10"}`}>
                 {job.seniority}
               </span>
+              {job.remote && (
+                <span className="rounded-full border px-2.5 py-1 text-[11px] font-bold bg-green-400/12 text-green-200 border-green-300/20">
+                  Remote
+                </span>
+              )}
+              {ageLabel && (
+                <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] ${
+                  ageStale ? "bg-orange-400/10 text-orange-200 border-orange-300/20" : "bg-white/5 text-white/50 border-white/10"
+                }`}>
+                  <Clock size={10} /> {ageLabel}
+                </span>
+              )}
             </div>
             <h3 className="font-display text-xl font-bold leading-tight text-white line-clamp-2">{job.title}</h3>
             <p className="mt-2 flex items-center gap-1.5 text-sm text-white/50">
-              <MapPin size={14} /> {job.company} / {job.city}
+              <MapPin size={14} /> {company} / {job.city}
             </p>
           </div>
           <div className="h-11 w-11 shrink-0 rounded-2xl gold-grad text-black flex items-center justify-center shadow-[0_18px_45px_-24px_rgba(245,184,46,.9)]">
@@ -146,11 +191,11 @@ export function JobCard({ job, cv }: { job: Job; cv?: any }) {
         <div className="relative pr-8">
           <p className="text-[11px] uppercase tracking-[0.18em] text-yellow-100/70">Role detail</p>
           <h3 className="font-display text-lg font-bold leading-tight mt-1">{job.title}</h3>
-          <p className="text-white/48 text-xs mt-1">{job.company} / {job.city}, {job.country}</p>
+          <p className="text-white/48 text-xs mt-1">{company} / {job.city}, {job.country}</p>
           <div className="flex gap-1.5 mt-3 flex-wrap">
             {job.remote && <span className="text-xs px-2.5 py-1 rounded-full bg-green-400/12 text-green-200 border border-green-300/20">Remote</span>}
-            {job.internshipCountry && job.internshipCountry !== "Remote" && <span className="text-xs px-2.5 py-1 rounded-full bg-blue-400/12 text-blue-200 border border-blue-300/20">{job.internshipCountry}</span>}
             <span className="text-xs px-2.5 py-1 rounded-full bg-white/10 text-white/55 border border-white/10">{job.sector}</span>
+            {ageLabel && <span className="text-xs px-2.5 py-1 rounded-full bg-white/5 text-white/50 border border-white/10">{ageLabel}</span>}
           </div>
         </div>
 
@@ -202,7 +247,9 @@ export function JobCard({ job, cv }: { job: Job; cv?: any }) {
           </a>
         </div>
 
-        <p className="relative text-white/22 text-[11px] flex items-center gap-1.5"><Sparkles size={12} /> {job.source} / {job.postedAt}</p>
+        <p className="relative text-white/22 text-[11px] flex items-center gap-1.5">
+          <Sparkles size={12} /> {job.source}{ageLabel ? ` / ${ageLabel}` : ""}
+        </p>
       </div>
     </div>
   );
