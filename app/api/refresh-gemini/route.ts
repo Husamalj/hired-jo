@@ -104,11 +104,10 @@ export async function POST(req: Request) {
     const fresh = await fetchGeminiJobs(cfg.site, cfg.source, cfg.country);
     if (fresh.length === 0) return NextResponse.json({ added: 0 });
 
-    const existing = await pool.query(`SELECT title, company FROM "CachedJob"`);
-    const existingKeys = new Set(existing.rows.map((r: any) => `${r.title.toLowerCase()}|${r.company.toLowerCase()}`));
-    const toInsert = fresh.filter((j) => !existingKeys.has(`${j.title.toLowerCase()}|${j.company.toLowerCase()}`));
+    // Delete all existing jobs from this source so stale/bad data is replaced
+    await pool.query(`DELETE FROM "CachedJob" WHERE source = $1`, [cfg.source]);
 
-    for (const j of toInsert) {
+    for (const j of fresh) {
       await pool.query(
         `INSERT INTO "CachedJob" (id, title, company, sector, city, country, seniority, skills, "salaryMin", "salaryMax", remote, "internshipCountry", source, url, "postedAt", description, "fetchedAt")
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,NOW())
@@ -119,7 +118,7 @@ export async function POST(req: Request) {
       );
     }
 
-    return NextResponse.json({ added: toInsert.length });
+    return NextResponse.json({ added: fresh.length });
   } finally {
     await pool.end();
   }
