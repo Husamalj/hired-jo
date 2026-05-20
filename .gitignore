@@ -41,3 +41,4 @@ yarn-error.log*
 next-env.d.ts
 
 # /app/generated/prisma  — must be committed so Vercel build can find it
+HANDOFF.md
