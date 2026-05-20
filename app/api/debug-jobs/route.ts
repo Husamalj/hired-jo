@@ -1,3 +1,5 @@
+export const runtime = "edge";
+
 import { NextResponse } from "next/server";
 import { Pool } from "@neondatabase/serverless";
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -45,7 +47,7 @@ export async function GET(req: Request) {
         fursa: "for9a.com",
       };
       const site = SITES[testGemini] ?? testGemini;
-      const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("8s timeout")), 8000));
+      const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("25s timeout")), 25000));
       const result = await Promise.race([
         model.generateContent(
           `Search ${site} right now and find 5 recently posted jobs in the Middle East.
