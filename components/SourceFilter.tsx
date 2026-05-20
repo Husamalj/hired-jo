@@ -120,8 +120,8 @@ export function SourceFilter({
 
       {open && (
         <div
-          className="absolute z-50 top-full left-0 right-0 mt-2 rounded-2xl border border-white/12 bg-[#120A2B]/98 backdrop-blur-xl shadow-2xl shadow-black/60 overflow-hidden"
-          style={{ maxHeight: "min(70vh, 540px)" }}
+          className="absolute top-full left-0 right-0 mt-2 rounded-2xl border border-white/15 shadow-2xl shadow-black/80 overflow-hidden"
+          style={{ maxHeight: "min(70vh, 540px)", zIndex: 100, background: "#100823" }}
         >
           {/* Search */}
           <div className="p-3 border-b border-white/8">
