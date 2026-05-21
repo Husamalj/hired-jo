@@ -64,15 +64,11 @@ export default function AboutPage() {
             <p className="text-white/60 leading-relaxed">
               Hired.jo is free and will stay free for graduates. If it helped you land a job or prepare better, consider supporting us to keep the servers running and the AI powered up.
             </p>
-            <a
-              href="https://buymeacoffee.com/hiredjo"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-xl gold-grad px-4 py-2.5 text-sm font-bold text-black"
-            >
-              ☕ Buy us a coffee
-            </a>
-            <p className="text-white/30 text-xs">A proper donation page is coming soon as part of our business plan.</p>
+            <div className="inline-flex items-center gap-3 rounded-xl border border-yellow-300/20 bg-yellow-300/5 px-4 py-2.5">
+              <span className="text-sm font-bold text-yellow-200/60">☕ Support / Donate</span>
+              <span className="rounded-full bg-yellow-300/15 border border-yellow-300/25 px-2.5 py-0.5 text-xs font-semibold text-yellow-200/70">Coming soon</span>
+            </div>
+            <p className="text-white/30 text-xs">We are setting up a secure payment method. Check back soon.</p>
           </section>
 
         </div>
