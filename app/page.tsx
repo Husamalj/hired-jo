@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import Navbar from "@/components/Navbar";
 
 const TOTAL_FRAMES = 145;
 const ROAST_URL = "https://hired-jo-zrgu.vercel.app/roast";
@@ -189,24 +190,10 @@ function ScrollHero() {
         <div className="absolute inset-0"
           style={{ background: "linear-gradient(to bottom, rgba(10,7,22,0.55) 0%, rgba(10,7,22,0.2) 50%, rgba(10,7,22,0.7) 100%)" }} />
 
-        {/* Navbar inside hero */}
-        <nav className="absolute top-0 left-0 right-0 flex items-center justify-between px-8 py-5 z-20">
-          <Link href="/" className="font-display font-bold text-2xl tracking-tight">
-            Hired<span style={{ color: "var(--gold)" }}>.jo</span>
-          </Link>
-          <div className="hidden md:flex gap-8 text-sm text-white/70">
-            <Link className="hover:text-white" href="/build">Build CV</Link>
-            <Link className="hover:text-white" href="/jobs">Find Jobs</Link>
-            <Link className="hover:text-white" href="/score">My Score</Link>
-            <Link className="hover:text-white" href="/roast">Roast CV</Link>
-            <Link className="hover:text-white" href="/dashboard">Market</Link>
-            <Link className="hover:text-white" href="/cofounder">Co-founders</Link>
-            <Link className="hover:text-white" href="/leaderboard">Leaderboard</Link>
-          </div>
-          <Link href="/build" className="px-4 py-2 rounded-full gold-grad text-black text-sm font-bold">
-            Get hired →
-          </Link>
-        </nav>
+        {/* Navbar */}
+        <div className="absolute top-0 left-0 right-0 z-20">
+          <Navbar />
+        </div>
 
         {/* Scene 1 */}
         <div className="absolute inset-0 flex items-center px-10 md:px-24 pointer-events-none"
