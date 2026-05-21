@@ -21,6 +21,7 @@ import { CvBulkForm } from "@/components/CvBulkForm";
 import { VoiceRecorder } from "@/components/VoiceRecorder";
 import type { CV } from "@/lib/types";
 import { loadCvFromAccount, syncCvToAccount } from "@/lib/user-data";
+import { CvSectionEditor } from "@/components/CvSectionEditor";
 
 type Msg = { role: "user" | "ai"; text: string };
 
@@ -602,6 +603,13 @@ export default function BuildPage() {
                 </div>
               </div>
               <CvPreview cv={cv} />
+              <CvSectionEditor
+                cv={cv}
+                onCvUpdated={(updated) => {
+                  setCv(updated);
+                  syncCvToAccount(updated).catch(console.error);
+                }}
+              />
             </section>
           )}
         </div>
