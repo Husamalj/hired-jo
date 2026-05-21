@@ -158,6 +158,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <head>
+        <meta name="msvalidate.01" content="96D2C728256F16B205F04A30247E2A8F" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
