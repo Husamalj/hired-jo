@@ -13,6 +13,7 @@ const links = [
   { href: "/learn", label: "Learn" },
   { href: "/cofounder", label: "Co-founders" },
   { href: "/leaderboard", label: "Leaderboard" },
+  { href: "/talent", label: "Talent" },
   { href: "/about", label: "About" },
 ];
 
