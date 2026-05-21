@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
 import type { CV, HiredScore } from "@/lib/types";
+import { syncScoreToAccount } from "@/lib/user-data";
 
 const DIMENSIONS = [
   {
@@ -101,6 +102,9 @@ export default function ScorePage() {
     });
     const data = await res.json();
     setScore(data);
+    if (data.total != null) {
+      syncScoreToAccount(data.total, data).catch(console.error);
+    }
     setLoading(false);
     if (submitAlias) {
       if (data.dbError) {

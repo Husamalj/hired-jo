@@ -20,6 +20,7 @@ import { CvPreview } from "@/components/CvPreview";
 import { CvBulkForm } from "@/components/CvBulkForm";
 import { VoiceRecorder } from "@/components/VoiceRecorder";
 import type { CV } from "@/lib/types";
+import { loadCvFromAccount, syncCvToAccount } from "@/lib/user-data";
 
 type Msg = { role: "user" | "ai"; text: string };
 
@@ -231,6 +232,7 @@ export default function BuildPage() {
   const handleFormSubmit = (formCv: CV) => {
     setCv(formCv);
     localStorage.setItem("hired_cv", JSON.stringify(formCv));
+    syncCvToAccount(formCv).catch(console.error);
   };
 
   useEffect(() => {
@@ -238,6 +240,17 @@ export default function BuildPage() {
   }, [msgs, thinking]);
 
   useEffect(() => {
+    // Load CV from localStorage; if not found, fall back to account
+    const existing = localStorage.getItem("hired_cv");
+    if (!existing) {
+      loadCvFromAccount().then((accountCv) => {
+        if (accountCv) {
+          localStorage.setItem("hired_cv", JSON.stringify(accountCv));
+          setCv(accountCv);
+        }
+      }).catch(console.error);
+    }
+
     const draft = loadDraft();
     if (draft && draft.stepId !== "name") {
       setMsgs(draft.msgs);
@@ -287,6 +300,7 @@ export default function BuildPage() {
           setMsgs((prev) => [...prev, { role: "ai", text: "Your CV is ready. Review it below and download when it looks right." }]);
           setCv(result.cv);
           localStorage.setItem("hired_cv", JSON.stringify(result.cv));
+          syncCvToAccount(result.cv).catch(console.error);
           localStorage.removeItem(DRAFT_KEY);
         } else {
           throw new Error(result.detail ?? "No CV returned.");
@@ -308,6 +322,7 @@ export default function BuildPage() {
   function saveAndScore() {
     if (!cv) return;
     localStorage.setItem("hired_cv", JSON.stringify(cv));
+    syncCvToAccount(cv).catch(console.error);
     router.push("/score");
   }
 

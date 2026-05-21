@@ -8,6 +8,7 @@ import { SourceFilter, sourceMatches, COMPANY_PAGES_VALUE } from "@/components/S
 import { FilterDropdown } from "@/components/FilterDropdown";
 import { MultiSelectDropdown } from "@/components/MultiSelectDropdown";
 import type { Job } from "@/lib/types";
+import { loadSavedJobIds, saveJob, unsaveJob } from "@/lib/user-data";
 
 function sortOtherLast(arr: string[]) {
   return [...arr].sort((a, b) => {
@@ -47,6 +48,7 @@ export default function JobsPage() {
   const [remoteOnly, setRemoteOnly] = useState(false);
   const [sortNewest, setSortNewest] = useState(true);
   const [search, setSearch]         = useState("");
+  const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
 
   const isInternships = type === "Internships";
   const isJobs        = type === "Jobs";
@@ -72,6 +74,19 @@ export default function JobsPage() {
     const raw = localStorage.getItem("hired_cv");
     if (raw) setCv(JSON.parse(raw));
   }, []);
+
+  useEffect(() => {
+    loadSavedJobIds().then((ids) => setSavedJobIds(new Set(ids))).catch(() => {});
+  }, []);
+
+  async function handleToggleSave(jobId: string, save: boolean) {
+    setSavedJobIds((prev) => {
+      const next = new Set(prev);
+      if (save) next.add(jobId); else next.delete(jobId);
+      return next;
+    });
+    if (save) await saveJob(jobId); else await unsaveJob(jobId);
+  }
 
   useEffect(() => {
     if (!sectors.includes("Other")) return;
@@ -411,7 +426,7 @@ export default function JobsPage() {
 
             {!liveLoading && filtered.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filtered.map((j) => <JobCard key={j.id} job={j} cv={cv} />)}
+                {filtered.map((j) => <JobCard key={j.id} job={j} cv={cv} saved={savedJobIds.has(j.id)} onToggleSave={handleToggleSave} />)}
               </div>
             )}
           </section>

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Building2, CheckCircle2, ExternalLink, MapPin, Sparkles, Target, X, Clock } from "lucide-react";
+import { Bookmark, Building2, CheckCircle2, ExternalLink, MapPin, Sparkles, Target, X, Clock } from "lucide-react";
 import type { Job, MatchResult } from "@/lib/types";
 
 function linkedInSearchUrl(job: Job): string {
@@ -71,7 +71,14 @@ const seniorityColor: Record<string, string> = {
   Senior: "bg-red-400/12 text-red-200 border-red-300/20",
 };
 
-export function JobCard({ job, cv }: { job: Job; cv?: any }) {
+interface JobCardProps {
+  job: Job;
+  cv?: any;
+  saved?: boolean;
+  onToggleSave?: (jobId: string, save: boolean) => void;
+}
+
+export function JobCard({ job, cv, saved, onToggleSave }: JobCardProps) {
   const [match, setMatch] = useState<MatchResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [revealed, setRevealed] = useState(false);
@@ -218,7 +225,7 @@ export function JobCard({ job, cv }: { job: Job; cv?: any }) {
           </div>
         )}
 
-        <div className="relative grid grid-cols-[1fr_auto_auto] gap-2 mt-auto">
+        <div className={`relative grid gap-2 mt-auto ${onToggleSave ? "grid-cols-[1fr_auto_auto_auto]" : "grid-cols-[1fr_auto_auto]"}`}>
           <button
             onClick={checkFit}
             disabled={loading}
@@ -245,6 +252,19 @@ export function JobCard({ job, cv }: { job: Job; cv?: any }) {
           >
             <span className="font-bold text-sm leading-none">in</span>
           </a>
+          {onToggleSave && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleSave(job.id, !saved); }}
+              className={`rounded-2xl border px-3 py-3 text-xs inline-flex items-center gap-1.5 transition ${
+                saved
+                  ? "border-yellow-300/40 bg-yellow-300/10 text-yellow-200"
+                  : "border-white/15 bg-white/5 text-white/55 hover:text-white"
+              }`}
+              aria-label={saved ? "Unsave job" : "Save job"}
+            >
+              <Bookmark size={13} fill={saved ? "currentColor" : "none"} />
+            </button>
+          )}
         </div>
 
         <p className="relative text-white/22 text-[11px] flex items-center gap-1.5">
