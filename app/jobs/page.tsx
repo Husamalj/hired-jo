@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { BriefcaseBusiness, Building2, GraduationCap, MapPin, Search, SlidersHorizontal, Sparkles, Target, Wifi, ArrowDownUp } from "lucide-react";
+import { CvUploadBanner } from "@/components/CvUploadBanner";
 import { JobCard } from "@/components/JobCard";
 import { Navbar } from "@/components/Navbar";
 import { SourceFilter, sourceMatches, COMPANY_PAGES_VALUE } from "@/components/SourceFilter";
@@ -367,12 +368,7 @@ export default function JobsPage() {
             </div>
           </section>
 
-          {!cv && (
-            <div className="rounded-2xl bg-[#F5B82E]/10 border border-[#F5B82E]/25 px-4 py-3 text-sm text-yellow-100 flex items-center gap-3">
-              <Sparkles size={18} className="shrink-0" />
-              <span>Build your CV on the <a href="/build" className="underline font-semibold">Build CV</a> page to unlock role-by-role fit checks.</span>
-            </div>
-          )}
+          {!cv && <CvUploadBanner onCvLoaded={(newCv) => setCv(newCv)} />}
 
           {diverseLoading && (
             <div className="rounded-2xl bg-purple-500/10 border border-purple-500/20 px-4 py-3 text-sm text-purple-200 animate-pulse flex items-center gap-3">
