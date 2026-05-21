@@ -5,7 +5,7 @@ export const runtime = "edge";
 export const maxDuration = 30;
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
 function buildPrompt(s: Record<string, any>): string {
   const experienceBlock = Array.isArray(s.experience) && s.experience.length

@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
 
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
   const m = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
+    model: "gemini-2.0-flash",
     systemInstruction: `Today's date is ${today}. You are an expert CV editor. The user will give you one section of a CV and a specific editing instruction.
 Return ONLY the edited content for that section in the exact same JSON format it was provided — no commentary, no markdown fences, just the raw JSON value.`,
   });

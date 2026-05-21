@@ -14,7 +14,7 @@ async function ask(messages: Msg[]): Promise<string> {
   const last = turns[turns.length - 1];
 
   const m = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
+    model: "gemini-2.0-flash",
     systemInstruction: system,
   });
 

@@ -31,7 +31,7 @@ function inferSeniority(title: string): "Intern" | "Junior" | "Mid" | "Senior" {
 async function fetchSectorJobs(sector: string, offset: number): Promise<Job[]> {
   try {
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.0-flash",
       tools: [{ googleSearch: {} } as any],
     });
 
