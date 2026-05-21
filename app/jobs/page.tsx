@@ -6,6 +6,7 @@ import { JobCard } from "@/components/JobCard";
 import { Navbar } from "@/components/Navbar";
 import { SourceFilter, sourceMatches, COMPANY_PAGES_VALUE } from "@/components/SourceFilter";
 import { FilterDropdown } from "@/components/FilterDropdown";
+import { MultiSelectDropdown } from "@/components/MultiSelectDropdown";
 import type { Job } from "@/lib/types";
 
 function sortOtherLast(arr: string[]) {
@@ -37,7 +38,7 @@ export default function JobsPage() {
   const [diverseJobs, setDiverseJobs] = useState<Job[]>([]);
   const [cv, setCv]                 = useState<any>(null);
   const [type, setType]             = useState("All");
-  const [sector, setSector]         = useState("All");
+  const [sectors, setSectors]        = useState<string[]>([]);
   const [source, setSource]         = useState("All");
   const [country, setCountry]       = useState("All");
   const [city, setCity]             = useState("All");
@@ -73,7 +74,7 @@ export default function JobsPage() {
   }, []);
 
   useEffect(() => {
-    if (sector !== "Other") return;
+    if (!sectors.includes("Other")) return;
     if (diverseJobs.length > 0) return;
     setDiverseLoading(true);
     fetch("/api/diverse-jobs")
@@ -81,7 +82,7 @@ export default function JobsPage() {
       .then((data) => { if (Array.isArray(data)) setDiverseJobs(data); })
       .catch(() => {})
       .finally(() => setDiverseLoading(false));
-  }, [sector]);
+  }, [sectors]);
 
   function handleCountryChange(c: string) { setCountry(c); setCity("All"); }
 
@@ -107,8 +108,8 @@ export default function JobsPage() {
 
   // ------ Filtering ------
   const sourcePool = useMemo(
-    () => sector === "Other" ? [...allJobs, ...diverseJobs] : allJobs,
-    [allJobs, diverseJobs, sector]
+    () => sectors.includes("Other") ? [...allJobs, ...diverseJobs] : allJobs,
+    [allJobs, diverseJobs, sectors]
   );
 
   const filtered = useMemo(() => {
@@ -126,7 +127,7 @@ export default function JobsPage() {
       }
 
       // Common filters
-      if (sector !== "All" && j.sector !== sector) return false;
+      if (sectors.length > 0 && !sectors.includes(j.sector)) return false;
       if (!sourceMatches(j.source, source)) return false;
 
       // Country/City/Level — apply for Jobs and All views (not Internships, which has its own location pill)
@@ -149,7 +150,7 @@ export default function JobsPage() {
       const db = daysAgo(b.postedAt);
       return sortNewest ? da - db : db - da;
     });
-  }, [sourcePool, type, sector, source, country, city, seniority, intLoc, remoteOnly, search, sortNewest]);
+  }, [sourcePool, type, sectors, source, country, city, seniority, intLoc, remoteOnly, search, sortNewest]);
 
   const internCount = useMemo(() => sourcePool.filter((j) => j.seniority === "Intern").length, [sourcePool]);
   const remoteCount = useMemo(() => sourcePool.filter((j) => j.remote).length, [sourcePool]);
@@ -157,7 +158,7 @@ export default function JobsPage() {
 
   const filterSummary = [
     type === "All" ? "jobs + internships" : type.toLowerCase(),
-    sector === "All" ? "all sectors" : sector,
+    sectors.length === 0 ? "all sectors" : sectors.join(", "),
     source === "All" ? "all sources" : source === COMPANY_PAGES_VALUE ? "company career pages" : source,
     isInternships ? (intLoc === "Anywhere" ? "anywhere" : intLoc) : country === "All" ? "all countries" : country,
     remoteOnly ? "remote only" : null,
@@ -319,10 +320,11 @@ export default function JobsPage() {
                 </div>
                 <div className="space-y-1.5">
                   <span className="text-[11px] uppercase tracking-[0.16em] text-white/35 block">Sector</span>
-                  <FilterDropdown
-                    value={sector}
-                    onChange={setSector}
-                    options={SECTORS.map((o) => ({ value: o, label: o === "All" ? "All Sectors" : o }))}
+                  <MultiSelectDropdown
+                    label="All Sectors"
+                    options={SECTORS.filter((o) => o !== "All")}
+                    selected={sectors}
+                    onChange={setSectors}
                   />
                 </div>
                 {!isInternships && (
