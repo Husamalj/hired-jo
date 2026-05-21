@@ -169,7 +169,7 @@ export function JobCard({ job, cv }: { job: Job; cv?: any }) {
       </div>
 
       <div
-        className="absolute inset-0 rounded-2xl p-5 flex flex-col gap-4 overflow-hidden"
+        className="absolute inset-0 rounded-2xl p-5 flex flex-col gap-4 overflow-y-auto"
         style={{
           background: "linear-gradient(135deg, rgba(42,31,110,.98) 0%, rgba(20,14,42,.98) 56%, rgba(10,7,22,.98) 100%)",
           border: "1px solid rgba(245,184,46,0.35)",
@@ -199,7 +199,7 @@ export function JobCard({ job, cv }: { job: Job; cv?: any }) {
           </div>
         </div>
 
-        <p className="relative text-xs text-white/68 leading-relaxed line-clamp-4">{job.description}</p>
+        <p className="relative text-xs text-white/68 leading-relaxed">{job.description}</p>
 
         {match ? (
           <div className="relative rounded-2xl border border-yellow-300/20 bg-yellow-300/10 p-4 space-y-2">
