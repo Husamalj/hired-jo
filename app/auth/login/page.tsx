@@ -3,7 +3,7 @@ import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
-import { Mail, Lock, Chrome } from "lucide-react";
+import { Mail, Lock, Globe } from "lucide-react";
 
 function LoginContent() {
   const searchParams = useSearchParams();
@@ -69,7 +69,7 @@ function LoginContent() {
               disabled={loading}
               className="w-full flex items-center justify-center gap-3 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-semibold text-white hover:bg-white/10 transition disabled:opacity-50"
             >
-              <Chrome size={18} /> Continue with Google
+              <Globe size={18} /> Continue with Google
             </button>
 
             <div className="flex items-center gap-3">
