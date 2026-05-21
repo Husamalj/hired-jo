@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
-const SITE_URL = "https://hired-jo-zrgu.vercel.app";
+const SITE_URL = "https://hiredjo.com";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
