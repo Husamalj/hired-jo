@@ -615,7 +615,7 @@ export default function HomePage() {
           <div className="flex flex-wrap items-center gap-3">
             <span className="font-display font-bold text-lg">Hired<span style={{ color: "var(--gold)" }}>.jo</span></span>
             <span>·</span>
-            <span>Built at HU AI Employability Hackathon 2026</span>
+            <span>AI Career Copilot for Arab Graduates</span>
           </div>
           <a href="https://github.com/Husamalj/hired-jo" className="hover:text-white" target="_blank" rel="noopener noreferrer">GitHub</a>
         </div>
