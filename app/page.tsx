@@ -609,17 +609,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="px-5 md:px-8 py-10 border-t border-white/5">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 text-xs text-white/40">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="font-display font-bold text-lg">Hired<span style={{ color: "var(--gold)" }}>.jo</span></span>
-            <span>·</span>
-            <span>AI Career Copilot for Arab Graduates</span>
-          </div>
-          <a href="https://github.com/Husamalj/hired-jo" className="hover:text-white" target="_blank" rel="noopener noreferrer">GitHub</a>
-        </div>
-      </footer>
 
         </div>
       </div>
