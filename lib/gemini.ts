@@ -2,7 +2,6 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { CV, Job, MatchResult, LearningStep } from "./types";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
 interface Msg {
   role: "system" | "user" | "assistant";
@@ -87,10 +86,16 @@ No placeholder text. No markdown in JSON string values.`;
 
 // Roast CV
 export async function roastCv(cv: CV): Promise<{ roast: string; advice: string }> {
+  const today = new Date().toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
   const text = await ask([
     {
       role: "system",
-      content: `You are a brutally honest but hilarious Jordanian career coach.
+      content: `Today's date is ${today}. You are a brutally honest but hilarious Jordanian career coach.
 
 Your response MUST have exactly two sections separated by the marker [ADVICE]:
 
