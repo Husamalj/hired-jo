@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { BriefcaseBusiness, Building2, GraduationCap, MapPin, Search, SlidersHorizontal, Sparkles, Target, Wifi, ArrowDownUp } from "lucide-react";
 import { CvUploadBanner } from "@/components/CvUploadBanner";
 import { JobCard } from "@/components/JobCard";
@@ -32,7 +33,7 @@ function daysAgo(iso: string): number {
   return Math.floor((Date.now() - t) / 86_400_000);
 }
 
-export default function JobsPage() {
+function JobsPageInner() {
   const [allJobs, setAllJobs]       = useState<Job[]>([]);
   const [liveLoading, setLiveLoading] = useState(true);
   const [diverseLoading, setDiverseLoading] = useState(false);
@@ -49,6 +50,12 @@ export default function JobsPage() {
   const [sortNewest, setSortNewest] = useState(true);
   const [search, setSearch]         = useState("");
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
+  const searchParams = useSearchParams();
+  const [showSavedOnly, setShowSavedOnly] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("saved") === "1") setShowSavedOnly(true);
+  }, [searchParams]);
 
   const isInternships = type === "Internships";
   const isJobs        = type === "Jobs";
@@ -129,6 +136,9 @@ export default function JobsPage() {
 
   const filtered = useMemo(() => {
     const out = sourcePool.filter((j) => {
+      // Saved only
+      if (showSavedOnly && !savedJobIds.has(j.id)) return false;
+
       // Type
       if (isInternships && j.seniority !== "Intern") return false;
       if (isJobs        && j.seniority === "Intern") return false;
@@ -165,7 +175,7 @@ export default function JobsPage() {
       const db = daysAgo(b.postedAt);
       return sortNewest ? da - db : db - da;
     });
-  }, [sourcePool, type, sectors, source, country, city, seniority, intLoc, remoteOnly, search, sortNewest]);
+  }, [sourcePool, type, sectors, source, country, city, seniority, intLoc, remoteOnly, search, sortNewest, showSavedOnly, savedJobIds]);
 
   const internCount = useMemo(() => sourcePool.filter((j) => j.seniority === "Intern").length, [sourcePool]);
   const remoteCount = useMemo(() => sourcePool.filter((j) => j.remote).length, [sourcePool]);
@@ -182,6 +192,12 @@ export default function JobsPage() {
   return (
     <>
       <Navbar />
+      {showSavedOnly && (
+        <div className="flex items-center justify-between gap-3 px-4 md:px-8 py-3 border-b border-yellow-300/15 bg-yellow-300/5">
+          <span className="text-sm text-yellow-200/80">🔖 Showing saved jobs only</span>
+          <button onClick={() => setShowSavedOnly(false)} className="text-xs text-white/40 hover:text-white transition">Show all jobs</button>
+        </div>
+      )}
       <main className="relative min-h-screen overflow-x-hidden px-4 md:px-8 py-8">
         <div className="absolute inset-0 grain opacity-80" />
         <div className="absolute inset-0 dot-grid opacity-20" />
@@ -433,5 +449,13 @@ export default function JobsPage() {
         </div>
       </main>
     </>
+  );
+}
+
+export default function JobsPage() {
+  return (
+    <Suspense>
+      <JobsPageInner />
+    </Suspense>
   );
 }

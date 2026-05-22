@@ -65,7 +65,7 @@ function UserMenu({ user, signOut }: { user: User; signOut: () => void }) {
             <a href="/score" onClick={() => setOpen(false)} className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-white/60 hover:bg-white/5 hover:text-white transition">
               <BarChart2 size={14} /> My Score
             </a>
-            <a href="/jobs" onClick={() => setOpen(false)} className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-white/60 hover:bg-white/5 hover:text-white transition">
+            <a href="/jobs?saved=1" onClick={() => setOpen(false)} className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-white/60 hover:bg-white/5 hover:text-white transition">
               <Bookmark size={14} /> Saved Jobs
             </a>
             <a href="/talent" onClick={() => setOpen(false)} className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-white/60 hover:bg-white/5 hover:text-white transition">
