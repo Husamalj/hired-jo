@@ -3,13 +3,16 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import type { User } from "@supabase/supabase-js";
-import { LogOut, User as UserIcon, FileText, Bookmark, BarChart2 } from "lucide-react";
+import { LogOut, User as UserIcon, FileText, Bookmark, BarChart2, ChevronDown, Menu, X } from "lucide-react";
 
-const links = [
+const primaryLinks = [
   { href: "/build", label: "Build CV" },
   { href: "/jobs", label: "Find Jobs" },
-  { href: "/score", label: "My Score" },
   { href: "/roast", label: "Roast CV" },
+];
+
+const moreLinks = [
+  { href: "/score", label: "My Score" },
   { href: "/dashboard", label: "Market" },
   { href: "/learn", label: "Learn" },
   { href: "/cofounder", label: "Co-founders" },
@@ -17,6 +20,44 @@ const links = [
   { href: "/talent", label: "Talent" },
   { href: "/about", label: "About" },
 ];
+
+function MoreMenu() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onOutside);
+    return () => document.removeEventListener("mousedown", onOutside);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 text-sm text-white/60 hover:text-white transition-colors"
+      >
+        More <ChevronDown size={14} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-2 w-44 rounded-2xl border border-white/10 bg-[#0A0716] shadow-2xl z-50 overflow-hidden p-1">
+          {moreLinks.map(({ href, label }) => (
+            <Link
+              key={href}
+              href={href}
+              onClick={() => setOpen(false)}
+              className="block rounded-xl px-3 py-2 text-sm text-white/60 hover:bg-white/5 hover:text-white transition"
+            >
+              {label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function UserMenu({ user, signOut }: { user: User; signOut: () => void }) {
   const [open, setOpen] = useState(false);
@@ -52,12 +93,10 @@ function UserMenu({ user, signOut }: { user: User; signOut: () => void }) {
 
       {open && (
         <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl border border-white/10 bg-[#0A0716] shadow-2xl z-50 overflow-hidden">
-          {/* Profile header */}
           <div className="px-4 py-3 border-b border-white/8">
             <p className="text-sm font-semibold text-white truncate">{name}</p>
             <p className="text-xs text-white/40 truncate">{email}</p>
           </div>
-          {/* Menu items */}
           <div className="p-1">
             <a href="/build" onClick={() => setOpen(false)} className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-white/60 hover:bg-white/5 hover:text-white transition">
               <FileText size={14} /> My CV
@@ -72,7 +111,6 @@ function UserMenu({ user, signOut }: { user: User; signOut: () => void }) {
               <UserIcon size={14} /> My Talent Profile
             </a>
           </div>
-          {/* Sign out */}
           <div className="p-1 border-t border-white/8">
             <button
               onClick={() => { setOpen(false); signOut(); }}
@@ -84,6 +122,46 @@ function UserMenu({ user, signOut }: { user: User; signOut: () => void }) {
         </div>
       )}
     </div>
+  );
+}
+
+function MobileMenu({ authSection }: { authSection: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const allLinks = [...primaryLinks, ...moreLinks];
+
+  return (
+    <>
+      <button onClick={() => setOpen(true)} className="text-white/60 hover:text-white transition">
+        <Menu size={22} />
+      </button>
+      {open && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-[#0A0716]">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-white/8">
+            <Link href="/" onClick={() => setOpen(false)} className="font-display font-bold text-xl tracking-tight">
+              Hired<span style={{ color: "var(--gold)" }}>.jo</span>
+            </Link>
+            <button onClick={() => setOpen(false)} className="text-white/60 hover:text-white transition">
+              <X size={22} />
+            </button>
+          </div>
+          <div className="flex flex-col p-4 gap-1 flex-1 overflow-y-auto">
+            {allLinks.map(({ href, label }) => (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setOpen(false)}
+                className="rounded-xl px-4 py-3 text-base text-white/70 hover:bg-white/5 hover:text-white transition"
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
+          <div className="p-4 border-t border-white/8">
+            {authSection}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -115,25 +193,26 @@ export function Navbar() {
   );
 
   return (
-    <nav className="flex flex-wrap items-center justify-between gap-y-4 px-5 md:px-8 py-4 border-b border-white/5">
+    <nav className="flex items-center justify-between px-5 md:px-8 py-4 border-b border-white/5">
       <Link href="/" className="font-display font-bold text-xl tracking-tight">
         Hired<span style={{ color: "var(--gold)" }}>.jo</span>
       </Link>
+
+      {/* Desktop */}
       <div className="hidden md:flex items-center gap-6 text-sm text-white/60">
-        {links.map(({ href, label }) => (
+        {primaryLinks.map(({ href, label }) => (
           <Link key={href} href={href} className="hover:text-white transition-colors">
             {label}
           </Link>
         ))}
+        <MoreMenu />
         {authSection}
       </div>
-      <div className="flex md:hidden w-full gap-4 overflow-x-auto pb-1 text-sm text-white/60">
-        {links.map(({ href, label }) => (
-          <Link key={href} href={href} className="shrink-0 hover:text-white transition-colors">
-            {label}
-          </Link>
-        ))}
+
+      {/* Mobile */}
+      <div className="flex md:hidden items-center gap-3">
         {authSection}
+        <MobileMenu authSection={authSection} />
       </div>
     </nav>
   );
