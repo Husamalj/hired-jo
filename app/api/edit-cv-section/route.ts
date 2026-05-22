@@ -1,10 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { CV } from "@/lib/types";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { checkLimit, incrementUsage } from "@/lib/usage";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const { allowed } = await checkLimit(user.id, "ai_edits");
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "limit_reached", key: "ai_edits", remaining: 0 },
+        { status: 402 }
+      );
+    }
+  }
+
   const { cv, section, prompt } = await req.json() as {
     cv: CV;
     section: keyof CV;
@@ -43,5 +57,6 @@ Return ONLY the edited content for that section in the exact same JSON format it
     edited = raw;
   }
 
+  if (user) await incrementUsage(user.id, "ai_edits");
   return NextResponse.json({ section, edited });
 }

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { checkLimit, incrementUsage } from "@/lib/usage";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 export const maxDuration = 30;
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
@@ -149,12 +151,27 @@ function extractJson(raw: string): string {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+
+    // Check auth + limits
+    const supabase = await createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { allowed } = await checkLimit(user.id, "cv_builds");
+      if (!allowed) {
+        return NextResponse.json(
+          { error: "limit_reached", key: "cv_builds", remaining: 0 },
+          { status: 402 }
+        );
+      }
+    }
+
     const prompt = body.structured ? buildPrompt(body.structured) : buildLegacyPrompt(body.answers ?? []);
     const result = await model.generateContent(prompt);
     const raw = result.response.text();
     console.log("Gemini raw response (first 300 chars):", raw.slice(0, 300));
     const text = extractJson(raw);
     const cv = JSON.parse(text);
+    if (user) await incrementUsage(user.id, "cv_builds");
     return NextResponse.json({ cv });
   } catch (e: any) {
     console.error("build-cv error:", e);
