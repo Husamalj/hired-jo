@@ -229,6 +229,7 @@ export default function BuildPage() {
   const [data, setData] = useState<StructuredAnswers>(INITIAL_ANSWERS);
   const [cv, setCv] = useState<CV | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFormSubmit = (formCv: CV) => {
     setCv(formCv);
@@ -279,6 +280,7 @@ export default function BuildPage() {
     const newMsgs = [...msgs, { role: "user" as const, text: userMsg }];
     setMsgs(newMsgs);
     setInput("");
+    setTimeout(() => inputRef.current?.focus(), 50);
 
     const nextStep = getNextStep(stepId, text);
     if (nextStep !== "done") {
@@ -554,6 +556,7 @@ export default function BuildPage() {
                         <div className="mt-4 flex gap-2 items-center">
                           <VoiceRecorder onTranscript={setInput} />
                           <input
+                            ref={inputRef}
                             value={input}
                             onChange={(event) => setInput(event.target.value)}
                             onKeyDown={(event) => event.key === "Enter" && send()}
