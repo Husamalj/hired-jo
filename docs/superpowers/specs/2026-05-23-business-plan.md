@@ -61,7 +61,7 @@ When a user hits their limit they see a hard block with two options:
 | Pack | Price | What you get |
 |------|-------|-------------|
 | CV Pack | 2 JOD | 3 extra CV builds |
-| Edit Pack | 2 JOD | 20 extra AI edits |
+| Edit Pack | 2 JOD | 10 extra AI edits |
 | Cover Letter Pack | 2 JOD | 5 extra cover letters |
 
 > One-time purchases are processed via Paddle. No subscription commitment.
