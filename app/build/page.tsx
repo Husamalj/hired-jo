@@ -230,6 +230,7 @@ export default function BuildPage() {
   const [cv, setCv] = useState<CV | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const initialScrollDone = useRef(false);
 
   const handleFormSubmit = (formCv: CV) => {
     setCv(formCv);
@@ -237,7 +238,18 @@ export default function BuildPage() {
     syncCvToAccount(formCv).catch(console.error);
   };
 
+  // Auto-focus input on mount
   useEffect(() => {
+    setTimeout(() => inputRef.current?.focus(), 100);
+  }, []);
+
+  // Scroll to bottom only after first user message (not on initial load)
+  useEffect(() => {
+    if (!initialScrollDone.current) {
+      const hasUserMsg = msgs.some((m) => m.role === "user");
+      if (hasUserMsg) initialScrollDone.current = true;
+      else return;
+    }
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [msgs, thinking]);
 
