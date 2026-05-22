@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { Wand2, ChevronDown } from "lucide-react";
 import type { CV } from "@/lib/types";
+import { UpgradeModal } from "@/components/UpgradeModal";
+import type { UsageKey } from "@/lib/tiers";
 
 const SECTIONS: { key: keyof CV; label: string }[] = [
   { key: "summary", label: "Summary / Objective" },
@@ -32,6 +34,17 @@ export function CvSectionEditor({ cv, onCvUpdated }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastEdit, setLastEdit] = useState<string | null>(null);
+  const [limitKey, setLimitKey] = useState<UsageKey | null>(null);
+
+  async function handleCheckout(priceId: string) {
+    const res = await fetch("/api/paddle/checkout", {
+      method: "POST",
+      body: JSON.stringify({ priceId }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const data = await res.json();
+    if (data.checkoutUrl) window.location.href = data.checkoutUrl;
+  }
 
   async function handleEdit(e: React.FormEvent) {
     e.preventDefault();
@@ -46,6 +59,10 @@ export function CvSectionEditor({ cv, onCvUpdated }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cv, section, prompt }),
       });
+      if (res.status === 402) {
+        setLimitKey("ai_edits");
+        return;
+      }
       if (!res.ok) throw new Error("Edit failed");
       const { edited } = await res.json();
       const updatedCv = { ...cv, [section]: edited };
@@ -123,6 +140,13 @@ export function CvSectionEditor({ cv, onCvUpdated }: Props) {
           {loading ? "AI is editing…" : "Edit with AI"}
         </button>
       </form>
+      {limitKey && (
+        <UpgradeModal
+          usageKey={limitKey}
+          onClose={() => setLimitKey(null)}
+          onCheckout={handleCheckout}
+        />
+      )}
     </div>
   );
 }

@@ -22,6 +22,8 @@ import { VoiceRecorder } from "@/components/VoiceRecorder";
 import type { CV } from "@/lib/types";
 import { loadCvFromAccount, syncCvToAccount } from "@/lib/user-data";
 import { CvSectionEditor } from "@/components/CvSectionEditor";
+import { UpgradeModal } from "@/components/UpgradeModal";
+import type { UsageKey } from "@/lib/tiers";
 
 type Msg = { role: "user" | "ai"; text: string };
 
@@ -228,6 +230,7 @@ export default function BuildPage() {
   const [stepId, setStepId] = useState<StepId>("name");
   const [data, setData] = useState<StructuredAnswers>(INITIAL_ANSWERS);
   const [cv, setCv] = useState<CV | null>(null);
+  const [limitKey, setLimitKey] = useState<UsageKey | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const initialScrollDone = useRef(false);
@@ -309,6 +312,11 @@ export default function BuildPage() {
           body: JSON.stringify({ structured: newData }),
           headers: { "Content-Type": "application/json" },
         });
+        if (res.status === 402) {
+          setLimitKey("cv_builds");
+          setThinking(false);
+          return;
+        }
         const result = await res.json();
         setThinking(false);
         if (result.cv) {
@@ -332,6 +340,16 @@ export default function BuildPage() {
     setThinking(false);
     const { question, hint } = getQuestion(nextStep);
     setMsgs((prev) => [...prev, { role: "ai", text: hint ? `${question}\n\nTip: ${hint}` : question }]);
+  }
+
+  async function handleCheckout(priceId: string) {
+    const res = await fetch("/api/paddle/checkout", {
+      method: "POST",
+      body: JSON.stringify({ priceId }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const data = await res.json();
+    if (data.checkoutUrl) window.location.href = data.checkoutUrl;
   }
 
   function saveAndScore() {
@@ -629,6 +647,13 @@ export default function BuildPage() {
           )}
         </div>
       </main>
+        {limitKey && (
+          <UpgradeModal
+            usageKey={limitKey}
+            onClose={() => setLimitKey(null)}
+            onCheckout={handleCheckout}
+          />
+        )}
     </>
   );
 }
