@@ -241,10 +241,12 @@ export default function BuildPage() {
     syncCvToAccount(formCv).catch(console.error);
   };
 
-  // Auto-focus input on mount
+  // Keep focus on input whenever thinking stops or step changes
   useEffect(() => {
-    setTimeout(() => inputRef.current?.focus(), 100);
-  }, []);
+    if (!thinking) {
+      setTimeout(() => inputRef.current?.focus(), 80);
+    }
+  }, [thinking, stepId]);
 
   // Scroll to bottom only after first user message (not on initial load)
   useEffect(() => {
@@ -295,7 +297,6 @@ export default function BuildPage() {
     const newMsgs = [...msgs, { role: "user" as const, text: userMsg }];
     setMsgs(newMsgs);
     setInput("");
-    setTimeout(() => inputRef.current?.focus(), 50);
 
     const nextStep = getNextStep(stepId, text);
     if (nextStep !== "done") {
