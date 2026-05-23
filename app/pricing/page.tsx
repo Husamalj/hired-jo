@@ -56,8 +56,7 @@ const tiers = [
       { label: "2 AI section edits / month", included: true },
       { label: "1 cover letter (lifetime)", included: true },
       { label: "Basic job matching", included: true },
-      { label: "Priority support", included: false },
-      { label: "Talent profile", included: true },
+      { label: "Talent profile · Normal visibility", included: true },
     ] as Feature[],
   },
   {
@@ -74,7 +73,7 @@ const tiers = [
       { label: "10 cover letters / month", included: true },
       { label: "Advanced job matching", included: true },
       { label: "Priority support", included: true },
-      { label: "Talent profile", included: true },
+      { label: "Talent profile · Mid visibility", included: true },
     ] as Feature[],
   },
   {
@@ -91,7 +90,7 @@ const tiers = [
       { label: "30 cover letters / month", included: true },
       { label: "Advanced job matching", included: true },
       { label: "Priority support", included: true },
-      { label: "Talent profile", included: true },
+      { label: "Talent profile · High visibility", included: true },
     ] as Feature[],
   },
 ];
@@ -146,18 +145,27 @@ export default function PricingPage() {
               </div>
 
               <ul className="flex flex-col gap-3 flex-1">
-                {tier.features.map((f) => (
-                  <li key={f.label} className="flex items-start gap-2.5 text-sm">
-                    {f.included ? (
-                      <Check size={15} className="shrink-0 mt-0.5" style={{ color: "#F5B82E" }} />
-                    ) : (
-                      <Lock size={13} className="shrink-0 mt-0.5" style={{ color: "rgba(255,255,255,0.25)" }} />
-                    )}
-                    <span style={{ color: f.included ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.3)" }}>
-                      {f.label}
-                    </span>
-                  </li>
-                ))}
+                {tier.features.map((f) => {
+                  const [main, badge] = f.label.includes(" · ") ? f.label.split(" · ") : [f.label, null];
+                  return (
+                    <li key={f.label} className="flex items-start gap-2.5 text-sm">
+                      {f.included ? (
+                        <Check size={15} className="shrink-0 mt-0.5" style={{ color: "#F5B82E" }} />
+                      ) : (
+                        <Lock size={13} className="shrink-0 mt-0.5" style={{ color: "rgba(255,255,255,0.25)" }} />
+                      )}
+                      <span style={{ color: f.included ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.3)" }}>
+                        {main}
+                        {badge && (
+                          <span className="ml-1.5 text-[11px] font-semibold rounded-full px-2 py-0.5"
+                            style={{ background: "rgba(255,255,255,0.08)", color: "#F5B82E" }}>
+                            {badge}
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
 
               {tier.ctaHref ? (
