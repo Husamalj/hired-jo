@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
-import { Check, X } from "lucide-react";
+import { Check, Lock } from "lucide-react";
 
 type PriceId =
   | "NEXT_PUBLIC_PADDLE_PRICE_PRO"
@@ -151,9 +151,9 @@ export default function PricingPage() {
                     {f.included ? (
                       <Check size={15} className="shrink-0 mt-0.5" style={{ color: "#F5B82E" }} />
                     ) : (
-                      <X size={15} className="shrink-0 mt-0.5" style={{ color: "#ff4d4d" }} />
+                      <Lock size={13} className="shrink-0 mt-0.5" style={{ color: "rgba(255,255,255,0.25)" }} />
                     )}
-                    <span style={{ color: f.included ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.35)" }}>
+                    <span style={{ color: f.included ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.3)" }}>
                       {f.label}
                     </span>
                   </li>
