@@ -19,6 +19,7 @@ const moreLinks = [
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/talent", label: "Talent" },
   { href: "/about", label: "About" },
+  { href: "/pricing", label: "Pricing" },
 ];
 
 function MoreMenu() {
