@@ -57,7 +57,7 @@ const tiers = [
       { label: "1 cover letter (lifetime)", included: true },
       { label: "Basic job matching", included: true },
       { label: "Priority support", included: false },
-      { label: "Talent profile visibility", included: false },
+      { label: "Talent profile", included: true },
     ] as Feature[],
   },
   {
@@ -74,7 +74,7 @@ const tiers = [
       { label: "10 cover letters / month", included: true },
       { label: "Advanced job matching", included: true },
       { label: "Priority support", included: true },
-      { label: "Talent profile visibility", included: false },
+      { label: "Talent profile", included: true },
     ] as Feature[],
   },
   {
@@ -91,7 +91,7 @@ const tiers = [
       { label: "30 cover letters / month", included: true },
       { label: "Advanced job matching", included: true },
       { label: "Priority support", included: true },
-      { label: "Talent profile visibility", included: true },
+      { label: "Talent profile", included: true },
     ] as Feature[],
   },
 ];
