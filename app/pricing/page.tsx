@@ -5,30 +5,29 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import { Check, Lock } from "lucide-react";
 
-type PriceId =
-  | "NEXT_PUBLIC_PADDLE_PRICE_PRO"
-  | "NEXT_PUBLIC_PADDLE_PRICE_HIRED"
-  | "NEXT_PUBLIC_PADDLE_PRICE_CV_PACK"
-  | "NEXT_PUBLIC_PADDLE_PRICE_EDIT_PACK"
-  | "NEXT_PUBLIC_PADDLE_PRICE_COVER_PACK";
+type VariantKey =
+  | "pro"
+  | "hired"
+  | "cv_pack"
+  | "edit_pack"
+  | "cover_pack";
 
-const ENV_MAP: Record<PriceId, string | undefined> = {
-  NEXT_PUBLIC_PADDLE_PRICE_PRO: process.env.NEXT_PUBLIC_PADDLE_PRICE_PRO,
-  NEXT_PUBLIC_PADDLE_PRICE_HIRED: process.env.NEXT_PUBLIC_PADDLE_PRICE_HIRED,
-  NEXT_PUBLIC_PADDLE_PRICE_CV_PACK: process.env.NEXT_PUBLIC_PADDLE_PRICE_CV_PACK,
-  NEXT_PUBLIC_PADDLE_PRICE_EDIT_PACK: process.env.NEXT_PUBLIC_PADDLE_PRICE_EDIT_PACK,
-  NEXT_PUBLIC_PADDLE_PRICE_COVER_PACK: process.env.NEXT_PUBLIC_PADDLE_PRICE_COVER_PACK,
+const VARIANT_MAP: Record<VariantKey, string> = {
+  pro: "1694502",
+  hired: "1694491",
+  cv_pack: "1694505",
+  edit_pack: "1694508",
+  cover_pack: "1694511",
 };
 
-async function startCheckout(envKey: PriceId, setLoading: (k: PriceId | null) => void) {
-  const priceId = ENV_MAP[envKey];
-  if (!priceId) { alert("Checkout not configured yet."); return; }
-  setLoading(envKey);
+async function startCheckout(variantKey: VariantKey, setLoading: (k: VariantKey | null) => void) {
+  const variantId = VARIANT_MAP[variantKey];
+  setLoading(variantKey);
   try {
-    const res = await fetch("/api/paddle/checkout", {
+    const res = await fetch("/api/lemonsqueezy/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ priceId }),
+      body: JSON.stringify({ variantId }),
     });
     const data = await res.json();
     if (data?.checkoutUrl) window.location.href = data.checkoutUrl;
@@ -48,7 +47,7 @@ const tiers = [
     price: "0",
     period: "forever",
     featured: false,
-    envKey: null as PriceId | null,
+    variantKey: null as VariantKey | null,
     cta: "Get Started Free",
     ctaHref: "/build",
     features: [
@@ -64,7 +63,7 @@ const tiers = [
     price: "6",
     period: "/month",
     featured: true,
-    envKey: "NEXT_PUBLIC_PADDLE_PRICE_PRO" as PriceId,
+    variantKey: "pro" as VariantKey,
     cta: "Upgrade to Pro",
     ctaHref: null,
     features: [
@@ -81,7 +80,7 @@ const tiers = [
     price: "15",
     period: "/month",
     featured: false,
-    envKey: "NEXT_PUBLIC_PADDLE_PRICE_HIRED" as PriceId,
+    variantKey: "hired" as VariantKey,
     cta: "Upgrade to Hired",
     ctaHref: null,
     features: [
@@ -96,13 +95,13 @@ const tiers = [
 ];
 
 const packs = [
-  { name: "CV Pack",    desc: "3 extra CV builds",      price: "2", envKey: "NEXT_PUBLIC_PADDLE_PRICE_CV_PACK" as PriceId },
-  { name: "Edit Pack",  desc: "10 extra AI edits",       price: "2", envKey: "NEXT_PUBLIC_PADDLE_PRICE_EDIT_PACK" as PriceId },
-  { name: "Cover Pack", desc: "5 extra cover letters",   price: "2", envKey: "NEXT_PUBLIC_PADDLE_PRICE_COVER_PACK" as PriceId },
+  { name: "CV Pack",    desc: "3 extra CV builds",      price: "2", variantKey: "cv_pack" as VariantKey },
+  { name: "Edit Pack",  desc: "10 extra AI edits",       price: "2", variantKey: "edit_pack" as VariantKey },
+  { name: "Cover Pack", desc: "5 extra cover letters",   price: "2", variantKey: "cover_pack" as VariantKey },
 ];
 
 export default function PricingPage() {
-  const [loading, setLoading] = useState<PriceId | null>(null);
+  const [loading, setLoading] = useState<VariantKey | null>(null);
 
   return (
     <div className="min-h-screen" style={{ background: "#0A0716", color: "white" }}>
@@ -177,8 +176,8 @@ export default function PricingPage() {
                 </Link>
               ) : (
                 <button
-                  disabled={loading === tier.envKey}
-                  onClick={() => tier.envKey && startCheckout(tier.envKey, setLoading)}
+                  disabled={loading === tier.variantKey}
+                  onClick={() => tier.variantKey && startCheckout(tier.variantKey, setLoading)}
                   className="rounded-xl px-4 py-2.5 text-sm font-bold transition disabled:opacity-60"
                   style={
                     tier.featured
@@ -186,7 +185,7 @@ export default function PricingPage() {
                       : { background: "#3F2B96", color: "white" }
                   }
                 >
-                  {loading === tier.envKey ? "Redirecting…" : tier.cta}
+                  {loading === tier.variantKey ? "Redirecting…" : tier.cta}
                 </button>
               )}
             </div>
@@ -210,11 +209,11 @@ export default function PricingPage() {
                   <span className="text-white/40 text-sm mb-0.5">JOD one-time</span>
                 </div>
                 <button
-                  disabled={loading === pack.envKey}
-                  onClick={() => startCheckout(pack.envKey, setLoading)}
+                  disabled={loading === pack.variantKey}
+                  onClick={() => startCheckout(pack.variantKey, setLoading)}
                   className="rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold text-white/80 hover:border-[#F5B82E] hover:text-[#F5B82E] transition disabled:opacity-60"
                 >
-                  {loading === pack.envKey ? "Redirecting…" : `Buy ${pack.name}`}
+                  {loading === pack.variantKey ? "Redirecting…" : `Buy ${pack.name}`}
                 </button>
               </div>
             ))}
