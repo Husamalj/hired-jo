@@ -231,6 +231,7 @@ export default function BuildPage() {
   const [data, setData] = useState<StructuredAnswers>(INITIAL_ANSWERS);
   const [cv, setCv] = useState<CV | null>(null);
   const [limitKey, setLimitKey] = useState<UsageKey | null>(null);
+  const [history, setHistory] = useState<Array<{ stepId: StepId; data: StructuredAnswers; msgs: Msg[] }>>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const initialScrollDone = useRef(false);
@@ -295,6 +296,9 @@ export default function BuildPage() {
     const text = (rawAnswer ?? input).trim();
     if (!text || thinking) return;
 
+    // Save current state to history before advancing
+    setHistory((prev) => [...prev, { stepId, data, msgs }]);
+
     const newData = applyAnswer(stepId, text, data);
     setData(newData);
 
@@ -346,6 +350,30 @@ export default function BuildPage() {
     setThinking(false);
     const { question, hint } = getQuestion(nextStep);
     setMsgs((prev) => [...prev, { role: "ai", text: hint ? `${question}\n\nTip: ${hint}` : question }]);
+  }
+
+  function goBack() {
+    if (history.length === 0) return;
+    const prev = history[history.length - 1];
+    setHistory((h) => h.slice(0, -1));
+    setStepId(prev.stepId);
+    setData(prev.data);
+    setMsgs(prev.msgs);
+    setThinking(false);
+  }
+
+  function restartBuild() {
+    setMsgs([{ role: "ai", text: "Hey. I will help you build a professional CV in a few minutes. Ready?" }]);
+    setStepId("name");
+    setData(INITIAL_ANSWERS);
+    setCv(null);
+    setHistory([]);
+    setThinking(false);
+    localStorage.removeItem(DRAFT_KEY);
+    setTimeout(() => {
+      const { question, hint } = getQuestion("name");
+      setMsgs((prev) => [...prev, { role: "ai", text: hint ? `${question}\n\nTip: ${hint}` : question }]);
+    }, 400);
   }
 
   async function handleCheckout(priceId: string) {
@@ -590,6 +618,15 @@ export default function BuildPage() {
                         </div>
                       ) : (
                         <div className="mt-4 flex gap-2 items-center">
+                          {history.length > 0 && (
+                            <button
+                              onClick={goBack}
+                              className="shrink-0 rounded-2xl border border-white/15 px-3 py-3 text-white/50 hover:text-white hover:border-white/30 transition text-xs font-semibold"
+                              title="Go back to previous question"
+                            >
+                              ← Back
+                            </button>
+                          )}
                           <VoiceRecorder onTranscript={setInput} />
                           <input
                             ref={inputRef}
@@ -637,6 +674,9 @@ export default function BuildPage() {
                     </button>
                     <button onClick={() => router.push("/jobs")} className="purple-grad text-white font-extrabold px-5 py-3 rounded-2xl">
                       Browse jobs
+                    </button>
+                    <button onClick={restartBuild} className="rounded-2xl border border-white/15 px-5 py-3 text-white/60 hover:text-white hover:border-white/30 transition font-semibold inline-flex items-center gap-2">
+                      ↺ Rebuild CV
                     </button>
                   </div>
                 </div>
