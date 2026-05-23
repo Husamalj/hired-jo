@@ -248,14 +248,19 @@ export default function BuildPage() {
     }
   }, [thinking, stepId]);
 
-  // Scroll to bottom only after first user message (not on initial load)
+  // Scroll to bottom only after user sends a NEW message, never on load
+  const msgCount = useRef(msgs.length);
   useEffect(() => {
+    const prev = msgCount.current;
+    msgCount.current = msgs.length;
+    // Only scroll if a new message was added after initial load
     if (!initialScrollDone.current) {
-      const hasUserMsg = msgs.some((m) => m.role === "user");
-      if (hasUserMsg) initialScrollDone.current = true;
-      else return;
+      initialScrollDone.current = true;
+      return; // skip scroll on first render / draft restore
     }
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (msgs.length > prev) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [msgs, thinking]);
 
   useEffect(() => {
