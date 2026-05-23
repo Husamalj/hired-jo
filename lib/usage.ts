@@ -14,6 +14,18 @@ function currentPeriod(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
+async function isAdmin(userId: string): Promise<boolean> {
+  const adminEmails = (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  if (adminEmails.length === 0) return false;
+  const supabase = getServiceClient();
+  const { data } = await supabase.auth.admin.getUserById(userId);
+  const email = data?.user?.email?.toLowerCase() ?? "";
+  return adminEmails.includes(email);
+}
+
 export async function getUserTier(userId: string): Promise<Tier> {
   const supabase = getServiceClient();
   const { data } = await supabase
@@ -50,6 +62,7 @@ export async function checkLimit(
   userId: string,
   key: UsageKey
 ): Promise<{ allowed: boolean; remaining: number; limit: number }> {
+  if (await isAdmin(userId)) return { allowed: true, remaining: 999, limit: 999 };
   const [tier, usage] = await Promise.all([getUserTier(userId), getUsage(userId)]);
 
   if (tier === "free") {
