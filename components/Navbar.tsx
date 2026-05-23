@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import type { User } from "@supabase/supabase-js";
-import { LogOut, User as UserIcon, FileText, Bookmark, BarChart2, ChevronDown, Menu, X } from "lucide-react";
+import { LogOut, User as UserIcon, FileText, Bookmark, BarChart2, ChevronDown, Menu, X, CircleUser } from "lucide-react";
 
 const primaryLinks = [
   { href: "/build", label: "Build CV" },
@@ -99,6 +99,9 @@ function UserMenu({ user, signOut }: { user: User; signOut: () => void }) {
             <p className="text-xs text-white/40 truncate">{email}</p>
           </div>
           <div className="p-1">
+            <a href="/profile" onClick={() => setOpen(false)} className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-white/60 hover:bg-white/5 hover:text-white transition">
+              <CircleUser size={14} /> My Profile
+            </a>
             <a href="/build" onClick={() => setOpen(false)} className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-white/60 hover:bg-white/5 hover:text-white transition">
               <FileText size={14} /> My CV
             </a>
