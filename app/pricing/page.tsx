@@ -221,7 +221,7 @@ export default function PricingPage() {
         </div>
 
         <p className="text-center text-white/30 text-xs mt-14">
-          All prices in Jordanian Dinar (JOD). Payments processed securely via Paddle.
+          All prices in Jordanian Dinar (JOD). Payments processed securely via Lemon Squeezy.
         </p>
       </main>
     </div>
