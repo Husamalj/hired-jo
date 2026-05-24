@@ -336,7 +336,9 @@ export default function BuildPage() {
 
     // Load existing CV
     const existing = localStorage.getItem("hired_cv");
-    if (!existing) {
+    if (existing) {
+      try { setCv(JSON.parse(existing)); } catch {}
+    } else {
       loadCvFromAccount().then((accountCv) => {
         if (accountCv) { localStorage.setItem("hired_cv", JSON.stringify(accountCv)); setCv(accountCv); }
       }).catch(console.error);
