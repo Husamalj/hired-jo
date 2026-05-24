@@ -208,6 +208,7 @@ export default function TalentPage() {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [uploadingCv, setUploadingCv] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [existingProfile, setExistingProfile] = useState<TalentProfile | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -450,7 +451,7 @@ export default function TalentPage() {
               Browse Talent
             </button>
             <button onClick={() => setTab("my-profile")} className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${tab === "my-profile" ? "gold-grad text-black" : "text-white/50 hover:text-white"}`}>
-              {existingProfile ? "Edit My Profile" : user ? "Create Profile" : "List Yourself"}
+              {existingProfile ? "My Profile" : user ? "Create Profile" : "List Yourself"}
             </button>
           </div>
 
@@ -504,8 +505,91 @@ export default function TalentPage() {
                   <p className="text-white/50">Sign in to create your talent profile.</p>
                   <a href="/auth/login" className="inline-block rounded-xl gold-grad px-4 py-2 text-sm font-bold text-black">Sign in</a>
                 </div>
+              ) : existingProfile && !editingProfile ? (
+                /* ── PROFILE VIEW ── */
+                <div className="space-y-4">
+                  {/* Header card */}
+                  <div className="rounded-2xl overflow-hidden border border-white/8 bg-white/[0.03]">
+                    <div className="h-24 bg-gradient-to-r from-[#3F2B96] via-[#5B3FD8] to-[#0369A1]" />
+                    <div className="px-5 pb-5">
+                      <div className="flex items-end justify-between -mt-10 mb-3">
+                        <Avatar name={existingProfile.alias} avatarUrl={avatarUrl ?? undefined} size={72} />
+                        <button type="button" onClick={() => setEditingProfile(true)}
+                          className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10 transition">
+                          Edit Profile
+                        </button>
+                      </div>
+                      <h2 className="text-xl font-extrabold text-white">{existingProfile.alias}</h2>
+                      <p className="text-white/50 text-sm mt-0.5">{existingProfile.field}{existingProfile.graduation_year ? ` · Class of ${existingProfile.graduation_year}` : ""}</p>
+                      <div className="flex flex-wrap gap-3 mt-2 text-xs text-white/35">
+                        {(existingProfile.city || existingProfile.country) && (
+                          <span className="flex items-center gap-1"><MapPin size={11} />{[existingProfile.city, existingProfile.country].filter(Boolean).join(", ")}</span>
+                        )}
+                        {existingProfile.years_experience > 0 && (
+                          <span className="flex items-center gap-1"><GraduationCap size={11} />{existingProfile.years_experience} yr{existingProfile.years_experience !== 1 ? "s" : ""} exp</span>
+                        )}
+                      </div>
+                      {(existingProfile.linkedin_url || existingProfile.github_url || existingProfile.portfolio_url) && (
+                        <div className="flex flex-wrap gap-4 mt-3 text-xs">
+                          {existingProfile.linkedin_url && <a href={existingProfile.linkedin_url.startsWith("http") ? existingProfile.linkedin_url : `https://${existingProfile.linkedin_url}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline flex items-center gap-1"><Link2 size={11} />LinkedIn</a>}
+                          {existingProfile.github_url && <a href={existingProfile.github_url.startsWith("http") ? existingProfile.github_url : `https://${existingProfile.github_url}`} target="_blank" rel="noopener noreferrer" className="text-white/50 hover:text-white hover:underline flex items-center gap-1"><GitFork size={11} />GitHub</a>}
+                          {existingProfile.portfolio_url && <a href={existingProfile.portfolio_url.startsWith("http") ? existingProfile.portfolio_url : `https://${existingProfile.portfolio_url}`} target="_blank" rel="noopener noreferrer" className="text-yellow-200/70 hover:text-yellow-200 hover:underline flex items-center gap-1"><Globe size={11} />Portfolio</a>}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {existingProfile.bio && (
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-5">
+                      <h3 className="text-xs font-bold text-white/30 uppercase tracking-wider mb-2">About</h3>
+                      <p className="text-sm text-white/70 leading-relaxed">{existingProfile.bio}</p>
+                    </div>
+                  )}
+                  {existingProfile.skills?.length > 0 && (
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-5">
+                      <h3 className="text-xs font-bold text-white/30 uppercase tracking-wider mb-3">Skills</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {existingProfile.skills.map(s => (
+                          <span key={s} className="text-sm px-3 py-1.5 rounded-full bg-black/30 border border-white/10 text-white/65">{s}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {posts.length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="text-xs font-bold text-white/30 uppercase tracking-wider px-1">Posts & Updates</h3>
+                      {posts.map(post => (
+                        <div key={post.id} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                          <div className="flex items-center gap-3 mb-2">
+                            <Avatar name={existingProfile.alias} avatarUrl={avatarUrl ?? undefined} size={32} />
+                            <div>
+                              <p className="text-sm font-semibold text-white">{existingProfile.alias}</p>
+                              <p className="text-xs text-white/30">{new Date(post.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
+                            </div>
+                          </div>
+                          {post.text && <p className="text-sm text-white/70 leading-relaxed whitespace-pre-wrap mb-2">{post.text}</p>}
+                          {post.media_url && (
+                            post.media_type === "video"
+                              ? <video src={post.media_url} controls className="w-full rounded-xl max-h-64 bg-black" />
+                              : <img src={post.media_url} alt="" className="w-full rounded-xl object-contain bg-black/20" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <Link href={`/talent/${user.id}`}
+                    className="block text-center text-xs text-yellow-200/60 hover:text-yellow-200 transition py-2">
+                    View public profile →
+                  </Link>
+                </div>
               ) : (
-                <form onSubmit={saveProfile} className="space-y-6">
+                <form onSubmit={async (e) => { await saveProfile(e); setEditingProfile(false); }} className="space-y-6">
+                  {existingProfile && (
+                    <button type="button" onClick={() => setEditingProfile(false)}
+                      className="inline-flex items-center gap-1.5 text-sm text-white/40 hover:text-white transition mb-2">
+                      ← Back to profile
+                    </button>
+                  )}
+
 
                   {/* Avatar */}
                   <div className="feature-card rounded-2xl border border-white/8 bg-white/[0.04] p-5 flex items-center gap-5">
@@ -696,15 +780,8 @@ export default function TalentPage() {
 
                   <button type="submit" disabled={saving}
                     className="w-full rounded-xl gold-grad py-3 text-sm font-extrabold text-black disabled:opacity-50">
-                    {saving ? "Saving…" : existingProfile ? "Update Profile" : "Save & Go Live"}
+                    {saving ? "Saving…" : existingProfile ? "Save Changes" : "Save & Go Live"}
                   </button>
-
-                  {existingProfile && (
-                    <Link href={`/talent/${user.id}`}
-                      className="block text-center text-xs text-yellow-200/60 hover:text-yellow-200 transition">
-                      View your public profile →
-                    </Link>
-                  )}
                 </form>
               )}
             </div>
