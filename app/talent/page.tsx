@@ -272,6 +272,11 @@ export default function TalentPage() {
   async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !user) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Profile photo must be smaller than 5 MB.");
+      if (avatarRef.current) avatarRef.current.value = "";
+      return;
+    }
     setUploadingAvatar(true);
     const ext = file.name.split(".").pop();
     const path = `avatars/${user.id}.${ext}`;
@@ -286,6 +291,12 @@ export default function TalentPage() {
   async function handlePostMediaUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !user) return;
+    const MAX_MB = 50;
+    if (file.size > MAX_MB * 1024 * 1024) {
+      alert(`File too large. Please upload a file smaller than ${MAX_MB} MB.`);
+      if (postMediaRef.current) postMediaRef.current.value = "";
+      return;
+    }
     setUploadingPostMedia(true);
     const ext = file.name.split(".").pop();
     const isVideo = file.type.startsWith("video/");
@@ -649,9 +660,11 @@ export default function TalentPage() {
                       <div className="flex items-center gap-2">
                         <input ref={postMediaRef} type="file" accept="image/*,video/*" className="hidden" onChange={handlePostMediaUpload} />
                         <button type="button" onClick={() => postMediaRef.current?.click()} disabled={uploadingPostMedia}
-                          className="inline-flex items-center gap-1.5 text-xs text-white/40 hover:text-white border border-white/10 rounded-xl px-3 py-2 transition disabled:opacity-40">
+                          className="inline-flex items-center gap-1.5 text-xs text-white/40 hover:text-white border border-white/10 rounded-xl px-3 py-2 transition disabled:opacity-40"
+                          title="Max file size: 50 MB">
                           <Image size={13} /> {uploadingPostMedia ? "Uploading…" : "Add photo/video"}
                         </button>
+                        <span className="text-xs text-white/20">max 50 MB</span>
                         <button type="button" onClick={addPost} disabled={!newPost.trim() && !postMedia}
                           className="inline-flex items-center gap-1.5 rounded-xl gold-grad px-4 py-2 text-sm font-bold text-black disabled:opacity-40">
                           <Send size={13} /> Post
