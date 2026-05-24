@@ -213,19 +213,17 @@ async function scrapeBayt(country: "Jordan" | "UAE" | "Saudi Arabia"): Promise<J
 }
 
 // ---------- LinkedIn public guest job search ----------
-// Uses LinkedIn's no-auth public endpoint that powers their public job pages.
-// GeoIds discovered via their typeahead API and verified to return correct country results.
 const LINKEDIN_GEO: Record<"Jordan" | "UAE" | "Saudi Arabia", string> = {
   "Jordan": "103710677",
   "UAE": "104305776",
   "Saudi Arabia": "100459316",
 };
 
-async function scrapeLinkedIn(country: "Jordan" | "UAE" | "Saudi Arabia"): Promise<Job[]> {
+async function scrapeLinkedIn(country: "Jordan" | "UAE" | "Saudi Arabia", keywords = ""): Promise<Job[]> {
   const geoId = LINKEDIN_GEO[country];
   try {
     const res = await fetch(
-      `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=&geoId=${geoId}&start=0`,
+      `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=${encodeURIComponent(keywords)}&geoId=${geoId}&start=0`,
       { headers: { "User-Agent": UA, Accept: "text/html" } }
     );
     if (!res.ok) return [];
@@ -374,9 +372,37 @@ async function scrapeWuzzuf(): Promise<Job[]> {
 }
 
 const SCRAPERS: Record<string, () => Promise<Job[]>> = {
+  // Generic (returns LinkedIn's algorithm — tends to be tech-heavy, kept for coverage)
   linkedin:     () => scrapeLinkedIn("Jordan"),
   linkedin_ae:  () => scrapeLinkedIn("UAE"),
   linkedin_sa:  () => scrapeLinkedIn("Saudi Arabia"),
+
+  // Non-tech sector keyword searches — Jordan
+  linkedin_marketing:  () => scrapeLinkedIn("Jordan", "marketing"),
+  linkedin_finance:    () => scrapeLinkedIn("Jordan", "finance accounting"),
+  linkedin_hr:         () => scrapeLinkedIn("Jordan", "human resources HR recruiter"),
+  linkedin_sales:      () => scrapeLinkedIn("Jordan", "sales business development"),
+  linkedin_design:     () => scrapeLinkedIn("Jordan", "graphic design UI UX"),
+  linkedin_healthcare: () => scrapeLinkedIn("Jordan", "healthcare nurse doctor pharmacist"),
+  linkedin_education:  () => scrapeLinkedIn("Jordan", "teacher lecturer instructor"),
+  linkedin_legal:      () => scrapeLinkedIn("Jordan", "legal lawyer compliance"),
+  linkedin_cs:         () => scrapeLinkedIn("Jordan", "customer service support"),
+  linkedin_ops:        () => scrapeLinkedIn("Jordan", "operations logistics supply chain"),
+
+  // Non-tech sector keyword searches — UAE
+  linkedin_ae_marketing: () => scrapeLinkedIn("UAE", "marketing"),
+  linkedin_ae_finance:   () => scrapeLinkedIn("UAE", "finance accounting"),
+  linkedin_ae_hr:        () => scrapeLinkedIn("UAE", "human resources HR"),
+  linkedin_ae_sales:     () => scrapeLinkedIn("UAE", "sales business development"),
+  linkedin_ae_design:    () => scrapeLinkedIn("UAE", "graphic design UI UX"),
+
+  // Non-tech sector keyword searches — Saudi Arabia
+  linkedin_sa_marketing: () => scrapeLinkedIn("Saudi Arabia", "marketing"),
+  linkedin_sa_finance:   () => scrapeLinkedIn("Saudi Arabia", "finance accounting"),
+  linkedin_sa_hr:        () => scrapeLinkedIn("Saudi Arabia", "human resources HR"),
+  linkedin_sa_sales:     () => scrapeLinkedIn("Saudi Arabia", "sales"),
+
+  // Other sources
   akhtaboot:    () => scrapeAkhtaboot("Jordan"),
   akhtaboot_ae: () => scrapeAkhtaboot("UAE"),
   akhtaboot_sa: () => scrapeAkhtaboot("Saudi Arabia"),
