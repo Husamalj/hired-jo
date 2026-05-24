@@ -3,40 +3,60 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
+import { UpgradeModal } from "@/components/UpgradeModal";
 import type { CV, Job } from "@/lib/types";
+import type { UsageKey } from "@/lib/tiers";
 import jobsData from "@/data/jobs.json";
 
-const jobs = jobsData as Job[];
+const staticJobs = jobsData as Job[];
 
 // Lazy initializer — reads localStorage once on mount, safe in "use client"
-function loadCv(): CV | null {
-  if (typeof window === "undefined") return null;
+function loadInitialState(): { cv: CV | null; prefillJob: Job | null } {
+  if (typeof window === "undefined") return { cv: null, prefillJob: null };
+  let cv: CV | null = null;
+  let prefillJob: Job | null = null;
   try {
     const raw = localStorage.getItem("hired_cv");
-    return raw ? (JSON.parse(raw) as CV) : null;
-  } catch {
-    return null;
-  }
+    if (raw) cv = JSON.parse(raw) as CV;
+  } catch {}
+  try {
+    const raw = localStorage.getItem("hired_prefill_job");
+    if (raw) {
+      prefillJob = JSON.parse(raw) as Job;
+      localStorage.removeItem("hired_prefill_job");
+    }
+  } catch {}
+  return { cv, prefillJob };
 }
 
 export default function CoverPage() {
-  const [cv] = useState<CV | null>(loadCv);
-  const [selectedJobId, setSelectedJobId] = useState<string>(jobs[0]?.id ?? "");
+  const [{ cv, prefillJob }] = useState(loadInitialState);
+  const [selectedJobId, setSelectedJobId] = useState<string>(staticJobs[0]?.id ?? "");
+  // If pre-filled from job board, use that job; otherwise fall back to dropdown selection
+  const [liveJob, setLiveJob] = useState<Job | null>(prefillJob);
   const [letter, setLetter] = useState("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [limitKey, setLimitKey] = useState<UsageKey | null>(null);
+
+  const activeJob: Job | undefined = liveJob ?? staticJobs.find((j) => j.id === selectedJobId);
 
   async function handleGenerate() {
-    if (!cv || !selectedJobId) return;
+    if (!cv || !activeJob) return;
     setLoading(true);
     setLetter("");
     setCopied(false);
     try {
+      const body = liveJob
+        ? { cv, job: liveJob }
+        : { cv, jobId: selectedJobId };
       const res = await fetch("/api/cover", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cv, jobId: selectedJobId }),
+        body: JSON.stringify(body),
       });
+      if (res.status === 401) { setLetter("Sign in to generate cover letters."); return; }
+      if (res.status === 402) { setLimitKey("cover_letters"); return; }
       const data = await res.json();
       setLetter(data.letter ?? data.error ?? "Something went wrong.");
     } catch {
@@ -46,13 +66,21 @@ export default function CoverPage() {
     }
   }
 
+  async function handleCheckout(variantId: string) {
+    const res = await fetch("/api/lemonsqueezy/checkout", {
+      method: "POST",
+      body: JSON.stringify({ variantId }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const data = await res.json();
+    if (data.checkoutUrl) window.location.href = data.checkoutUrl;
+  }
+
   function handleCopy() {
     navigator.clipboard.writeText(letter);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
-
-  const selectedJob = jobs.find((j) => j.id === selectedJobId);
 
   return (
     <>
@@ -93,27 +121,46 @@ export default function CoverPage() {
               </div>
 
               <div className="glass rounded-2xl p-6 space-y-4">
-                <label className="block text-sm text-white/60 font-medium">Select a job</label>
-                <select
-                  value={selectedJobId}
-                  onChange={(e) => setSelectedJobId(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-white/10 outline-none text-white"
-                >
-                  {jobs.map((job) => (
-                    <option key={job.id} value={job.id} className="bg-[#0A0716]">
-                      {job.title} — {job.company} ({job.city})
-                    </option>
-                  ))}
-                </select>
-
-                {selectedJob && (
-                  <div className="text-xs text-white/40 flex flex-wrap gap-2">
-                    <span className="px-2 py-1 rounded-md bg-white/5">{selectedJob.sector}</span>
-                    <span className="px-2 py-1 rounded-md bg-white/5">{selectedJob.seniority}</span>
-                    {selectedJob.salaryMin && (
-                      <span className="px-2 py-1 rounded-md bg-white/5">
-                        {selectedJob.salaryMin}–{selectedJob.salaryMax} JOD
-                      </span>
+                {liveJob ? (
+                  <div className="space-y-2">
+                    <label className="block text-sm text-white/60 font-medium">Writing for</label>
+                    <div className="flex items-center justify-between rounded-xl border border-yellow-300/20 bg-yellow-300/8 px-4 py-3">
+                      <div>
+                        <p className="font-bold text-sm text-white">{liveJob.title}</p>
+                        <p className="text-xs text-white/50">{liveJob.company} · {liveJob.city}</p>
+                      </div>
+                      <button
+                        onClick={() => setLiveJob(null)}
+                        className="text-xs text-white/40 hover:text-white transition"
+                      >
+                        Change
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <label className="block text-sm text-white/60 font-medium">Select a job</label>
+                    <select
+                      value={selectedJobId}
+                      onChange={(e) => setSelectedJobId(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl bg-white/10 outline-none text-white"
+                    >
+                      {staticJobs.map((job) => (
+                        <option key={job.id} value={job.id} className="bg-[#0A0716]">
+                          {job.title} — {job.company} ({job.city})
+                        </option>
+                      ))}
+                    </select>
+                    {activeJob && (
+                      <div className="text-xs text-white/40 flex flex-wrap gap-2">
+                        <span className="px-2 py-1 rounded-md bg-white/5">{activeJob.sector}</span>
+                        <span className="px-2 py-1 rounded-md bg-white/5">{activeJob.seniority}</span>
+                        {activeJob.salaryMin && (
+                          <span className="px-2 py-1 rounded-md bg-white/5">
+                            {activeJob.salaryMin}–{activeJob.salaryMax} JOD
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
@@ -139,9 +186,9 @@ export default function CoverPage() {
                     >
                       {copied ? "Copied! ✓" : "Copy to Clipboard"}
                     </button>
-                    {selectedJob && (
+                    {activeJob && (
                       <a
-                        href={`mailto:?subject=Application for ${encodeURIComponent(selectedJob.title)} at ${encodeURIComponent(selectedJob.company)}&body=${encodeURIComponent(letter)}`}
+                        href={`mailto:?subject=Application for ${encodeURIComponent(activeJob.title)} at ${encodeURIComponent(activeJob.company)}&body=${encodeURIComponent(letter)}`}
                         className="gold-grad text-black font-bold px-5 py-3 rounded-xl text-sm shrink-0"
                       >
                         Send via Email ✉️
@@ -166,6 +213,14 @@ export default function CoverPage() {
           )}
         </div>
       </main>
+
+      {limitKey && (
+        <UpgradeModal
+          usageKey={limitKey}
+          onClose={() => setLimitKey(null)}
+          onCheckout={handleCheckout}
+        />
+      )}
     </>
   );
 }

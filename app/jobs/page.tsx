@@ -1,7 +1,7 @@
 "use client";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { BriefcaseBusiness, Building2, GraduationCap, MapPin, Search, SlidersHorizontal, Sparkles, Target, Wifi, ArrowDownUp } from "lucide-react";
+import { BriefcaseBusiness, Building2, Crown, GraduationCap, MapPin, Search, SlidersHorizontal, Sparkles, Target, Wifi, ArrowDownUp } from "lucide-react";
 import { CvUploadBanner } from "@/components/CvUploadBanner";
 import { JobCard } from "@/components/JobCard";
 import { Navbar } from "@/components/Navbar";
@@ -50,6 +50,7 @@ function JobsPageInner() {
   const [sortNewest, setSortNewest] = useState(true);
   const [search, setSearch]         = useState("");
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
+  const [userTier, setUserTier] = useState<"free" | "pro" | "hired">("free");
   const searchParams = useSearchParams();
   const [showSavedOnly, setShowSavedOnly] = useState(false);
 
@@ -84,6 +85,14 @@ function JobsPageInner() {
 
   useEffect(() => {
     loadSavedJobIds().then((ids) => setSavedJobIds(new Set(ids))).catch(() => {});
+  }, []);
+
+  // Fetch user tier for Pro/Hired features
+  useEffect(() => {
+    fetch("/api/subscription")
+      .then((r) => r.json())
+      .then((d) => { if (d.tier) setUserTier(d.tier); })
+      .catch(() => {});
   }, []);
 
   async function handleToggleSave(jobId: string, save: boolean) {
@@ -180,6 +189,31 @@ function JobsPageInner() {
   const internCount = useMemo(() => sourcePool.filter((j) => j.seniority === "Intern").length, [sourcePool]);
   const remoteCount = useMemo(() => sourcePool.filter((j) => j.remote).length, [sourcePool]);
   const liveSourceCount = useMemo(() => new Set(allJobs.map((j) => j.source)).size, [allJobs]);
+
+  // "Jobs For You" — Pro/Hired only: score each job against CV
+  const jobsForYou = useMemo(() => {
+    if (userTier === "free" || !cv || allJobs.length === 0) return [];
+    const cvSkills = new Set([
+      ...(cv.skills ?? []),
+      ...(cv.skillCategories?.flatMap((c: any) => c.items) ?? []),
+    ].map((s: string) => s.toLowerCase()));
+    const recentTitle = (cv.experience?.[0]?.title ?? cv.summary ?? "").toLowerCase();
+    const titleWords = recentTitle.split(/\W+/).filter((w: string) => w.length > 3);
+
+    return allJobs
+      .map((j) => {
+        let score = 0;
+        const jobSkills = j.skills.map((s) => s.toLowerCase());
+        for (const s of jobSkills) { if (cvSkills.has(s)) score += 2; }
+        const jobTitle = j.title.toLowerCase();
+        for (const w of titleWords) { if (jobTitle.includes(w)) score += 3; }
+        return { job: j, score };
+      })
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6)
+      .map((x) => x.job);
+  }, [allJobs, cv, userTier]);
 
   const filterSummary = [
     type === "All" ? "jobs + internships" : type.toLowerCase(),
@@ -402,6 +436,38 @@ function JobsPageInner() {
           </section>
 
           {!cv && <CvUploadBanner onCvLoaded={(newCv) => setCv(newCv)} />}
+
+          {/* Jobs For You — Pro/Hired exclusive section */}
+          {userTier !== "free" && cv && jobsForYou.length > 0 && (
+            <section className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-400/25 flex items-center justify-center">
+                  <Crown size={16} className="text-purple-300" />
+                </div>
+                <div>
+                  <h2 className="font-display text-xl font-bold text-white">Jobs for you</h2>
+                  <p className="text-xs text-white/40">Matched to your CV skills and experience — {userTier === "hired" ? "Hired" : "Pro"} perk</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {jobsForYou.map((j) => <JobCard key={j.id} job={j} cv={cv} saved={savedJobIds.has(j.id)} onToggleSave={handleToggleSave} />)}
+              </div>
+            </section>
+          )}
+
+          {/* Upsell for free users with a CV */}
+          {userTier === "free" && cv && (
+            <div className="rounded-2xl border border-purple-400/20 bg-purple-400/[0.06] p-5 flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center shrink-0">
+                <Crown size={18} className="text-purple-300" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-white text-sm">Jobs picked for you — Pro feature</p>
+                <p className="text-xs text-white/50 mt-0.5">Upgrade to Pro to see the top 6 roles matched to your CV automatically, no searching required.</p>
+              </div>
+              <a href="/pricing" className="shrink-0 rounded-xl border border-purple-400/30 bg-purple-400/10 px-4 py-2 text-xs font-bold text-purple-300 hover:text-white transition">Upgrade</a>
+            </div>
+          )}
 
           {diverseLoading && (
             <div className="rounded-2xl bg-purple-500/10 border border-purple-500/20 px-4 py-3 text-sm text-purple-200 animate-pulse flex items-center gap-3">

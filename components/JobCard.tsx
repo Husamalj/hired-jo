@@ -1,7 +1,9 @@
 "use client";
 import { useState } from "react";
-import { Bookmark, Building2, CheckCircle2, ExternalLink, MapPin, Sparkles, Target, X, Clock } from "lucide-react";
+import { Bookmark, BookOpen, Building2, CheckCircle2, ExternalLink, FileText, Lock, MapPin, Sparkles, Target, X, Clock } from "lucide-react";
 import type { Job, MatchResult } from "@/lib/types";
+
+type MatchResponse = MatchResult & { tier: "free" | "pro" | "hired" };
 
 function linkedInSearchUrl(job: Job): string {
   const keywords = encodeURIComponent(job.title);
@@ -79,7 +81,7 @@ interface JobCardProps {
 }
 
 export function JobCard({ job, cv, saved, onToggleSave }: JobCardProps) {
-  const [match, setMatch] = useState<MatchResult | null>(null);
+  const [match, setMatch] = useState<MatchResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [revealed, setRevealed] = useState(false);
 
@@ -101,7 +103,8 @@ export function JobCard({ job, cv, saved, onToggleSave }: JobCardProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cv, job }),
       });
-      setMatch(await res.json());
+      const data = await res.json();
+      setMatch(data as MatchResponse);
     } finally {
       setLoading(false);
     }
@@ -209,13 +212,57 @@ export function JobCard({ job, cv, saved, onToggleSave }: JobCardProps) {
         <p className="relative text-xs text-white/68 leading-relaxed">{job.description}</p>
 
         {match ? (
-          <div className="relative rounded-2xl border border-yellow-300/20 bg-yellow-300/10 p-4 space-y-2">
+          <div className="relative rounded-2xl border border-yellow-300/20 bg-yellow-300/10 p-4 space-y-2.5">
             <div className="flex items-center gap-2">
               <span className="font-display text-3xl font-extrabold gold-text-grad">{match.score}%</span>
               <span className="text-xs text-white/45">match</span>
             </div>
-            {match.matchedSkills.length > 0 && <p className="text-green-200 text-xs"><CheckCircle2 size={13} className="inline mr-1" />{match.matchedSkills.slice(0, 3).join(", ")}</p>}
-            {match.missingSkills.length > 0 && <p className="text-orange-200 text-xs">Missing: {match.missingSkills.slice(0, 3).join(", ")}</p>}
+            {match.matchedSkills.length > 0 && (
+              <p className="text-green-200 text-xs">
+                <CheckCircle2 size={13} className="inline mr-1" />
+                {match.matchedSkills.slice(0, 4).join(", ")}
+              </p>
+            )}
+            {match.missingSkills.length > 0 && (
+              <p className="text-orange-200 text-xs">Missing: {match.missingSkills.slice(0, 3).join(", ")}</p>
+            )}
+
+            {/* Pro/Hired: rewritten summary */}
+            {match.tier !== "free" && match.rewrittenSummary && (
+              <div className="border-t border-white/10 pt-2.5">
+                <p className="text-[10px] uppercase tracking-widest text-white/35 mb-1">Tailored summary</p>
+                <p className="text-xs text-white/75 leading-relaxed italic">"{match.rewrittenSummary}"</p>
+              </div>
+            )}
+
+            {/* Pro/Hired: learning plan */}
+            {match.tier !== "free" && match.learningPlan && match.learningPlan.length > 0 && (
+              <div className="border-t border-white/10 pt-2.5 space-y-1.5">
+                <p className="text-[10px] uppercase tracking-widest text-white/35">Study plan</p>
+                {match.learningPlan.slice(0, 3).map((step) => (
+                  <div key={step.skill} className="flex items-start gap-2 text-xs text-white/60">
+                    <BookOpen size={11} className="text-purple-300 shrink-0 mt-0.5" />
+                    <span>
+                      <span className="text-white/80 font-medium">{step.skill}</span>
+                      {" — "}{step.weeks}w
+                      {step.resources[0] && (
+                        <> · <a href={step.resources[0].url} target="_blank" rel="noopener noreferrer" className="text-purple-300 hover:underline" onClick={(e) => e.stopPropagation()}>{step.resources[0].provider}</a></>
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Free tier: locked upgrade prompt */}
+            {match.tier === "free" && (
+              <div className="border-t border-white/10 pt-2.5 rounded-xl bg-purple-500/8 border border-purple-400/20 p-2.5 flex items-start gap-2">
+                <Lock size={12} className="text-purple-300 shrink-0 mt-0.5" />
+                <p className="text-xs text-purple-200 leading-snug">
+                  <span className="font-bold">Pro:</span> AI-tailored summary for this role + 3-step learning plan
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           <div className="relative flex flex-wrap gap-1.5 overflow-hidden max-h-[74px]">
@@ -225,7 +272,11 @@ export function JobCard({ job, cv, saved, onToggleSave }: JobCardProps) {
           </div>
         )}
 
-        <div className={`relative grid gap-2 mt-auto ${onToggleSave ? "grid-cols-[1fr_auto_auto_auto]" : "grid-cols-[1fr_auto_auto]"}`}>
+        <div className={`relative grid gap-2 mt-auto ${
+          match && match.tier !== "free"
+            ? onToggleSave ? "grid-cols-[1fr_auto_auto_auto_auto]" : "grid-cols-[1fr_auto_auto_auto]"
+            : onToggleSave ? "grid-cols-[1fr_auto_auto_auto]" : "grid-cols-[1fr_auto_auto]"
+        }`}>
           <button
             onClick={checkFit}
             disabled={loading}
@@ -233,6 +284,22 @@ export function JobCard({ job, cv, saved, onToggleSave }: JobCardProps) {
           >
             {loading ? "Checking..." : match ? `${match.score}% match` : "Check fit"}
           </button>
+
+          {/* Cover letter pre-fill — Pro/Hired only */}
+          {match && match.tier !== "free" && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                localStorage.setItem("hired_prefill_job", JSON.stringify(job));
+                window.location.href = "/cover";
+              }}
+              title="Write cover letter for this role"
+              className="rounded-2xl border border-purple-400/30 bg-purple-400/10 px-3 py-3 text-purple-300 hover:text-white inline-flex items-center gap-1.5 transition"
+            >
+              <FileText size={13} />
+            </button>
+          )}
+
           <a
             href={applyUrl(job)}
             target="_blank"

@@ -120,6 +120,37 @@ Give exactly 5 specific, actionable improvement tips as a numbered list. Each ti
   };
 }
 
+// Lite match (free tier) — score + matched/missing only, cheaper prompt
+export async function matchCvToJobLite(cv: CV, job: Job): Promise<Pick<MatchResult, "jobId" | "score" | "matchedSkills" | "missingSkills">> {
+  const text = await ask([
+    {
+      role: "system",
+      content: `You are a technical recruiter. Compare a CV to a job listing and return ONLY valid JSON with no markdown fences.
+
+Return this exact shape:
+{
+  "jobId": "",
+  "score": 0,
+  "matchedSkills": [],
+  "missingSkills": []
+}
+
+Fill in:
+- jobId: the job's id field
+- score: integer 0-100 based on skills overlap, seniority fit, sector relevance
+- matchedSkills: skills from CV that match job requirements (max 6)
+- missingSkills: important job skills the CV lacks (max 5)`,
+    },
+    {
+      role: "user",
+      content: `CV: ${JSON.stringify(cv)}\nJOB: ${JSON.stringify(job)}`,
+    },
+  ]);
+
+  const raw = text.replace(/```json|```/g, "").trim();
+  return JSON.parse(raw);
+}
+
 // Match CV to Job
 export async function matchCvToJob(cv: CV, job: Job): Promise<MatchResult> {
   const text = await ask([
