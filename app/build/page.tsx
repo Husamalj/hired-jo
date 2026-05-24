@@ -316,7 +316,15 @@ export default function BuildPage() {
   };
 
   useEffect(() => {
-    if (!thinking) setTimeout(() => inputRef.current?.focus(), 80);
+    if (!thinking) {
+      setTimeout(() => {
+        inputRef.current?.focus();
+        // On mobile, scroll the input into view after keyboard opens
+        setTimeout(() => {
+          inputRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }, 350);
+      }, 80);
+    }
   }, [thinking, stepId]);
 
   const msgCount = useRef(msgs.length);
@@ -739,10 +747,10 @@ export default function BuildPage() {
                               value={input}
                               onChange={(e) => setInput(e.target.value)}
                               onKeyDown={(e) => e.key === "Enter" && send()}
+                              onFocus={() => setTimeout(() => inputRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 350)}
                               className="min-w-0 w-full rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-white outline-none placeholder:text-white/25 focus:border-yellow-300/45"
                               placeholder="Type your answer..."
                               disabled={thinking}
-                              autoFocus
                             />
                             <button onClick={() => send()} disabled={thinking || !input.trim()} className="rounded-2xl gold-grad px-5 py-3 text-black font-extrabold disabled:opacity-40 shrink-0 inline-flex items-center gap-2">
                               Send <Send size={15} />
