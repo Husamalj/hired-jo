@@ -90,7 +90,7 @@ export function UpgradeModal({ usageKey, onClose, onCheckout }: Props) {
               <div className="text-left">
                 <p className="text-sm font-bold text-white">Upgrade to Hired</p>
                 <p className="text-xs text-white/50">
-                  {HIRED_FEATURE[usageKey]} + badge + courses
+                  {HIRED_FEATURE[usageKey]} + badge
                 </p>
               </div>
             </div>
