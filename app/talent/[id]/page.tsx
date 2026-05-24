@@ -244,7 +244,7 @@ export default function TalentProfilePage() {
                     post.media_type === "video" ? (
                       <video src={post.media_url} controls className="w-full rounded-xl max-h-80 object-cover bg-black" />
                     ) : (
-                      <img src={post.media_url} alt="" className="w-full rounded-xl max-h-80 object-cover" />
+                      <img src={post.media_url} alt="" className="w-full rounded-xl object-contain bg-black/20" />
                     )
                   )}
                 </div>
