@@ -392,11 +392,23 @@ export default function BuildPage() {
       }
       setThinking(true);
       try {
+        // Save draft before redirecting so answers are preserved
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({ msgs: newMsgs, stepId: "done", data: newData }));
+
         const res = await fetch("/api/build-cv", {
           method: "POST",
           body: JSON.stringify({ structured: newData }),
           headers: { "Content-Type": "application/json" },
         });
+        if (res.status === 401) {
+          setThinking(false);
+          setMsgs((prev) => [...prev, {
+            role: "ai",
+            text: "You need to sign in to build your CV. Your answers are saved — you won't lose anything.",
+          }]);
+          setTimeout(() => router.push("/auth/login?next=/build"), 1800);
+          return;
+        }
         if (res.status === 402) { setLimitKey("cv_builds"); setThinking(false); return; }
         const result = await res.json();
         setThinking(false);
@@ -482,7 +494,7 @@ export default function BuildPage() {
       {/* Sign-in banner */}
       {showSignInBanner && !isLoggedIn && !cv && (
         <div className="sticky top-0 z-50 bg-[#F5B82E] text-black px-5 py-2.5 flex items-center justify-between gap-4 text-sm font-semibold">
-          <span>Sign in to save your CV and never lose your progress.</span>
+          <span>Sign in required to build your CV — your answers are saved so you won't lose progress.</span>
           <div className="flex items-center gap-3 shrink-0">
             <Link href="/auth/login?next=/build" className="inline-flex items-center gap-1.5 rounded-lg bg-black/15 px-3 py-1.5 text-black hover:bg-black/25 transition text-xs font-bold">
               <LogIn size={13} /> Sign in

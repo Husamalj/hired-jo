@@ -176,17 +176,20 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    // Check auth + limits
+    // Require auth — no anonymous builds
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { allowed } = await checkLimit(user.id, "cv_builds");
-      if (!allowed) {
-        return NextResponse.json(
-          { error: "limit_reached", key: "cv_builds", remaining: 0 },
-          { status: 402 }
-        );
-      }
+    if (!user) {
+      return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
+    }
+
+    // Check usage limit
+    const { allowed } = await checkLimit(user.id, "cv_builds");
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "limit_reached", key: "cv_builds", remaining: 0 },
+        { status: 402 }
+      );
     }
 
     const prompt = body.structured ? buildPrompt(body.structured) : buildLegacyPrompt(body.answers ?? []);
