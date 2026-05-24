@@ -378,7 +378,21 @@ export function CvPreview({ cv }: { cv: CV }) {
         });
       }
 
-      const doc = new Document({ sections: [{ children }] });
+      const doc = new Document({
+        sections: [{
+          properties: {
+            page: {
+              margin: {
+                top: convertInchesToTwip(0.5),
+                bottom: convertInchesToTwip(0.5),
+                left: convertInchesToTwip(0.5),
+                right: convertInchesToTwip(0.5),
+              },
+            },
+          },
+          children,
+        }],
+      });
       Packer.toBlob(doc).then(blob => {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
