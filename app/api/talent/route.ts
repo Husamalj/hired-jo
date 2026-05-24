@@ -16,17 +16,26 @@ export async function GET(req: NextRequest) {
   const year = searchParams.get("year");
   const experience = searchParams.get("experience");
   const skill = searchParams.get("skill");
+  const userId = searchParams.get("userId");
 
   const sb = getSupabase();
+
+  // Fetch a single user's own profile
+  if (userId) {
+    const { data, error } = await sb.from("talent_profiles").select("*").eq("user_id", userId).maybeSingle();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(data ?? null);
+  }
+
   let query = sb.from("talent_profiles").select("*").eq("is_visible", true);
 
-  if (field && field !== "All") query = query.eq("field", field);
-  if (country && country !== "All") query = query.eq("country", country);
+  if (field && field !== "All") query = query.ilike("field", `%${field}%`);
+  if (country && country !== "All") query = query.ilike("country", `%${country}%`);
   if (year && year !== "All") query = query.eq("graduation_year", parseInt(year));
   if (experience && experience !== "All") query = query.eq("years_experience", parseInt(experience));
   if (skill) query = query.contains("skills", [skill]);
 
-  const { data, error } = await query.order("created_at", { ascending: false }).limit(50);
+  const { data, error } = await query.order("created_at", { ascending: false }).limit(100);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);
 }
