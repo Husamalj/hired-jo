@@ -5,11 +5,11 @@ import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import {
   Search, MapPin, GraduationCap, Mail, Globe,
   Upload, Trash2, ChevronDown, ChevronUp, Briefcase, Star,
-  FileText, Send, ExternalLink, User, Link2, GitFork
+  FileText, Send, ExternalLink, User, Link2, GitFork, Camera, Image, X
 } from "lucide-react";
 import type { User as SupaUser } from "@supabase/supabase-js";
+import Link from "next/link";
 
-// ── Country list ──────────────────────────────────────────────
 const COUNTRIES = [
   "Afghanistan","Albania","Algeria","Andorra","Angola","Argentina","Armenia","Australia","Austria","Azerbaijan",
   "Bahrain","Bangladesh","Belarus","Belgium","Belize","Bolivia","Bosnia and Herzegovina","Brazil","Bulgaria",
@@ -35,6 +35,8 @@ interface Post {
   id: string;
   text: string;
   created_at: string;
+  media_url?: string;
+  media_type?: "image" | "video";
 }
 
 interface TalentProfile {
@@ -53,6 +55,7 @@ interface TalentProfile {
   linkedin_url?: string;
   github_url?: string;
   portfolio_url?: string;
+  avatar_url?: string;
   posts?: Post[];
 }
 
@@ -62,10 +65,11 @@ const EMPTY_FORM = {
   linkedin_url: "", github_url: "", portfolio_url: "",
 };
 
-function Avatar({ name, size = 48 }: { name: string; size?: number }) {
+function Avatar({ name, avatarUrl, size = 48 }: { name: string; avatarUrl?: string; size?: number }) {
   const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
   const colors = ["#3F2B96","#7C3AED","#0369A1","#065F46","#9A3412","#1D4ED8"];
-  const color = colors[name.charCodeAt(0) % colors.length];
+  const color = colors[(name.charCodeAt(0) ?? 0) % colors.length];
+  if (avatarUrl) return <img src={avatarUrl} alt={name} style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />;
   return (
     <div style={{ width: size, height: size, background: color, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.36, fontWeight: 700, color: "#fff" }}>
       {initials || <User size={size * 0.5} />}
@@ -77,10 +81,9 @@ function ProfileCard({ p, onExpand, expanded }: { p: TalentProfile; onExpand: ()
   const posts = p.posts ?? [];
   return (
     <div className="feature-card rounded-2xl border border-white/8 bg-white/[0.04] overflow-hidden">
-      {/* Main info */}
       <div className="p-5 space-y-3">
         <div className="flex items-start gap-3">
-          <Avatar name={p.alias || "?"} size={46} />
+          <Avatar name={p.alias || "?"} avatarUrl={p.avatar_url} size={46} />
           <div className="flex-1 min-w-0">
             <p className="font-bold text-white truncate">{p.alias}</p>
             <p className="text-xs text-white/40 flex items-center gap-1 mt-0.5">
@@ -108,8 +111,7 @@ function ProfileCard({ p, onExpand, expanded }: { p: TalentProfile; onExpand: ()
           )}
         </div>
 
-        {/* Links + actions row */}
-        <div className="flex items-center justify-between pt-1">
+        <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
           <div className="flex items-center gap-2">
             {p.linkedin_url && (
               <a href={p.linkedin_url.startsWith("http") ? p.linkedin_url : `https://${p.linkedin_url}`} target="_blank" rel="noopener noreferrer" className="text-white/35 hover:text-blue-400 transition">
@@ -130,13 +132,19 @@ function ProfileCard({ p, onExpand, expanded }: { p: TalentProfile; onExpand: ()
               <Mail size={12} /> Contact
             </a>
           </div>
-          <button onClick={onExpand} className="text-xs text-white/35 hover:text-white flex items-center gap-1 transition">
-            {expanded ? <><ChevronUp size={13} /> Less</> : <><ChevronDown size={13} /> {posts.length > 0 ? `${posts.length} post${posts.length !== 1 ? "s" : ""}` : "Profile"}</>}
-          </button>
+          <div className="flex items-center gap-2">
+            <Link href={`/talent/${p.user_id}`}
+              className="text-xs rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-white/60 hover:text-white hover:border-white/30 transition font-medium">
+              View Profile
+            </Link>
+            <button onClick={onExpand} className="text-xs text-white/30 hover:text-white flex items-center gap-1 transition">
+              {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+              {posts.length > 0 ? `${posts.length} post${posts.length !== 1 ? "s" : ""}` : ""}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Expanded: full bio + posts */}
       {expanded && (
         <div className="border-t border-white/8 px-5 py-4 space-y-4">
           {p.bio && (
@@ -157,14 +165,23 @@ function ProfileCard({ p, onExpand, expanded }: { p: TalentProfile; onExpand: ()
           )}
           {posts.length > 0 && (
             <div>
-              <p className="text-xs text-white/30 uppercase tracking-wider mb-2">Posts & Updates</p>
+              <p className="text-xs text-white/30 uppercase tracking-wider mb-2">Recent Posts</p>
               <div className="space-y-3">
-                {posts.map(post => (
+                {posts.slice(0, 2).map(post => (
                   <div key={post.id} className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3">
-                    <p className="text-sm text-white/70 leading-relaxed whitespace-pre-wrap">{post.text}</p>
-                    <p className="text-[10px] text-white/25 mt-2">{new Date(post.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
+                    {post.text && <p className="text-sm text-white/70 leading-relaxed whitespace-pre-wrap">{post.text}</p>}
+                    {post.media_url && (
+                      post.media_type === "video"
+                        ? <video src={post.media_url} controls className="w-full rounded-lg mt-2 max-h-48 bg-black" />
+                        : <img src={post.media_url} alt="" className="w-full rounded-lg mt-2 max-h-48 object-cover" />
+                    )}
                   </div>
                 ))}
+                {posts.length > 2 && (
+                  <Link href={`/talent/${p.user_id}`} className="text-xs text-yellow-200/60 hover:text-yellow-200">
+                    See all {posts.length} posts →
+                  </Link>
+                )}
               </div>
             </div>
           )}
@@ -181,31 +198,34 @@ export default function TalentPage() {
   const [tab, setTab] = useState<"browse" | "my-profile">("browse");
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
-  // filters
   const [fieldFilter, setFieldFilter] = useState("");
   const [countryFilter, setCountryFilter] = useState("");
   const [yearFilter, setYearFilter] = useState("All");
   const [skillSearch, setSkillSearch] = useState("");
 
-  // form
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [uploadingCv, setUploadingCv] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [existingProfile, setExistingProfile] = useState<TalentProfile | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPost, setNewPost] = useState("");
+  const [postMedia, setPostMedia] = useState<{ url: string; type: "image" | "video" } | null>(null);
+  const [uploadingPostMedia, setUploadingPostMedia] = useState(false);
   const [countryInput, setCountryInput] = useState("");
   const [showCountrySuggestions, setShowCountrySuggestions] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
 
+  const fileRef = useRef<HTMLInputElement>(null);
+  const avatarRef = useRef<HTMLInputElement>(null);
+  const postMediaRef = useRef<HTMLInputElement>(null);
   const sb = createSupabaseBrowserClient();
 
   useEffect(() => {
     sb.auth.getUser().then(({ data }) => setUser(data.user ?? null));
   }, []);
 
-  // Load user's existing profile when auth ready
   useEffect(() => {
     if (!user) return;
     fetch(`/api/talent?userId=${user.id}`)
@@ -213,6 +233,7 @@ export default function TalentPage() {
       .then((profile: TalentProfile | null) => {
         if (profile) {
           setExistingProfile(profile);
+          setAvatarUrl(profile.avatar_url ?? null);
           setForm({
             alias: profile.alias ?? "",
             email: profile.email ?? "",
@@ -230,16 +251,12 @@ export default function TalentPage() {
           setCountryInput(profile.country ?? "");
           setPosts(profile.posts ?? []);
         } else {
-          // Pre-fill email from auth
           setForm(f => ({ ...f, email: user.email ?? "" }));
         }
-      })
-      .catch(console.error);
+      }).catch(console.error);
   }, [user]);
 
-  useEffect(() => {
-    fetchProfiles();
-  }, []);
+  useEffect(() => { fetchProfiles(); }, []);
 
   async function fetchProfiles() {
     setLoading(true);
@@ -249,7 +266,35 @@ export default function TalentPage() {
     setLoading(false);
   }
 
-  // CV upload → auto-fill form
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setUploadingAvatar(true);
+    const ext = file.name.split(".").pop();
+    const path = `avatars/${user.id}.${ext}`;
+    const { error } = await sb.storage.from("talent-media").upload(path, file, { upsert: true });
+    if (error) { alert("Upload failed"); setUploadingAvatar(false); return; }
+    const { data: { publicUrl } } = sb.storage.from("talent-media").getPublicUrl(path);
+    setAvatarUrl(publicUrl);
+    setUploadingAvatar(false);
+    if (avatarRef.current) avatarRef.current.value = "";
+  }
+
+  async function handlePostMediaUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setUploadingPostMedia(true);
+    const ext = file.name.split(".").pop();
+    const isVideo = file.type.startsWith("video/");
+    const path = `posts/${user.id}/${Date.now()}.${ext}`;
+    const { error } = await sb.storage.from("talent-media").upload(path, file, { upsert: false });
+    if (error) { alert("Upload failed"); setUploadingPostMedia(false); return; }
+    const { data: { publicUrl } } = sb.storage.from("talent-media").getPublicUrl(path);
+    setPostMedia({ url: publicUrl, type: isVideo ? "video" : "image" });
+    setUploadingPostMedia(false);
+    if (postMediaRef.current) postMediaRef.current.value = "";
+  }
+
   async function handleCvUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -261,15 +306,10 @@ export default function TalentPage() {
       const result = await res.json();
       const cv = result.cv;
       if (!cv) throw new Error("No CV parsed");
-
-      // Map CV → talent profile fields
       const loc = (cv.location ?? "").split(",").map((s: string) => s.trim());
       const city = loc[0] ?? "";
       const country = loc[1] ?? "";
       const edu = cv.education?.[0];
-      const field = edu?.degree ?? "";
-      const gradYear = edu?.endYear?.toString() ?? "";
-      const expYears = Math.max(0, cv.experience?.length ?? 0);
       const skills = [
         ...(cv.skills ?? []),
         ...(cv.skillCategories?.flatMap((c: any) => c.items) ?? []),
@@ -277,14 +317,13 @@ export default function TalentPage() {
       const linkedinLink = cv.links?.find((l: any) => l.label?.toLowerCase().includes("linkedin"))?.url ?? "";
       const githubLink = cv.links?.find((l: any) => l.label?.toLowerCase().includes("github"))?.url ?? "";
       const portfolioLink = cv.links?.find((l: any) => !l.label?.toLowerCase().includes("linkedin") && !l.label?.toLowerCase().includes("github"))?.url ?? "";
-
       setForm(f => ({
         ...f,
         alias: cv.fullName ?? f.alias,
         email: cv.email ?? f.email,
-        field: field || f.field,
-        graduation_year: gradYear || f.graduation_year,
-        years_experience: expYears > 0 ? expYears.toString() : f.years_experience,
+        field: edu?.degree || f.field,
+        graduation_year: edu?.endYear?.toString() || f.graduation_year,
+        years_experience: (cv.experience?.length > 0 ? cv.experience.length : parseInt(f.years_experience || "0")).toString(),
         city: city || f.city,
         country: country || f.country,
         skills: skills || f.skills,
@@ -295,7 +334,6 @@ export default function TalentPage() {
       }));
       setCountryInput(country || countryInput);
     } catch (err) {
-      console.error(err);
       alert("Could not parse CV. Try a PDF or Word file.");
     }
     setUploadingCv(false);
@@ -322,6 +360,7 @@ export default function TalentPage() {
       linkedin_url: form.linkedin_url,
       github_url: form.github_url,
       portfolio_url: form.portfolio_url,
+      avatar_url: avatarUrl,
       posts,
     };
     const res = await fetch("/api/talent", {
@@ -331,7 +370,7 @@ export default function TalentPage() {
     });
     setSaving(false);
     if (res.ok) {
-      setSaveMsg("Profile saved! You are now visible to companies.");
+      setSaveMsg("Profile saved!");
       setExistingProfile(profile as any);
       fetchProfiles();
     } else {
@@ -340,10 +379,17 @@ export default function TalentPage() {
   }
 
   function addPost() {
-    if (!newPost.trim()) return;
-    const post: Post = { id: Date.now().toString(), text: newPost.trim(), created_at: new Date().toISOString() };
+    if (!newPost.trim() && !postMedia) return;
+    const post: Post = {
+      id: Date.now().toString(),
+      text: newPost.trim(),
+      created_at: new Date().toISOString(),
+      media_url: postMedia?.url,
+      media_type: postMedia?.type,
+    };
     setPosts(prev => [post, ...prev]);
     setNewPost("");
+    setPostMedia(null);
   }
 
   function deletePost(id: string) {
@@ -386,7 +432,6 @@ export default function TalentPage() {
           {/* ── BROWSE ── */}
           {tab === "browse" && (
             <div>
-              {/* Filters */}
               <div className="flex flex-wrap gap-2 mb-6">
                 <div className="relative">
                   <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
@@ -409,9 +454,7 @@ export default function TalentPage() {
                     className="rounded-xl border border-white/10 bg-white/5 pl-8 pr-3 py-2 text-sm text-white/70 placeholder-white/25 focus:outline-none focus:border-yellow-300/40" />
                 </div>
               </div>
-
               <p className="text-white/30 text-xs mb-4">{filtered.length} talent profile{filtered.length !== 1 ? "s" : ""} found</p>
-
               {loading ? (
                 <p className="text-white/30 text-center py-20">Loading talent pool…</p>
               ) : filtered.length === 0 ? (
@@ -439,10 +482,35 @@ export default function TalentPage() {
               ) : (
                 <form onSubmit={saveProfile} className="space-y-6">
 
+                  {/* Avatar */}
+                  <div className="feature-card rounded-2xl border border-white/8 bg-white/[0.04] p-5 flex items-center gap-5">
+                    <div className="relative group cursor-pointer" onClick={() => avatarRef.current?.click()}>
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt="" className="w-20 h-20 rounded-full object-cover border-2 border-white/10" />
+                      ) : (
+                        <div className="w-20 h-20 rounded-full border-2 border-dashed border-white/20 flex items-center justify-center bg-white/5">
+                          <User size={28} className="text-white/25" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                        {uploadingAvatar ? <span className="text-xs text-white">…</span> : <Camera size={18} className="text-white" />}
+                      </div>
+                      <input ref={avatarRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-white">Profile Photo</p>
+                      <p className="text-xs text-white/40 mt-0.5">Click to upload. Shows on your public profile.</p>
+                      <button type="button" onClick={() => avatarRef.current?.click()} disabled={uploadingAvatar}
+                        className="mt-2 text-xs text-yellow-200/70 hover:text-yellow-200 transition">
+                        {uploadingAvatar ? "Uploading…" : avatarUrl ? "Change photo" : "Upload photo"}
+                      </button>
+                    </div>
+                  </div>
+
                   {/* CV Upload */}
                   <div className="feature-card rounded-2xl border border-white/8 bg-white/[0.04] p-5">
                     <p className="text-sm font-semibold text-white mb-1 flex items-center gap-2"><FileText size={15} className="text-yellow-300" /> Auto-fill from CV</p>
-                    <p className="text-xs text-white/40 mb-3">Upload your CV (PDF or Word) and we'll fill in your profile automatically.</p>
+                    <p className="text-xs text-white/40 mb-3">Upload your CV (PDF or Word) to fill in your profile automatically.</p>
                     <input ref={fileRef} type="file" accept=".pdf,.docx,.doc" onChange={handleCvUpload} className="hidden" />
                     <button type="button" onClick={() => fileRef.current?.click()} disabled={uploadingCv}
                       className="inline-flex items-center gap-2 rounded-xl border border-yellow-300/30 bg-yellow-300/10 px-4 py-2 text-sm font-semibold text-yellow-200 hover:bg-yellow-300/20 transition disabled:opacity-50">
@@ -465,34 +533,24 @@ export default function TalentPage() {
                           className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-yellow-300/40" />
                       </div>
                     ))}
-
-                    {/* Country with autocomplete */}
                     <div className="relative">
                       <label className="block text-xs text-white/40 mb-1">Country</label>
-                      <input
-                        type="text"
-                        placeholder="Type your country…"
-                        value={countryInput}
+                      <input type="text" placeholder="Type your country…" value={countryInput}
                         onChange={e => { setCountryInput(e.target.value); setShowCountrySuggestions(true); }}
                         onBlur={() => setTimeout(() => setShowCountrySuggestions(false), 150)}
-                        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-yellow-300/40"
-                      />
+                        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-yellow-300/40" />
                       {showCountrySuggestions && countrySuggestions.length > 0 && (
                         <div className="absolute z-20 left-0 right-0 mt-1 rounded-xl border border-white/10 bg-[#0A0716] shadow-xl overflow-hidden">
                           {countrySuggestions.map(c => (
                             <button key={c} type="button" onMouseDown={() => { setCountryInput(c); setShowCountrySuggestions(false); }}
-                              className="w-full text-left px-4 py-2.5 text-sm text-white/70 hover:bg-white/5 hover:text-white transition">
-                              {c}
-                            </button>
+                              className="w-full text-left px-4 py-2.5 text-sm text-white/70 hover:bg-white/5 hover:text-white transition">{c}</button>
                           ))}
                         </div>
                       )}
                     </div>
-
                     <div>
-                      <label className="block text-xs text-white/40 mb-1">Bio <span className="text-white/20">(tell companies about yourself)</span></label>
-                      <textarea placeholder="e.g. Computer Engineering student at HU, passionate about AI and robotics…"
-                        value={form.bio} rows={3}
+                      <label className="block text-xs text-white/40 mb-1">Bio</label>
+                      <textarea placeholder="Tell companies about yourself…" value={form.bio} rows={3}
                         onChange={e => setForm(f => ({ ...f, bio: e.target.value }))}
                         className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-yellow-300/40 resize-none" />
                     </div>
@@ -503,23 +561,20 @@ export default function TalentPage() {
                     <h2 className="font-semibold text-white text-sm flex items-center gap-2"><GraduationCap size={15} className="text-yellow-300" /> Education</h2>
                     <div>
                       <label className="block text-xs text-white/40 mb-1">Field of study</label>
-                      <input type="text" placeholder="e.g. Computer Engineering, Business Administration, Medicine…"
-                        value={form.field}
+                      <input type="text" placeholder="e.g. Computer Engineering, Business, Medicine…" value={form.field}
                         onChange={e => setForm(f => ({ ...f, field: e.target.value }))}
                         className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-yellow-300/40" />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs text-white/40 mb-1">Graduation year</label>
-                        <input type="number" placeholder="e.g. 2026" min="2010" max="2030"
-                          value={form.graduation_year}
+                        <input type="number" placeholder="e.g. 2026" min="2010" max="2030" value={form.graduation_year}
                           onChange={e => setForm(f => ({ ...f, graduation_year: e.target.value }))}
                           className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-yellow-300/40" />
                       </div>
                       <div>
                         <label className="block text-xs text-white/40 mb-1">Years of experience</label>
-                        <input type="number" placeholder="0" min="0" max="30"
-                          value={form.years_experience}
+                        <input type="number" placeholder="0" min="0" max="30" value={form.years_experience}
                           onChange={e => setForm(f => ({ ...f, years_experience: e.target.value }))}
                           className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-yellow-300/40" />
                       </div>
@@ -529,9 +584,7 @@ export default function TalentPage() {
                   {/* Skills */}
                   <div className="feature-card rounded-2xl border border-white/8 bg-white/[0.04] p-5">
                     <h2 className="font-semibold text-white text-sm flex items-center gap-2 mb-3"><Star size={15} className="text-yellow-300" /> Skills</h2>
-                    <label className="block text-xs text-white/40 mb-1">Skills <span className="text-white/20">(comma-separated)</span></label>
-                    <input type="text" placeholder="React, Python, SQL, Figma, Machine Learning…"
-                      value={form.skills}
+                    <input type="text" placeholder="React, Python, SQL, Figma…" value={form.skills}
                       onChange={e => setForm(f => ({ ...f, skills: e.target.value }))}
                       className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-yellow-300/40" />
                     {form.skills && (
@@ -547,46 +600,62 @@ export default function TalentPage() {
                   <div className="feature-card rounded-2xl border border-white/8 bg-white/[0.04] p-5 space-y-4">
                     <h2 className="font-semibold text-white text-sm flex items-center gap-2"><ExternalLink size={15} className="text-yellow-300" /> Links</h2>
                     {([
-                      ["LinkedIn", "linkedin_url", Link2, "https://linkedin.com/in/yourname"],
-                      ["GitHub", "github_url", GitFork, "https://github.com/yourname"],
-                      ["Portfolio / Website", "portfolio_url", Globe, "https://yourname.com"],
-                    ] as const).map(([label, key, , placeholder]) => (
-                      <div key={key} className="flex items-center gap-3">
-                        <ExternalLink size={16} className="text-white/30 shrink-0" />
-                        <div className="flex-1">
-                          <label className="block text-xs text-white/40 mb-1">{label}</label>
-                          <input type="url" placeholder={placeholder} value={form[key]}
-                            onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                            className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/25 focus:outline-none focus:border-yellow-300/40" />
-                        </div>
+                      ["LinkedIn URL", "linkedin_url", "https://linkedin.com/in/yourname"],
+                      ["GitHub URL", "github_url", "https://github.com/yourname"],
+                      ["Portfolio / Website", "portfolio_url", "https://yourname.com"],
+                    ] as const).map(([label, key, placeholder]) => (
+                      <div key={key}>
+                        <label className="block text-xs text-white/40 mb-1">{label}</label>
+                        <input type="url" placeholder={placeholder} value={form[key]}
+                          onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                          className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/25 focus:outline-none focus:border-yellow-300/40" />
                       </div>
                     ))}
                   </div>
 
                   {/* Posts */}
                   <div className="feature-card rounded-2xl border border-white/8 bg-white/[0.04] p-5 space-y-4">
-                    <h2 className="font-semibold text-white text-sm flex items-center gap-2"><Briefcase size={15} className="text-yellow-300" /> Posts & Updates
-                      <span className="text-white/30 font-normal text-xs">— visible to companies on your profile</span>
-                    </h2>
-                    <div className="flex gap-2">
-                      <textarea
-                        placeholder="Share an achievement, project update, or anything you want companies to see…"
-                        value={newPost} rows={2}
+                    <h2 className="font-semibold text-white text-sm flex items-center gap-2"><Briefcase size={15} className="text-yellow-300" /> Posts & Updates</h2>
+                    <div className="space-y-2">
+                      <textarea placeholder="Share an achievement, project update…" value={newPost} rows={2}
                         onChange={e => setNewPost(e.target.value)}
-                        className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-yellow-300/40 resize-none"
-                      />
-                      <button type="button" onClick={addPost} disabled={!newPost.trim()}
-                        className="rounded-xl gold-grad px-3 py-2 text-black font-bold disabled:opacity-40 shrink-0 self-end">
-                        <Send size={15} />
-                      </button>
+                        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-yellow-300/40 resize-none" />
+                      {/* Media preview */}
+                      {postMedia && (
+                        <div className="relative inline-block">
+                          {postMedia.type === "video"
+                            ? <video src={postMedia.url} className="rounded-xl max-h-40 bg-black" controls />
+                            : <img src={postMedia.url} alt="" className="rounded-xl max-h-40 object-cover" />}
+                          <button type="button" onClick={() => setPostMedia(null)}
+                            className="absolute top-1 right-1 rounded-full bg-black/70 p-1 text-white hover:bg-black">
+                            <X size={12} />
+                          </button>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <input ref={postMediaRef} type="file" accept="image/*,video/*" className="hidden" onChange={handlePostMediaUpload} />
+                        <button type="button" onClick={() => postMediaRef.current?.click()} disabled={uploadingPostMedia}
+                          className="inline-flex items-center gap-1.5 text-xs text-white/40 hover:text-white border border-white/10 rounded-xl px-3 py-2 transition disabled:opacity-40">
+                          <Image size={13} /> {uploadingPostMedia ? "Uploading…" : "Add photo/video"}
+                        </button>
+                        <button type="button" onClick={addPost} disabled={!newPost.trim() && !postMedia}
+                          className="inline-flex items-center gap-1.5 rounded-xl gold-grad px-4 py-2 text-sm font-bold text-black disabled:opacity-40">
+                          <Send size={13} /> Post
+                        </button>
+                      </div>
                     </div>
                     {posts.length > 0 && (
                       <div className="space-y-2">
                         {posts.map(post => (
-                          <div key={post.id} className="flex gap-2 rounded-xl border border-white/8 bg-black/20 px-4 py-3">
-                            <p className="flex-1 text-sm text-white/65 leading-relaxed whitespace-pre-wrap">{post.text}</p>
-                            <button type="button" onClick={() => deletePost(post.id)} className="text-white/20 hover:text-red-400 transition shrink-0">
-                              <Trash2 size={14} />
+                          <div key={post.id} className="rounded-xl border border-white/8 bg-black/20 px-4 py-3 space-y-2">
+                            {post.text && <p className="text-sm text-white/65 leading-relaxed whitespace-pre-wrap">{post.text}</p>}
+                            {post.media_url && (
+                              post.media_type === "video"
+                                ? <video src={post.media_url} controls className="w-full rounded-lg max-h-48 bg-black" />
+                                : <img src={post.media_url} alt="" className="w-full rounded-lg max-h-48 object-cover" />
+                            )}
+                            <button type="button" onClick={() => deletePost(post.id)} className="text-white/20 hover:text-red-400 transition text-xs flex items-center gap-1">
+                              <Trash2 size={12} /> Delete
                             </button>
                           </div>
                         ))}
@@ -602,11 +671,17 @@ export default function TalentPage() {
                     className="w-full rounded-xl gold-grad py-3 text-sm font-extrabold text-black disabled:opacity-50">
                     {saving ? "Saving…" : existingProfile ? "Update Profile" : "Save & Go Live"}
                   </button>
+
+                  {existingProfile && (
+                    <Link href={`/talent/${user.id}`}
+                      className="block text-center text-xs text-yellow-200/60 hover:text-yellow-200 transition">
+                      View your public profile →
+                    </Link>
+                  )}
                 </form>
               )}
             </div>
           )}
-
         </div>
       </main>
     </>
