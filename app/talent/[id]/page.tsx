@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
-import { MapPin, GraduationCap, Mail, Globe, ExternalLink, Link2, GitFork, ArrowLeft, Camera, FileDown } from "lucide-react";
+import { MapPin, GraduationCap, Mail, Globe, ExternalLink, Link2, GitFork, ArrowLeft, Camera, FileDown, X } from "lucide-react";
 import Link from "next/link";
 
 interface Post {
@@ -53,6 +53,7 @@ export default function TalentProfilePage() {
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [showCv, setShowCv] = useState(false);
   const sb = createSupabaseBrowserClient();
 
   useEffect(() => {
@@ -144,10 +145,19 @@ export default function TalentProfilePage() {
                     </label>
                   )}
                 </div>
-                <a href={`mailto:${profile.email}`}
-                  className="inline-flex items-center gap-2 rounded-xl gold-grad px-4 py-2 text-sm font-bold text-black">
-                  <Mail size={14} /> Contact
-                </a>
+                <div className="flex items-center gap-2">
+                  {profile.cv_url && (
+                    <button
+                      onClick={() => setShowCv(true)}
+                      className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-bold text-white hover:bg-white/10 transition">
+                      <FileDown size={14} /> View CV
+                    </button>
+                  )}
+                  <a href={`mailto:${profile.email}`}
+                    className="inline-flex items-center gap-2 rounded-xl gold-grad px-4 py-2 text-sm font-bold text-black">
+                    <Mail size={14} /> Contact
+                  </a>
+                </div>
               </div>
 
               {/* Name + meta */}
@@ -211,42 +221,6 @@ export default function TalentProfilePage() {
             </div>
           )}
 
-          {/* CV */}
-          {profile.cv_url && (
-            <div className="mt-4 rounded-2xl border border-white/8 bg-white/[0.03] p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xs font-bold text-white/30 uppercase tracking-wider">Curriculum Vitae</h2>
-                <a
-                  href={profile.cv_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  download
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-yellow-200 hover:text-yellow-100 hover:underline"
-                >
-                  <FileDown size={13} /> Download CV
-                </a>
-              </div>
-              {profile.cv_url.toLowerCase().endsWith(".pdf") ? (
-                <iframe
-                  src={profile.cv_url}
-                  className="w-full rounded-xl border border-white/10"
-                  style={{ height: 600 }}
-                  title="CV"
-                />
-              ) : (
-                <a
-                  href={profile.cv_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/70 hover:text-white hover:border-white/20 transition"
-                >
-                  <FileDown size={16} className="text-yellow-200" />
-                  View uploaded CV
-                </a>
-              )}
-            </div>
-          )}
-
           {/* Posts */}
           {posts.length > 0 && (
             <div className="mt-4 space-y-3">
@@ -283,6 +257,43 @@ export default function TalentProfilePage() {
           )}
         </div>
       </main>
+
+      {/* CV Modal */}
+      {showCv && profile.cv_url && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowCv(false); }}>
+          <div className="relative w-full max-w-4xl bg-[#0A0716] rounded-2xl border border-white/10 overflow-hidden flex flex-col"
+            style={{ height: "90vh" }}>
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-white/8 shrink-0">
+              <p className="text-sm font-semibold text-white">{profile.alias}'s CV</p>
+              <div className="flex items-center gap-3">
+                <a href={profile.cv_url} target="_blank" rel="noopener noreferrer" download
+                  className="inline-flex items-center gap-1.5 text-xs text-yellow-200 hover:underline">
+                  <FileDown size={13} /> Download
+                </a>
+                <button onClick={() => setShowCv(false)}
+                  className="rounded-full p-1.5 text-white/40 hover:text-white hover:bg-white/10 transition">
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+            {/* PDF or fallback */}
+            {profile.cv_url.toLowerCase().endsWith(".pdf") ? (
+              <iframe src={profile.cv_url} className="flex-1 w-full" title="CV" />
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center gap-4 text-white/40 text-sm">
+                <FileDown size={32} className="text-yellow-200/60" />
+                <p>Preview not available for this file type.</p>
+                <a href={profile.cv_url} target="_blank" rel="noopener noreferrer" download
+                  className="inline-flex items-center gap-2 rounded-xl gold-grad px-5 py-2.5 text-sm font-bold text-black">
+                  <FileDown size={14} /> Download CV
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }
