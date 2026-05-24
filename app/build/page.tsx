@@ -722,26 +722,32 @@ export default function BuildPage() {
                           <button onClick={() => send("no")} disabled={thinking} className="rounded-2xl border border-white/10 bg-white/[0.055] px-5 py-4 font-extrabold text-white/75 hover:text-white disabled:opacity-40">No</button>
                         </div>
                       ) : (
-                        <div className="mt-4 flex gap-2 items-center">
+                        <div className="mt-4 space-y-2">
+                          {/* Back button — always visible above input */}
                           {history.length > 0 && (
-                            <button onClick={goBack} className="shrink-0 rounded-2xl border border-white/15 px-3 py-3 text-white/50 hover:text-white hover:border-white/30 transition text-xs font-semibold" title="Go back">
-                              ← Back
+                            <button
+                              onClick={goBack}
+                              className="flex items-center gap-1.5 text-xs text-white/35 hover:text-white/70 transition"
+                            >
+                              ← Back to previous question
                             </button>
                           )}
-                          <VoiceRecorder onTranscript={setInput} />
-                          <input
-                            ref={inputRef}
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && send()}
-                            className="min-w-0 w-full rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-white outline-none placeholder:text-white/25 focus:border-yellow-300/45"
-                            placeholder="Type your answer..."
-                            disabled={thinking}
-                            autoFocus
-                          />
-                          <button onClick={() => send()} disabled={thinking || !input.trim()} className="rounded-2xl gold-grad px-5 py-3 text-black font-extrabold disabled:opacity-40 shrink-0 inline-flex items-center gap-2">
-                            Send <Send size={15} />
-                          </button>
+                          <div className="flex gap-2 items-center">
+                            <VoiceRecorder onTranscript={setInput} />
+                            <input
+                              ref={inputRef}
+                              value={input}
+                              onChange={(e) => setInput(e.target.value)}
+                              onKeyDown={(e) => e.key === "Enter" && send()}
+                              className="min-w-0 w-full rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-white outline-none placeholder:text-white/25 focus:border-yellow-300/45"
+                              placeholder="Type your answer..."
+                              disabled={thinking}
+                              autoFocus
+                            />
+                            <button onClick={() => send()} disabled={thinking || !input.trim()} className="rounded-2xl gold-grad px-5 py-3 text-black font-extrabold disabled:opacity-40 shrink-0 inline-flex items-center gap-2">
+                              Send <Send size={15} />
+                            </button>
+                          </div>
                         </div>
                       )}
                     </>
