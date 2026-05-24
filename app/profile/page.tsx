@@ -137,7 +137,7 @@ export default function ProfilePage() {
         <div className="rounded-2xl border border-white/10 bg-white/5 p-7 flex flex-col gap-5">
           <div className="flex items-center justify-between">
             <h2 className="font-bold text-base">Usage This Month</h2>
-            <span className="text-xs text-white/30">Resets monthly</span>
+            <span className="text-xs text-white/30">{tier === "free" ? "CV builds & letters are lifetime limits" : "Resets monthly"}</span>
           </div>
 
           {loading ? (

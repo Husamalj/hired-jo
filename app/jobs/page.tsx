@@ -193,23 +193,76 @@ function JobsPageInner() {
   // "Jobs For You" — Pro/Hired only: score each job against CV
   const jobsForYou = useMemo(() => {
     if (userTier === "free" || !cv || allJobs.length === 0) return [];
-    const cvSkills = new Set([
+
+    // Normalize common skill name aliases so "Node.js" matches "Node", etc.
+    function normSkill(s: string): string {
+      const n = s.toLowerCase().trim().replace(/\s+/g, "");
+      if (n === "node.js" || n === "nodejs") return "node";
+      if (n === "react.js" || n === "reactjs") return "react";
+      if (n === "vue.js"   || n === "vuejs")   return "vue";
+      if (n === "next.js"  || n === "nextjs")  return "next";
+      if (n === "express.js"|| n === "expressjs") return "express";
+      if (n === "postgresql"|| n === "postgres") return "postgresql";
+      if (n === "mongodb"  || n === "mongo")   return "mongodb";
+      if (n === "typescript"|| n === "ts")     return "typescript";
+      if (n === "javascript"|| n === "js")     return "javascript";
+      if (n === "c#" || n === "csharp")        return "csharp";
+      if (n === "c++" || n === "cpp")          return "cpp";
+      return n;
+    }
+
+    const cvSkillsRaw: string[] = [
       ...(cv.skills ?? []),
       ...(cv.skillCategories?.flatMap((c: any) => c.items) ?? []),
-    ].map((s: string) => s.toLowerCase()));
-    const recentTitle = (cv.experience?.[0]?.title ?? cv.summary ?? "").toLowerCase();
-    const titleWords = recentTitle.split(/\W+/).filter((w: string) => w.length > 3);
+    ];
+    const cvSkills = new Set(cvSkillsRaw.map(normSkill));
+
+    // Infer user's career sector from their experience titles + skills
+    function inferCvSector(): string {
+      const combined = [
+        ...(cv.experience ?? []).map((e: any) => e.title ?? ""),
+        ...cvSkillsRaw,
+      ].join(" ").toLowerCase();
+      if (/software|developer|engineer|frontend|backend|fullstack|devops|cloud|mobile|react|python|java|typescript|aws|docker|data analyst|data scientist|machine learning|ml\b|ai engineer|cyber|network engineer|sysadmin/.test(combined)) return "Tech";
+      if (/finance|accountant|auditor|tax|investment|banker|financial analyst/.test(combined)) return "Finance";
+      if (/marketing|social media|seo|brand|digital marketing|public relations/.test(combined)) return "Marketing";
+      if (/sales|business development|account manager/.test(combined)) return "Sales";
+      if (/graphic design|\bui\b|\bux\b|visual designer|product designer|figma/.test(combined)) return "Design";
+      if (/\bhr\b|human resource|recruiter|talent acquisition/.test(combined)) return "HR";
+      if (/doctor|physician|nurse|pharmacist|medical|clinical|dentist/.test(combined)) return "Healthcare";
+      if (/teacher|professor|instructor|lecturer|tutor/.test(combined)) return "Education";
+      return "";
+    }
+    const cvSector = inferCvSector();
+
+    // Build title keywords from ALL experience titles (not summary — too many generic words)
+    const STOPWORDS = new Set(["with","from","that","this","have","will","work","about","over","their","when","what","also","been","were","they","then","into","some","than","time","like","just","both","even","such","each","most","well","after","before","under","through","where","between","because","should","could","would","which"]);
+    const expTitleStr = (cv.experience ?? []).map((e: any) => e.title ?? "").join(" ").toLowerCase();
+    const titleWords = [...new Set(
+      expTitleStr.split(/\W+/).filter((w: string) => w.length > 3 && !STOPWORDS.has(w))
+    )];
 
     return allJobs
       .map((j) => {
         let score = 0;
-        const jobSkills = j.skills.map((s) => s.toLowerCase());
+        const jobSkills = j.skills.map(normSkill);
+
+        // Skill overlap: +2 per matched skill
         for (const s of jobSkills) { if (cvSkills.has(s)) score += 2; }
+
+        // Title word match: +3 per word
         const jobTitle = j.title.toLowerCase();
         for (const w of titleWords) { if (jobTitle.includes(w)) score += 3; }
+
+        // Sector match: strong positive signal
+        if (cvSector && j.sector === cvSector) score += 5;
+        // Cross-sector penalty: reduces irrelevant results (not applied to "Other")
+        if (cvSector && j.sector !== cvSector && j.sector !== "Other") score -= 3;
+
         return { job: j, score };
       })
-      .filter((x) => x.score > 0)
+      // Require a meaningful match — prevents single-common-tool false positives
+      .filter((x) => x.score >= 6)
       .sort((a, b) => b.score - a.score)
       .slice(0, 6)
       .map((x) => x.job);
