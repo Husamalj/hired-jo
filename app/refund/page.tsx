@@ -33,7 +33,7 @@ export default function RefundPage() {
 
         <section className="mb-8">
           <h2 className="text-xl font-semibold mb-2">Payment Processor</h2>
-          <p className="text-white/70 leading-relaxed">Payments are processed by Paddle.com. Refunds are returned to the original payment method and may take 5–10 business days to appear depending on your bank.</p>
+          <p className="text-white/70 leading-relaxed">Payments are processed by Lemon Squeezy. Refunds are returned to the original payment method and may take 5–10 business days to appear depending on your bank.</p>
         </section>
       </main>
     </div>

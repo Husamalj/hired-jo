@@ -27,7 +27,7 @@ export default function PrivacyPage() {
 
         <section className="mb-8">
           <h2 className="text-xl font-semibold mb-2">4. Third-Party Services</h2>
-          <p className="text-white/70 leading-relaxed">We use the following third-party services: Paddle (payment processing), Google Gemini (AI content generation), Supabase (authentication and database), and Vercel (hosting). Each has its own privacy policy.</p>
+          <p className="text-white/70 leading-relaxed">We use the following third-party services: Lemon Squeezy (payment processing), Google Gemini (AI content generation), Supabase (authentication and database), and Vercel (hosting). Each has its own privacy policy.</p>
         </section>
 
         <section className="mb-8">

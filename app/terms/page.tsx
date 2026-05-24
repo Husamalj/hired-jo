@@ -27,7 +27,7 @@ export default function TermsPage() {
 
         <section className="mb-8">
           <h2 className="text-xl font-semibold mb-2">4. Payments & Billing</h2>
-          <p className="text-white/70 leading-relaxed">Payments are processed by Paddle.com as our Merchant of Record. Subscription fees are charged monthly. One-time packs are non-recurring. All prices are displayed in Jordanian Dinar (JOD). By purchasing, you authorise Paddle to charge your payment method.</p>
+          <p className="text-white/70 leading-relaxed">Payments are processed by Lemon Squeezy as our Merchant of Record. Subscription fees are charged monthly. One-time packs are non-recurring. All prices are displayed in Jordanian Dinar (JOD). By purchasing, you authorise Lemon Squeezy to charge your payment method.</p>
         </section>
 
         <section className="mb-8">
