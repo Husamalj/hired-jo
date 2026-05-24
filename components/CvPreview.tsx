@@ -68,18 +68,14 @@ export function CvPreview({ cv }: { cv: CV }) {
       });
       y += 12;
 
-      // links line — each link clickable
+      // links line — label is the clickable text
       if (cv.links?.length) {
         let lx = L;
         cv.links.forEach((l, idx) => {
-          doc.setFontSize(8).setFont("helvetica", "normal").setTextColor(80);
-          const label = `${l.label}: `;
-          doc.text(label, lx, y);
-          lx += doc.getTextWidth(label);
-          addLink(l.url, lx, l.url.startsWith("http") ? l.url : `https://${l.url}`, 8);
-          lx += doc.getTextWidth(l.url);
+          addLink(l.label, lx, l.url.startsWith("http") ? l.url : `https://${l.url}`, 8);
+          lx += doc.getTextWidth(l.label);
           if (idx < cv.links!.length - 1) {
-            doc.setTextColor(80);
+            doc.setFontSize(8).setFont("helvetica", "normal").setTextColor(80);
             doc.text("   |   ", lx, y);
             lx += doc.getTextWidth("   |   ");
           }
@@ -255,12 +251,11 @@ export function CvPreview({ cv }: { cv: CV }) {
       });
       children.push(new Paragraph({ children: contactChildren, spacing: { after: 80 } }));
 
-      // links line
+      // links line — label is the clickable text
       if (cv.links?.length) {
         const linkChildren: any[] = [];
         cv.links.forEach((l, idx) => {
-          linkChildren.push(new TextRun({ text: `${l.label}: `, size: 18, color: "444444" }));
-          linkChildren.push(hyperlink(l.url, l.url));
+          linkChildren.push(hyperlink(l.label, l.url));
           if (idx < cv.links!.length - 1) linkChildren.push(new TextRun({ text: "   |   ", size: 18, color: "444444" }));
         });
         children.push(new Paragraph({ children: linkChildren, spacing: { after: 200 } }));
@@ -543,8 +538,7 @@ export function CvPreview({ cv }: { cv: CV }) {
             {cv.links.map((l, i) => (
               <span key={i}>
                 {i > 0 && <span className="mx-2">|</span>}
-                <span className="text-gray-600">{l.label}: </span>
-                <a href={l.url.startsWith("http") ? l.url : `https://${l.url}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{l.url}</a>
+                <a href={l.url.startsWith("http") ? l.url : `https://${l.url}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{l.label}</a>
               </span>
             ))}
           </p>
