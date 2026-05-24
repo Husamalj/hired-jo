@@ -6,12 +6,13 @@ import { UpgradeModal } from "@/components/UpgradeModal";
 import type { UsageKey } from "@/lib/tiers";
 
 const SECTIONS: { key: keyof CV; label: string }[] = [
-  { key: "summary", label: "Summary / Objective" },
+  { key: "summary", label: "Professional Summary" },
   { key: "experience", label: "Work Experience" },
-  { key: "education", label: "Education" },
-  { key: "skills", label: "Skills" },
   { key: "projects", label: "Projects" },
+  { key: "skillCategories", label: "Skills" },
+  { key: "education", label: "Education" },
   { key: "certifications", label: "Certifications" },
+  { key: "achievements", label: "Achievements & Awards" },
   { key: "languages", label: "Languages" },
 ];
 
@@ -36,10 +37,10 @@ export function CvSectionEditor({ cv, onCvUpdated }: Props) {
   const [lastEdit, setLastEdit] = useState<string | null>(null);
   const [limitKey, setLimitKey] = useState<UsageKey | null>(null);
 
-  async function handleCheckout(priceId: string) {
-    const res = await fetch("/api/paddle/checkout", {
+  async function handleCheckout(variantId: string) {
+    const res = await fetch("/api/lemonsqueezy/checkout", {
       method: "POST",
-      body: JSON.stringify({ priceId }),
+      body: JSON.stringify({ variantId }),
       headers: { "Content-Type": "application/json" },
     });
     const data = await res.json();
@@ -59,19 +60,44 @@ export function CvSectionEditor({ cv, onCvUpdated }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cv, section, prompt }),
       });
+
+      if (res.status === 401) {
+        setError("Sign in required to use the AI editor.");
+        setLoading(false);
+        return;
+      }
       if (res.status === 402) {
         setLimitKey("ai_edits");
+        setLoading(false);
         return;
       }
       if (!res.ok) throw new Error("Edit failed");
+
       const { edited } = await res.json();
-      const updatedCv = { ...cv, [section]: edited };
+
+      // Build updated CV
+      let updatedCv = { ...cv, [section]: edited };
+
+      // If skills categories were edited, sync flat skills array too
+      if (section === "skillCategories" && Array.isArray(edited)) {
+        const flatSkills = edited.flatMap((cat: { category: string; items: string[] }) => cat.items);
+        updatedCv = { ...updatedCv, skills: flatSkills };
+      }
+
+      // If flat skills were edited (legacy), sync skillCategories too
+      if (section === "skills" && Array.isArray(edited)) {
+        const existing = cv.skillCategories ?? [{ category: "Skills", items: [] }];
+        // Merge new skills into first category as fallback
+        const merged = existing.map((cat, i) => i === 0 ? { ...cat, items: edited } : cat);
+        updatedCv = { ...updatedCv, skillCategories: merged };
+      }
+
       localStorage.setItem("hired_cv", JSON.stringify(updatedCv));
       onCvUpdated(updatedCv);
-      setLastEdit(`"${SECTIONS.find((s) => s.key === section)?.label}" updated.`);
+      setLastEdit(`"${SECTIONS.find((s) => s.key === section)?.label}" updated successfully.`);
       setPrompt("");
     } catch (e: any) {
-      setError(e.message ?? "Something went wrong");
+      setError(e.message ?? "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -123,13 +149,13 @@ export function CvSectionEditor({ cv, onCvUpdated }: Props) {
           <input
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder="e.g. Make this more concise and add action verbs"
+            placeholder='e.g. "Add C++ to programming languages" or "Make summary more concise"'
             className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-yellow-300/40"
           />
         </div>
 
         {error && <p className="text-red-300 text-sm">{error}</p>}
-        {lastEdit && <p className="text-green-300 text-sm">&#10003; {lastEdit}</p>}
+        {lastEdit && <p className="text-green-300 text-sm">✓ {lastEdit}</p>}
 
         <button
           type="submit"
@@ -139,6 +165,7 @@ export function CvSectionEditor({ cv, onCvUpdated }: Props) {
           {loading ? "AI is editing…" : "Edit with AI"}
         </button>
       </form>
+
       {limitKey && (
         <UpgradeModal
           usageKey={limitKey}

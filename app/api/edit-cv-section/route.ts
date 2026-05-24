@@ -9,14 +9,15 @@ export const runtime = "nodejs";
 export async function POST(req: NextRequest) {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (user) {
-    const { allowed } = await checkLimit(user.id, "ai_edits");
-    if (!allowed) {
-      return NextResponse.json(
-        { error: "limit_reached", key: "ai_edits", remaining: 0 },
-        { status: 402 }
-      );
-    }
+  if (!user) {
+    return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
+  }
+  const { allowed } = await checkLimit(user.id, "ai_edits");
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "limit_reached", key: "ai_edits", remaining: 0 },
+      { status: 402 }
+    );
   }
 
   const { cv, section, prompt } = await req.json() as {
@@ -43,9 +44,17 @@ Return ONLY the edited content for that section in the exact same JSON format it
   });
 
   const sectionValue = cv[section];
+
+  // For skillCategories, give extra context so AI knows the structure
+  const sectionHint = section === "skillCategories"
+    ? `\n\nIMPORTANT: This is an array of skill categories. Each category has a "category" name and "items" array. When adding a skill, add it to the most relevant category. Return the full updated array of categories.`
+    : section === "summary"
+    ? `\n\nIMPORTANT: Return a professional summary string (not an objective). 2 sharp sentences. No "I". No "Seeking".`
+    : "";
+
   const chat = m.startChat({ history: [] });
   const result = await chat.sendMessage(
-    `CV Section: "${String(section)}"\nCurrent content: ${JSON.stringify(sectionValue)}\n\nEditing instruction: ${prompt}\n\nReturn only the edited value as raw JSON.`
+    `CV Section: "${String(section)}"\nCurrent content: ${JSON.stringify(sectionValue)}${sectionHint}\n\nEditing instruction: ${prompt}\n\nReturn only the edited value as raw JSON. No markdown, no explanation.`
   );
 
   const raw = result.response.text().replace(/```json|```/g, "").trim();
