@@ -47,7 +47,7 @@ function JobsPageInner() {
   const [seniority, setSeniority]   = useState("All");
   const [intLoc, setIntLoc]         = useState("Anywhere");
   const [remoteOnly, setRemoteOnly] = useState(false);
-  const [sortNewest, setSortNewest] = useState(true);
+  const [sortMode, setSortMode] = useState<"newest" | "oldest" | "relevance">("newest");
   const [search, setSearch]         = useState("");
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
   const [userTier, setUserTier] = useState<"free" | "pro" | "hired">("free");
@@ -80,7 +80,10 @@ function JobsPageInner() {
 
   useEffect(() => {
     const raw = localStorage.getItem("hired_cv");
-    if (raw) setCv(JSON.parse(raw));
+    if (raw) {
+      setCv(JSON.parse(raw));
+      setSortMode("relevance");
+    }
   }, []);
 
   useEffect(() => {
@@ -178,36 +181,38 @@ function JobsPageInner() {
       return true;
     });
 
-    // Sort by newest postedAt first (or oldest)
+    // Sort
+    if (sortMode === "relevance" && cvRelevanceState) {
+      return out.sort((a, b) => cvRelevanceState.scoreJob(b) - cvRelevanceState.scoreJob(a));
+    }
     return out.sort((a, b) => {
       const da = daysAgo(a.postedAt);
       const db = daysAgo(b.postedAt);
-      return sortNewest ? da - db : db - da;
+      return sortMode === "newest" ? da - db : db - da;
     });
-  }, [sourcePool, type, sectors, source, country, city, seniority, intLoc, remoteOnly, search, sortNewest, showSavedOnly, savedJobIds]);
+  }, [sourcePool, type, sectors, source, country, city, seniority, intLoc, remoteOnly, search, sortMode, showSavedOnly, savedJobIds, cvRelevanceState]);
 
   const internCount = useMemo(() => sourcePool.filter((j) => j.seniority === "Intern").length, [sourcePool]);
   const remoteCount = useMemo(() => sourcePool.filter((j) => j.remote).length, [sourcePool]);
   const liveSourceCount = useMemo(() => new Set(allJobs.map((j) => j.source)).size, [allJobs]);
 
-  // "Jobs For You" — Pro/Hired only: score each job against CV
-  const jobsForYou = useMemo(() => {
-    if (userTier === "free" || !cv || allJobs.length === 0) return [];
+  // ---- Shared CV relevance scorer (used by both filtered sort and Jobs For You) ----
+  const cvRelevanceState = useMemo(() => {
+    if (!cv) return null;
 
-    // Normalize common skill name aliases so "Node.js" matches "Node", etc.
     function normSkill(s: string): string {
       const n = s.toLowerCase().trim().replace(/\s+/g, "");
-      if (n === "node.js" || n === "nodejs") return "node";
-      if (n === "react.js" || n === "reactjs") return "react";
-      if (n === "vue.js"   || n === "vuejs")   return "vue";
-      if (n === "next.js"  || n === "nextjs")  return "next";
-      if (n === "express.js"|| n === "expressjs") return "express";
-      if (n === "postgresql"|| n === "postgres") return "postgresql";
-      if (n === "mongodb"  || n === "mongo")   return "mongodb";
-      if (n === "typescript"|| n === "ts")     return "typescript";
-      if (n === "javascript"|| n === "js")     return "javascript";
-      if (n === "c#" || n === "csharp")        return "csharp";
-      if (n === "c++" || n === "cpp")          return "cpp";
+      if (n === "node.js" || n === "nodejs")        return "node";
+      if (n === "react.js" || n === "reactjs")       return "react";
+      if (n === "vue.js"   || n === "vuejs")         return "vue";
+      if (n === "next.js"  || n === "nextjs")        return "next";
+      if (n === "express.js"|| n === "expressjs")    return "express";
+      if (n === "postgresql"|| n === "postgres")     return "postgresql";
+      if (n === "mongodb"  || n === "mongo")         return "mongodb";
+      if (n === "typescript"|| n === "ts")           return "typescript";
+      if (n === "javascript"|| n === "js")           return "javascript";
+      if (n === "c#" || n === "csharp")              return "csharp";
+      if (n === "c++" || n === "cpp")                return "cpp";
       return n;
     }
 
@@ -217,56 +222,51 @@ function JobsPageInner() {
     ];
     const cvSkills = new Set(cvSkillsRaw.map(normSkill));
 
-    // Infer user's career sector from their experience titles + skills
-    function inferCvSector(): string {
-      const combined = [
-        ...(cv.experience ?? []).map((e: any) => e.title ?? ""),
-        ...cvSkillsRaw,
-      ].join(" ").toLowerCase();
-      if (/software|developer|engineer|frontend|backend|fullstack|devops|cloud|mobile|react|python|java|typescript|aws|docker|data analyst|data scientist|machine learning|ml\b|ai engineer|cyber|network engineer|sysadmin/.test(combined)) return "Tech";
-      if (/finance|accountant|auditor|tax|investment|banker|financial analyst/.test(combined)) return "Finance";
-      if (/marketing|social media|seo|brand|digital marketing|public relations/.test(combined)) return "Marketing";
-      if (/sales|business development|account manager/.test(combined)) return "Sales";
-      if (/graphic design|\bui\b|\bux\b|visual designer|product designer|figma/.test(combined)) return "Design";
-      if (/\bhr\b|human resource|recruiter|talent acquisition/.test(combined)) return "HR";
-      if (/doctor|physician|nurse|pharmacist|medical|clinical|dentist/.test(combined)) return "Healthcare";
-      if (/teacher|professor|instructor|lecturer|tutor/.test(combined)) return "Education";
-      return "";
-    }
-    const cvSector = inferCvSector();
+    const combined = [
+      ...(cv.experience ?? []).map((e: any) => e.title ?? ""),
+      ...cvSkillsRaw,
+    ].join(" ").toLowerCase();
 
-    // Build title keywords from ALL experience titles (not summary — too many generic words)
+    let cvSector = "";
+    if (/software|developer|engineer|frontend|backend|fullstack|devops|cloud|mobile|react|python|java|typescript|aws|docker|data analyst|data scientist|machine learning|ml\b|ai engineer|cyber|network engineer|sysadmin/.test(combined)) cvSector = "Tech";
+    else if (/finance|accountant|auditor|tax|investment|banker|financial analyst/.test(combined)) cvSector = "Finance";
+    else if (/marketing|social media|seo|brand|digital marketing|public relations/.test(combined)) cvSector = "Marketing";
+    else if (/sales|business development|account manager/.test(combined)) cvSector = "Sales";
+    else if (/graphic design|\bui\b|\bux\b|visual designer|product designer|figma/.test(combined)) cvSector = "Design";
+    else if (/\bhr\b|human resource|recruiter|talent acquisition/.test(combined)) cvSector = "HR";
+    else if (/doctor|physician|nurse|pharmacist|medical|clinical|dentist/.test(combined)) cvSector = "Healthcare";
+    else if (/teacher|professor|instructor|lecturer|tutor/.test(combined)) cvSector = "Education";
+
     const STOPWORDS = new Set(["with","from","that","this","have","will","work","about","over","their","when","what","also","been","were","they","then","into","some","than","time","like","just","both","even","such","each","most","well","after","before","under","through","where","between","because","should","could","would","which"]);
     const expTitleStr = (cv.experience ?? []).map((e: any) => e.title ?? "").join(" ").toLowerCase();
     const titleWords = [...new Set(
       expTitleStr.split(/\W+/).filter((w: string) => w.length > 3 && !STOPWORDS.has(w))
     )];
 
+    function scoreJob(j: Job): number {
+      let score = 0;
+      const jobSkills = j.skills.map(normSkill);
+      for (const s of jobSkills) { if (cvSkills.has(s)) score += 2; }
+      const jobTitle = j.title.toLowerCase();
+      for (const w of titleWords) { if (jobTitle.includes(w)) score += 3; }
+      if (cvSector && j.sector === cvSector) score += 5;
+      if (cvSector && j.sector !== cvSector && j.sector !== "Other") score -= 3;
+      return score;
+    }
+
+    return { scoreJob, cvSector };
+  }, [cv]);
+
+  // "Jobs For You" — Pro/Hired only: top 6 relevant roles
+  const jobsForYou = useMemo(() => {
+    if (userTier === "free" || !cv || !cvRelevanceState || allJobs.length === 0) return [];
     return allJobs
-      .map((j) => {
-        let score = 0;
-        const jobSkills = j.skills.map(normSkill);
-
-        // Skill overlap: +2 per matched skill
-        for (const s of jobSkills) { if (cvSkills.has(s)) score += 2; }
-
-        // Title word match: +3 per word
-        const jobTitle = j.title.toLowerCase();
-        for (const w of titleWords) { if (jobTitle.includes(w)) score += 3; }
-
-        // Sector match: strong positive signal
-        if (cvSector && j.sector === cvSector) score += 5;
-        // Cross-sector penalty: reduces irrelevant results (not applied to "Other")
-        if (cvSector && j.sector !== cvSector && j.sector !== "Other") score -= 3;
-
-        return { job: j, score };
-      })
-      // Require a meaningful match — prevents single-common-tool false positives
+      .map((j) => ({ job: j, score: cvRelevanceState.scoreJob(j) }))
       .filter((x) => x.score >= 6)
       .sort((a, b) => b.score - a.score)
       .slice(0, 6)
       .map((x) => x.job);
-  }, [allJobs, cv, userTier]);
+  }, [allJobs, cv, cvRelevanceState, userTier]);
 
   const filterSummary = [
     type === "All" ? "jobs + internships" : type.toLowerCase(),
@@ -424,10 +424,18 @@ function JobsPageInner() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setSortNewest((v) => !v)}
-                  className="inline-flex items-center gap-1.5 rounded-2xl border border-white/10 bg-black/25 px-3 py-2 text-xs font-bold text-white/65 hover:text-white transition"
+                  onClick={() => {
+                    if (sortMode === "newest") setSortMode(cv ? "relevance" : "oldest");
+                    else if (sortMode === "relevance") setSortMode("oldest");
+                    else setSortMode("newest");
+                  }}
+                  className={`inline-flex items-center gap-1.5 rounded-2xl px-3 py-2 text-xs font-bold transition ${
+                    sortMode === "relevance"
+                      ? "gold-grad text-black"
+                      : "border border-white/10 bg-black/25 text-white/65 hover:text-white"
+                  }`}
                 >
-                  <ArrowDownUp size={14} /> Sort: {sortNewest ? "Newest" : "Oldest"}
+                  <ArrowDownUp size={14} /> Sort: {sortMode === "newest" ? "Newest" : sortMode === "oldest" ? "Oldest" : "Best Match"}
                 </button>
               </div>
 
