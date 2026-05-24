@@ -99,6 +99,67 @@ function CustomTooltip({ active, payload, label }: any) {
   );
 }
 
+// Infer skills from title + description when the job's skills array is empty
+const SKILL_PATTERNS: [RegExp, string][] = [
+  [/\breact\b/i, "React"],
+  [/\bnext\.?js\b/i, "Next.js"],
+  [/\bnode\.?js\b/i, "Node.js"],
+  [/\bpython\b/i, "Python"],
+  [/\bjava(?!script)\b/i, "Java"],
+  [/\bjavascript\b|\bjs\b/i, "JavaScript"],
+  [/\btypescript\b|\bts\b/i, "TypeScript"],
+  [/\bsql\b/i, "SQL"],
+  [/\bpostgres/i, "PostgreSQL"],
+  [/\bmysql\b/i, "MySQL"],
+  [/\bmongodb\b/i, "MongoDB"],
+  [/\baws\b/i, "AWS"],
+  [/\bazure\b/i, "Azure"],
+  [/\bdocker\b/i, "Docker"],
+  [/\bkubernetes\b|\bk8s\b/i, "Kubernetes"],
+  [/\bgit\b/i, "Git"],
+  [/\bfigma\b/i, "Figma"],
+  [/\bphotoshop\b/i, "Photoshop"],
+  [/\billustrator\b/i, "Illustrator"],
+  [/\bui\/ux\b|\bux design\b|\bui design\b/i, "UI/UX"],
+  [/\bgraphic design\b/i, "Graphic Design"],
+  [/\bseo\b/i, "SEO"],
+  [/\bdigital marketing\b/i, "Digital Marketing"],
+  [/\bcontent\b/i, "Content"],
+  [/\bsocial media\b/i, "Social Media"],
+  [/\baccounting\b/i, "Accounting"],
+  [/\bexcel\b/i, "Excel"],
+  [/\bsap\b/i, "SAP"],
+  [/\bsales\b/i, "Sales"],
+  [/\bcustomer service\b/i, "Customer Service"],
+  [/\bproject manag/i, "Project Management"],
+  [/\bscrum\b|\bagile\b/i, "Agile/Scrum"],
+  [/\bhr\b|human resource/i, "HR"],
+  [/\brecruit/i, "Recruiting"],
+  [/\bphp\b/i, "PHP"],
+  [/\blaravel\b/i, "Laravel"],
+  [/\bflutter\b/i, "Flutter"],
+  [/\bswift\b/i, "Swift"],
+  [/\bkotlin\b/i, "Kotlin"],
+  [/\breact native\b/i, "React Native"],
+  [/\bmachine learning\b|\bml\b/i, "Machine Learning"],
+  [/\bdata analys/i, "Data Analysis"],
+  [/\bpower bi\b/i, "Power BI"],
+  [/\btableau\b/i, "Tableau"],
+  [/\bnetwork/i, "Networking"],
+  [/\bcyber/i, "Cybersecurity"],
+  [/\blinux\b/i, "Linux"],
+  [/\bc\+\+\b/i, "C++"],
+  [/\bc#\b/i, "C#"],
+  [/\.net\b/i, ".NET"],
+];
+
+function inferSkillsFromText(title: string, description = ""): string[] {
+  const text = title + " " + description;
+  return SKILL_PATTERNS
+    .filter(([pattern]) => pattern.test(text))
+    .map(([, skill]) => skill);
+}
+
 export function DashboardCharts({ jobs }: { jobs: Job[] }) {
   const skillCount: Record<string, number> = {};
   const cityCount: Record<string, number> = {};
@@ -106,7 +167,11 @@ export function DashboardCharts({ jobs }: { jobs: Job[] }) {
   const seniorityCount: Record<string, number> = {};
 
   jobs.forEach((job) => {
-    (job.skills ?? []).forEach((skill: string) => {
+    // Use stored skills if available, otherwise infer from title+description
+    const skills = (job.skills ?? []).length > 0
+      ? job.skills
+      : inferSkillsFromText(job.title, job.description ?? "");
+    skills.forEach((skill: string) => {
       skillCount[skill] = (skillCount[skill] ?? 0) + 1;
     });
     cityCount[job.city] = (cityCount[job.city] ?? 0) + 1;

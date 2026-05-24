@@ -5,7 +5,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import {
   Search, MapPin, GraduationCap, Mail, Globe,
   Upload, Trash2, ChevronDown, ChevronUp, Briefcase, Star,
-  FileText, Send, ExternalLink, User, Link2, GitFork, Camera, Image, X
+  FileText, Send, ExternalLink, User, Link2, GitFork, Camera, X
 } from "lucide-react";
 import type { User as SupaUser } from "@supabase/supabase-js";
 import Link from "next/link";
@@ -215,14 +215,11 @@ export default function TalentPage() {
   const [cvUrl, setCvUrl] = useState<string | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPost, setNewPost] = useState("");
-  const [postMedia, setPostMedia] = useState<{ url: string; type: "image" | "video" } | null>(null);
-  const [uploadingPostMedia, setUploadingPostMedia] = useState(false);
   const [countryInput, setCountryInput] = useState("");
   const [showCountrySuggestions, setShowCountrySuggestions] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const avatarRef = useRef<HTMLInputElement>(null);
-  const postMediaRef = useRef<HTMLInputElement>(null);
   const sb = createSupabaseBrowserClient();
 
   useEffect(() => {
@@ -289,26 +286,6 @@ export default function TalentPage() {
     if (avatarRef.current) avatarRef.current.value = "";
   }
 
-  async function handlePostMediaUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-    const MAX_MB = 50;
-    if (file.size > MAX_MB * 1024 * 1024) {
-      alert(`File too large. Please upload a file smaller than ${MAX_MB} MB.`);
-      if (postMediaRef.current) postMediaRef.current.value = "";
-      return;
-    }
-    setUploadingPostMedia(true);
-    const ext = file.name.split(".").pop();
-    const isVideo = file.type.startsWith("video/");
-    const path = `posts/${user.id}/${Date.now()}.${ext}`;
-    const { error } = await sb.storage.from("talent-media").upload(path, file, { upsert: false });
-    if (error) { alert("Upload failed"); setUploadingPostMedia(false); return; }
-    const { data: { publicUrl } } = sb.storage.from("talent-media").getPublicUrl(path);
-    setPostMedia({ url: publicUrl, type: isVideo ? "video" : "image" });
-    setUploadingPostMedia(false);
-    if (postMediaRef.current) postMediaRef.current.value = "";
-  }
 
   async function handleCvUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -405,17 +382,14 @@ export default function TalentPage() {
   }
 
   function addPost() {
-    if (!newPost.trim() && !postMedia) return;
+    if (!newPost.trim()) return;
     const post: Post = {
       id: Date.now().toString(),
       text: newPost.trim(),
       created_at: new Date().toISOString(),
-      media_url: postMedia?.url,
-      media_type: postMedia?.type,
     };
     setPosts(prev => [post, ...prev]);
     setNewPost("");
-    setPostMedia(null);
   }
 
   function deletePost(id: string) {
@@ -729,27 +703,8 @@ export default function TalentPage() {
                       <textarea placeholder="Share an achievement, project update…" value={newPost} rows={2}
                         onChange={e => setNewPost(e.target.value)}
                         className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-yellow-300/40 resize-none" />
-                      {/* Media preview */}
-                      {postMedia && (
-                        <div className="relative inline-block">
-                          {postMedia.type === "video"
-                            ? <video src={postMedia.url} className="rounded-xl max-h-40 bg-black" controls />
-                            : <img src={postMedia.url} alt="" className="rounded-xl max-h-40 object-cover" />}
-                          <button type="button" onClick={() => setPostMedia(null)}
-                            className="absolute top-1 right-1 rounded-full bg-black/70 p-1 text-white hover:bg-black">
-                            <X size={12} />
-                          </button>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <input ref={postMediaRef} type="file" accept="image/*,video/*" className="hidden" onChange={handlePostMediaUpload} />
-                        <button type="button" onClick={() => postMediaRef.current?.click()} disabled={uploadingPostMedia}
-                          className="inline-flex items-center gap-1.5 text-xs text-white/40 hover:text-white border border-white/10 rounded-xl px-3 py-2 transition disabled:opacity-40"
-                          title="Max file size: 50 MB">
-                          <Image size={13} /> {uploadingPostMedia ? "Uploading…" : "Add photo/video"}
-                        </button>
-                        <span className="text-xs text-white/20">max 50 MB</span>
-                        <button type="button" onClick={addPost} disabled={!newPost.trim() && !postMedia}
+                      <div className="flex justify-end">
+                        <button type="button" onClick={addPost} disabled={!newPost.trim()}
                           className="inline-flex items-center gap-1.5 rounded-xl gold-grad px-4 py-2 text-sm font-bold text-black disabled:opacity-40">
                           <Send size={13} /> Post
                         </button>
@@ -760,11 +715,6 @@ export default function TalentPage() {
                         {posts.map(post => (
                           <div key={post.id} className="rounded-xl border border-white/8 bg-black/20 px-4 py-3 space-y-2">
                             {post.text && <p className="text-sm text-white/65 leading-relaxed whitespace-pre-wrap">{post.text}</p>}
-                            {post.media_url && (
-                              post.media_type === "video"
-                                ? <video src={post.media_url} controls className="w-full rounded-lg max-h-48 bg-black" />
-                                : <img src={post.media_url} alt="" className="w-full rounded-lg max-h-48 object-cover" />
-                            )}
                             <button type="button" onClick={() => deletePost(post.id)} className="text-white/20 hover:text-red-400 transition text-xs flex items-center gap-1">
                               <Trash2 size={12} /> Delete
                             </button>

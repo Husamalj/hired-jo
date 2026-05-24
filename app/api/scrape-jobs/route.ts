@@ -19,15 +19,17 @@ function inferSeniority(title: string): "Intern" | "Junior" | "Mid" | "Senior" {
 
 function inferSector(title: string, extra = ""): string {
   const t = (title + " " + extra).toLowerCase();
+  // FinTech must come before Finance to avoid mis-labelling
+  if (/fintech|financial technology|payment|digital bank|neobank|insurtech|blockchain|crypto|digital wallet|open banking|regtech|lending platform/.test(t)) return "FinTech";
   if (/software|developer|engineer|frontend|backend|fullstack|devops|cloud|mobile|react|node|python|java(?!\s*national)|typescript|aws|docker|data analyst|data scientist|ml engineer|ai engineer|cyber|network engineer|it support|information technology/.test(t)) return "Tech";
-  if (/finance|accountant|auditor|tax|investment|banker|accounting/.test(t)) return "Finance";
+  if (/finance|accountant|auditor|tax|investment|banker|accounting|cfo|financial analyst|treasury|budget/.test(t)) return "Finance";
   if (/marketing|social media|content|seo|brand|public relations|\bpr\s/.test(t)) return "Marketing";
   if (/sales|business development|account manager|sales executive|sales specialist/.test(t)) return "Sales";
   if (/graphic design|ui designer|ux designer|art director|visual designer|product designer/.test(t)) return "Design";
   if (/hr |human resource|recruiter|talent acquisition/.test(t)) return "HR";
   if (/doctor|nurse|pharmacist|medical|clinical|dentist|healthcare/.test(t)) return "Healthcare";
   if (/teacher|professor|instructor|lecturer|tutor|academic|education/.test(t)) return "Education";
-  if (/lawyer|legal counsel|paralegal/.test(t)) return "Legal";
+  if (/lawyer|attorney|legal counsel|paralegal|legal advisor|compliance officer|corporate law|legal affairs|contract.*manager|legal.*manager|in-house counsel|advocate/.test(t)) return "Legal";
   if (/customer service|call center|secretary|administration|receptionist/.test(t)) return "Customer Service";
   if (/construction|civil engineer|architect|site engineer/.test(t)) return "Construction";
   if (/logistics|supply chain|procurement|warehouse/.test(t)) return "Operations";
@@ -385,22 +387,31 @@ const SCRAPERS: Record<string, () => Promise<Job[]>> = {
   linkedin_design:     () => scrapeLinkedIn("Jordan", "graphic design UI UX"),
   linkedin_healthcare: () => scrapeLinkedIn("Jordan", "healthcare nurse doctor pharmacist"),
   linkedin_education:  () => scrapeLinkedIn("Jordan", "teacher lecturer instructor"),
-  linkedin_legal:      () => scrapeLinkedIn("Jordan", "legal lawyer compliance"),
-  linkedin_cs:         () => scrapeLinkedIn("Jordan", "customer service support"),
-  linkedin_ops:        () => scrapeLinkedIn("Jordan", "operations logistics supply chain"),
+  linkedin_legal:        () => scrapeLinkedIn("Jordan", "legal lawyer compliance attorney"),
+  linkedin_legal2:       () => scrapeLinkedIn("Jordan", "legal advisor corporate law paralegal"),
+  linkedin_fintech:      () => scrapeLinkedIn("Jordan", "fintech financial technology payment"),
+  linkedin_fintech2:     () => scrapeLinkedIn("Jordan", "digital banking blockchain crypto"),
+  linkedin_cs:           () => scrapeLinkedIn("Jordan", "customer service support"),
+  linkedin_ops:          () => scrapeLinkedIn("Jordan", "operations logistics supply chain"),
 
-  // Non-tech sector keyword searches — UAE
+  // Non-tech sector keyword searches — UAE (FinTech & Legal strong in UAE)
   linkedin_ae_marketing: () => scrapeLinkedIn("UAE", "marketing"),
   linkedin_ae_finance:   () => scrapeLinkedIn("UAE", "finance accounting"),
   linkedin_ae_hr:        () => scrapeLinkedIn("UAE", "human resources HR"),
   linkedin_ae_sales:     () => scrapeLinkedIn("UAE", "sales business development"),
   linkedin_ae_design:    () => scrapeLinkedIn("UAE", "graphic design UI UX"),
+  linkedin_ae_fintech:   () => scrapeLinkedIn("UAE", "fintech financial technology payment digital banking"),
+  linkedin_ae_fintech2:  () => scrapeLinkedIn("UAE", "blockchain crypto insurtech neobank"),
+  linkedin_ae_legal:     () => scrapeLinkedIn("UAE", "legal lawyer attorney compliance corporate law"),
+  linkedin_ae_legal2:    () => scrapeLinkedIn("UAE", "legal advisor paralegal in-house counsel"),
 
   // Non-tech sector keyword searches — Saudi Arabia
   linkedin_sa_marketing: () => scrapeLinkedIn("Saudi Arabia", "marketing"),
   linkedin_sa_finance:   () => scrapeLinkedIn("Saudi Arabia", "finance accounting"),
   linkedin_sa_hr:        () => scrapeLinkedIn("Saudi Arabia", "human resources HR"),
   linkedin_sa_sales:     () => scrapeLinkedIn("Saudi Arabia", "sales"),
+  linkedin_sa_fintech:   () => scrapeLinkedIn("Saudi Arabia", "fintech financial technology payment"),
+  linkedin_sa_legal:     () => scrapeLinkedIn("Saudi Arabia", "legal lawyer compliance attorney"),
 
   // Other sources
   akhtaboot:    () => scrapeAkhtaboot("Jordan"),
