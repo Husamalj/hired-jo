@@ -109,10 +109,14 @@ Defined in `lib/tiers.ts`. Never redefine these.
 | CV builds | 1 lifetime | 5/month | 20/month |
 | AI section edits | 2/month | 15/month | 40/month |
 | Cover letters | 1 lifetime | 10/month | 30/month |
-| Job matching | Basic (score + skills) | Advanced (+ tailored summary + learning plan) | Same as Pro |
-| Jobs For You section | ❌ (upsell shown) | ✅ Top 6 auto-matched | ✅ |
-| Cover letter pre-fill from job | ❌ | ✅ | ✅ |
-| Talent profile visibility | Normal | Mid | High + badge |
+| Job matching | Basic — score % + matched skills + missing skills only | Advanced — score + matched/missing + AI-rewritten summary tailored to the role + 3-step learning plan with resource links | Same as Pro |
+| "Jobs For You" section on /jobs | ❌ Upsell banner shown instead | ✅ Top 6 live jobs auto-ranked by CV skills + experience title | ✅ Same as Pro |
+| Cover letter pre-fill from job | ❌ | ✅ After Check Fit, 📄 button stores job → navigates to /cover pre-filled | ✅ Same as Pro |
+| Talent profile visibility | Normal visibility | Mid visibility | High visibility |
+| Hired badge on talent profile | ❌ | ❌ | ✅ |
+| Priority support | ❌ | ✅ (label only — no backend enforcement yet) | ✅ (label only — no backend enforcement yet) |
+| Usage limit enforcement | ✅ Hard limit, UpgradeModal shown | ✅ Monthly resets | ✅ Monthly resets |
+| One-time packs (add-ons) | ✅ Can buy packs on top of free limits | ✅ Stacks on monthly limit | ✅ Stacks on monthly limit |
 
 One-time packs (2 JOD each): CV Pack (+3 builds), Edit Pack (+10 edits), Cover Pack (+5 letters).
 
