@@ -140,62 +140,6 @@ function JobsPageInner() {
     return ["All", ...cities];
   }, [country, allJobs]);
 
-  // ------ Filtering ------
-  const sourcePool = useMemo(
-    () => sectors.includes("Other") ? [...allJobs, ...diverseJobs] : allJobs,
-    [allJobs, diverseJobs, sectors]
-  );
-
-  const filtered = useMemo(() => {
-    const out = sourcePool.filter((j) => {
-      // Saved only
-      if (showSavedOnly && !savedJobIds.has(j.id)) return false;
-
-      // Type
-      if (isInternships && j.seniority !== "Intern") return false;
-      if (isJobs        && j.seniority === "Intern") return false;
-
-      // Remote toggle (works in all type modes)
-      if (remoteOnly && !j.remote) return false;
-
-      // Internship-specific location pill
-      if (isInternships && intLoc !== "Anywhere") {
-        if (j.country !== intLoc && !j.remote) return false;
-      }
-
-      // Common filters
-      if (sectors.length > 0 && !sectors.includes(j.sector)) return false;
-      if (!sourceMatches(j.source, source)) return false;
-
-      // Country/City/Level — apply for Jobs and All views (not Internships, which has its own location pill)
-      if (!isInternships) {
-        if (country   !== "All" && j.country   !== country)   return false;
-        if (city      !== "All" && j.city      !== city)      return false;
-        if (seniority !== "All" && j.seniority !== seniority) return false;
-      }
-
-      if (search) {
-        const q = search.toLowerCase();
-        if (!j.title.toLowerCase().includes(q) && !j.company.toLowerCase().includes(q)) return false;
-      }
-      return true;
-    });
-
-    // Sort
-    if (sortMode === "relevance" && cvRelevanceState) {
-      return out.sort((a, b) => cvRelevanceState.scoreJob(b) - cvRelevanceState.scoreJob(a));
-    }
-    return out.sort((a, b) => {
-      const da = daysAgo(a.postedAt);
-      const db = daysAgo(b.postedAt);
-      return sortMode === "newest" ? da - db : db - da;
-    });
-  }, [sourcePool, type, sectors, source, country, city, seniority, intLoc, remoteOnly, search, sortMode, showSavedOnly, savedJobIds, cvRelevanceState]);
-
-  const internCount = useMemo(() => sourcePool.filter((j) => j.seniority === "Intern").length, [sourcePool]);
-  const remoteCount = useMemo(() => sourcePool.filter((j) => j.remote).length, [sourcePool]);
-  const liveSourceCount = useMemo(() => new Set(allJobs.map((j) => j.source)).size, [allJobs]);
-
   // ---- Shared CV relevance scorer (used by both filtered sort and Jobs For You) ----
   const cvRelevanceState = useMemo(() => {
     if (!cv) return null;
@@ -256,6 +200,62 @@ function JobsPageInner() {
 
     return { scoreJob, cvSector };
   }, [cv]);
+
+  // ------ Filtering ------
+  const sourcePool = useMemo(
+    () => sectors.includes("Other") ? [...allJobs, ...diverseJobs] : allJobs,
+    [allJobs, diverseJobs, sectors]
+  );
+
+  const filtered = useMemo(() => {
+    const out = sourcePool.filter((j) => {
+      // Saved only
+      if (showSavedOnly && !savedJobIds.has(j.id)) return false;
+
+      // Type
+      if (isInternships && j.seniority !== "Intern") return false;
+      if (isJobs        && j.seniority === "Intern") return false;
+
+      // Remote toggle (works in all type modes)
+      if (remoteOnly && !j.remote) return false;
+
+      // Internship-specific location pill
+      if (isInternships && intLoc !== "Anywhere") {
+        if (j.country !== intLoc && !j.remote) return false;
+      }
+
+      // Common filters
+      if (sectors.length > 0 && !sectors.includes(j.sector)) return false;
+      if (!sourceMatches(j.source, source)) return false;
+
+      // Country/City/Level — apply for Jobs and All views (not Internships, which has its own location pill)
+      if (!isInternships) {
+        if (country   !== "All" && j.country   !== country)   return false;
+        if (city      !== "All" && j.city      !== city)      return false;
+        if (seniority !== "All" && j.seniority !== seniority) return false;
+      }
+
+      if (search) {
+        const q = search.toLowerCase();
+        if (!j.title.toLowerCase().includes(q) && !j.company.toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+
+    // Sort
+    if (sortMode === "relevance" && cvRelevanceState) {
+      return out.sort((a, b) => cvRelevanceState.scoreJob(b) - cvRelevanceState.scoreJob(a));
+    }
+    return out.sort((a, b) => {
+      const da = daysAgo(a.postedAt);
+      const db = daysAgo(b.postedAt);
+      return sortMode === "newest" ? da - db : db - da;
+    });
+  }, [sourcePool, type, sectors, source, country, city, seniority, intLoc, remoteOnly, search, sortMode, showSavedOnly, savedJobIds, cvRelevanceState]);
+
+  const internCount = useMemo(() => sourcePool.filter((j) => j.seniority === "Intern").length, [sourcePool]);
+  const remoteCount = useMemo(() => sourcePool.filter((j) => j.remote).length, [sourcePool]);
+  const liveSourceCount = useMemo(() => new Set(allJobs.map((j) => j.source)).size, [allJobs]);
 
   // "Jobs For You" — Pro/Hired only: top 6 relevant roles
   const jobsForYou = useMemo(() => {
