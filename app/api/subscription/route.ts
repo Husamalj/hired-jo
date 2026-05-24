@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { getUserTier, getUsage } from "@/lib/usage";
 import { getMonthlyLimit } from "@/lib/tiers";
@@ -19,11 +20,37 @@ function normalizeLimits(tier: Tier, usage: any) {
   };
 }
 
+function checkIsAdmin(email: string): boolean {
+  const adminEmails = (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return adminEmails.includes(email.toLowerCase());
+}
+
 export async function GET() {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ tier: "free", usage: null, limits: normalizeLimits("free", null) });
+  if (!user) return NextResponse.json({ tier: "free", usage: null, limits: normalizeLimits("free", null), isAdmin: false });
 
-  const [tier, usage] = await Promise.all([getUserTier(user.id), getUsage(user.id)]);
-  return NextResponse.json({ tier, usage, limits: normalizeLimits(tier, usage) });
+  const isAdmin = checkIsAdmin(user.email ?? "");
+  const [realTier, usage] = await Promise.all([getUserTier(user.id), getUsage(user.id)]);
+
+  // Admin view-as override
+  let tier: Tier = realTier;
+  if (isAdmin) {
+    const cookieStore = await cookies();
+    const viewAs = cookieStore.get("admin_view_as")?.value;
+    if (viewAs === "free" || viewAs === "pro" || viewAs === "hired") {
+      tier = viewAs;
+    }
+  }
+
+  return NextResponse.json({
+    tier,
+    realTier,
+    usage,
+    limits: normalizeLimits(tier, usage),
+    isAdmin,
+  });
 }
