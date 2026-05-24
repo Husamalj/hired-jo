@@ -15,11 +15,13 @@ function LoginContent() {
   const [message, setMessage] = useState<string | null>(null);
   const supabase = createSupabaseBrowserClient();
 
+  const next = searchParams.get("next") ?? "/jobs";
+
   async function handleGoogleSignIn() {
     setLoading(true);
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${location.origin}/auth/callback?next=/jobs` },
+      options: { redirectTo: `${location.origin}/auth/callback?next=${next}` },
     });
   }
 
@@ -30,7 +32,7 @@ function LoginContent() {
     if (mode === "login") {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) { setMessage(error.message); setLoading(false); return; }
-      location.href = "/jobs";
+      location.href = next;
     } else {
       const { error } = await supabase.auth.signUp({
         email,

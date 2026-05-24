@@ -348,8 +348,12 @@ export default function BuildPage() {
       setMsgs(draft.msgs);
       setStepId(draft.stepId);
       setData(draft.data);
-      const { question, hint } = getQuestion(draft.stepId);
-      setMsgs((prev) => [...prev, { role: "ai", text: `Welcome back! Continuing where you left off.\n\n${hint ? `${question}\n\nTip: ${hint}` : question}` }]);
+      if (draft.stepId === "done") {
+        setMsgs((prev) => [...prev, { role: "ai", text: "Welcome back! Your answers are saved. Click \"Build my CV\" below to generate your CV." }]);
+      } else {
+        const { question, hint } = getQuestion(draft.stepId);
+        setMsgs((prev) => [...prev, { role: "ai", text: `Welcome back! Continuing where you left off.\n\n${hint ? `${question}\n\nTip: ${hint}` : question}` }]);
+      }
     } else {
       const timer = setTimeout(() => {
         const { question, hint } = getQuestion("name");
@@ -433,6 +437,38 @@ export default function BuildPage() {
     setThinking(false);
     const { question, hint } = getQuestion(nextStep);
     setMsgs((prev) => [...prev, { role: "ai", text: hint ? `${question}\n\nTip: ${hint}` : question }]);
+  }
+
+  async function buildCvFromDraft() {
+    setThinking(true);
+    try {
+      const res = await fetch("/api/build-cv", {
+        method: "POST",
+        body: JSON.stringify({ structured: data }),
+        headers: { "Content-Type": "application/json" },
+      });
+      if (res.status === 401) {
+        setThinking(false);
+        setMsgs((prev) => [...prev, { role: "ai", text: "You need to sign in first. Redirecting…" }]);
+        setTimeout(() => router.push("/auth/login?next=/build"), 1500);
+        return;
+      }
+      if (res.status === 402) { setLimitKey("cv_builds"); setThinking(false); return; }
+      const result = await res.json();
+      setThinking(false);
+      if (result.cv) {
+        setMsgs((prev) => [...prev, { role: "ai", text: "Your CV is ready! Review it below and download when it looks right." }]);
+        setCv(result.cv);
+        localStorage.setItem("hired_cv", JSON.stringify(result.cv));
+        syncCvToAccount(result.cv).catch(console.error);
+        localStorage.removeItem(DRAFT_KEY);
+      } else {
+        throw new Error(result.detail ?? "No CV returned.");
+      }
+    } catch (err: any) {
+      setThinking(false);
+      setMsgs((prev) => [...prev, { role: "ai", text: `Error: ${err?.message ?? "Something went wrong."}` }]);
+    }
   }
 
   function goBack() {
@@ -668,7 +704,17 @@ export default function BuildPage() {
                         <div ref={bottomRef} />
                       </div>
 
-                      {showYesNo ? (
+                      {stepId === "done" && !cv ? (
+                        <div className="mt-4">
+                          <button
+                            onClick={buildCvFromDraft}
+                            disabled={thinking}
+                            className="w-full rounded-2xl gold-grad px-5 py-4 text-black font-extrabold disabled:opacity-40 inline-flex items-center justify-center gap-2"
+                          >
+                            {thinking ? <><Loader2 size={16} className="animate-spin" /> Building your CV…</> : <><Sparkles size={16} /> Build my CV</>}
+                          </button>
+                        </div>
+                      ) : showYesNo ? (
                         <div className="mt-4 grid grid-cols-2 gap-3">
                           <button onClick={() => send("yes")} disabled={thinking} className="rounded-2xl gold-grad px-5 py-4 text-black font-extrabold disabled:opacity-40">Yes</button>
                           <button onClick={() => send("no")} disabled={thinking} className="rounded-2xl border border-white/10 bg-white/[0.055] px-5 py-4 font-extrabold text-white/75 hover:text-white disabled:opacity-40">No</button>
