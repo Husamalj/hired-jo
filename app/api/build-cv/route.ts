@@ -18,13 +18,19 @@ function buildPrompt(s: Record<string, any>): string {
 
   const projectsBlock = Array.isArray(s.projects) && s.projects.length
     ? s.projects.map((p: any, i: number) =>
-        `  Project ${i + 1}: Name: ${p.name} | What it does: ${p.description} | Tools: ${p.tools} | Result/Impact: ${p.result}`
+        `  Project ${i + 1}: Name: ${p.name} | What it does: ${p.description} | Tools: ${p.tools} | Result/Impact: ${p.result}${p.github ? ` | GitHub: ${p.github}` : ""}`
       ).join("\n")
     : "  None provided";
 
+  const certsBlock = Array.isArray(s.certifications) && s.certifications.length
+    ? s.certifications.filter((c: any) => c.name).map((c: any) => `  ${c.name} | ${c.issuer} | ${c.year}`).join("\n")
+    : "  None";
+
+  const allSkills = [s.progLangs, s.frameworks, s.tools, s.networkingSkills].filter(Boolean).join(", ");
+
   return `You are a senior CV writer specializing in ATS-optimized resumes for students and recent graduates in Jordan and the Middle East.
 
-Transform the raw user answers below into a polished professional CV JSON. Fix all spelling and grammar silently. Use strong action verbs. Quantify impact wherever possible.
+Transform the raw user answers below into a polished, ATS-ready CV JSON. Fix all spelling and grammar silently. Use strong action verbs. Quantify impact wherever possible.
 
 STRICT RULES:
 - Never output placeholder text, "skip", "none", "n/a", "not applicable"
@@ -32,36 +38,44 @@ STRICT RULES:
 - Name: proper title case
 - University: title case, institution name only (no major in institution field)
 - Omit GPA if below 2.8 or not provided
-- If experience is empty or "none" → return experience as []
-- If certifications is "skip"/"none" → return certifications as []
-- If extras/achievements is "skip"/"none" → return achievements as []
-- Template type is "${s.template}" — used for section ordering in the frontend, not your concern
+- If experience is empty → return experience as []
+- If certifications is empty → return certifications as []
+- Template type is "${s.template}" — used for section ordering in frontend only
 
-SUMMARY (the "summary" field) — exactly 2 sentences:
-  Sentence 1: Degree + university + graduation year + GPA if >= 2.8 + target role
-  Sentence 2: Top 3-5 specific tools/skills + most impressive achievement with numbers if available
+PROFESSIONAL SUMMARY (the "summary" field) — NOT an objective statement:
+  - NEVER write "Seeking a position" or "I am looking for" — those are outdated objective statements
+  - Write a PROFESSIONAL SUMMARY: 2 sharp sentences that sell the candidate
+  - Sentence 1: Degree + university + graduation year + GPA (if >= 2.8) + target role
+  - Sentence 2: Top 3-5 specific tools/skills + single most impressive achievement with numbers
+  - Example: "Computer Engineering graduate from Hashemite University (2026, GPA 3.4) targeting a Network Engineer role with expertise in Python, SQL, and Cisco network design. Developed an autonomous agriculture drone using YOLOv8 and Flutter, winning 1st place at HU Grad Projects 2026."
 
-EXPERIENCE BULLETS — 3-4 bullets per role, each starting with a strong action verb:
-  - Specific tasks with tools named
-  - Quantified results when user provided numbers
-  - If the user's description is vague, infer realistic professional duties for that role and industry
+EXPERIENCE BULLETS — STAR format, 3-4 bullets per role:
+  - Format: [Strong action verb] + [specific task with tool named] + [quantified result]
+  - Example: "Engineered a RESTful API using Node.js, reducing average response time by 40% for 1,000+ daily users"
+  - If description is vague, infer realistic professional duties for that role/industry
+  - Every bullet must start with a past-tense action verb (Built, Developed, Designed, Led, Reduced, Increased...)
 
 PROJECT BULLETS — 3 bullets per project:
-  - Bullet 1: What was built + tools used
-  - Bullet 2: Technical approach or challenge solved
-  - Bullet 3: Result/impact (use user's numbers if given, otherwise describe value delivered)
+  - Bullet 1: What was built + primary tools used
+  - Bullet 2: Technical approach, architecture, or challenge solved
+  - Bullet 3: Result/impact with numbers (use user's numbers; if none, describe value delivered)
+  - If GitHub link provided, include it in the project's github field
 
-SKILLS — group into categories relevant to their field:
-  Tech field: Programming Languages | Frameworks & Libraries | Tools & Platforms | Databases
-  Creative field: Software | Equipment | Creative Skills | Soft Skills
-  Business field: Technical | Analytical | Communication
-  Keep flat skills array too (all items combined, properly spelled).
+SKILLS — categorize based on what the user provided:
+  - "Programming Languages": from progLangs field
+  - "Frameworks & Libraries": from frameworks field
+  - "Tools & Platforms": from tools field
+  - "Networking & Systems": from networkingSkills field (if provided)
+  - "Soft Skills": from softSkills field (if provided)
+  - Only include categories that have content
 
-CERTIFICATIONS — parse "Name | Issuer | Year" format. Return as flat string array like ["Google Data Analytics Certificate | Google | 2024"]. If skip/none, return [].
+CERTIFICATIONS — format each as "Name | Issuer | Year". Return as string array.
 
-ACHIEVEMENTS — extract from extras field: awards, hackathons, volunteering, recognition. Return as string array. If skip/none, return [].
+ACHIEVEMENTS — combine awards + volunteering into one achievements array. Each as a complete short sentence.
 
-LINKS — parse from links field. Identify platform from URL. Return [] if skip/none.
+RELEVANT COURSEWORK — if coursework is provided, return as string array under education.
+
+LINKS — build from separate linkedin, github, portfolio fields. Label each by platform.
 
 User data:
   Name: "${s.name}"
@@ -75,12 +89,20 @@ User data:
 ${experienceBlock}
   Projects:
 ${projectsBlock}
-  Technical skills: "${s.technicalSkills}"
-  Soft skills: "${s.softSkills}"
-  Certifications: "${s.certifications}"
-  Extras (awards/hackathons/volunteering): "${s.extras}"
+  Programming Languages: "${s.progLangs || "none"}"
+  Frameworks & Libraries: "${s.frameworks || "none"}"
+  Tools & Platforms: "${s.tools || "none"}"
+  Networking & Other Technical: "${s.networkingSkills || "none"}"
+  Soft Skills: "${s.softSkills || "none"}"
+  Certifications:
+${certsBlock}
+  Awards & Competitions: "${s.awards || "none"}"
+  Volunteering: "${s.volunteering || "none"}"
+  Relevant Coursework: "${s.coursework || "none"}"
   Languages: "${s.languages}"
-  Links: "${s.links}"
+  LinkedIn: "${s.linkedin || "none"}"
+  GitHub: "${s.github || "none"}"
+  Portfolio: "${s.portfolio || "none"}"
 
 Return ONLY valid JSON with NO markdown and NO code blocks:
 {
@@ -88,32 +110,34 @@ Return ONLY valid JSON with NO markdown and NO code blocks:
   "email": "string",
   "phone": "string",
   "location": "string",
-  "links": [{ "label": "GitHub|LinkedIn|Portfolio|Behance|YouTube|Instagram|Dribbble", "url": "string" }],
-  "summary": "Exactly 2 rich sentences. Specific tools. No I. No placeholders.",
+  "links": [{ "label": "GitHub|LinkedIn|Portfolio|Behance", "url": "string" }],
+  "summary": "2 sharp sentences. Professional summary. No I. No seeking. Specific tools and achievements.",
   "education": [{
     "degree": "B.Sc. in [Full Major Name]",
     "institution": "University Name Only",
     "startYear": number,
     "endYear": number,
-    "gpa": "string or omit if below 2.8"
+    "gpa": "string or omit if below 2.8",
+    "coursework": ["Relevant Course 1", "Relevant Course 2"]
   }],
   "experience": [{
     "title": "Job Title",
     "company": "Company Name",
     "startDate": "MMM YYYY",
     "endDate": "MMM YYYY or Present",
-    "bullets": ["3-4 strong action-verb bullets with tools and results"]
+    "bullets": ["3-4 STAR-format bullets: action verb + task + quantified result"]
   }],
   "projects": [{
-    "name": "Clean Title Case Name (max 60 chars)",
+    "name": "Clean Title Case Name",
     "description": "One clear sentence describing what it is and why it matters.",
     "tech": ["Tool1", "Tool2"],
-    "bullets": ["3 bullets: what was built, how, and impact/result"]
+    "github": "url or empty string",
+    "bullets": ["3 bullets: what built, how, impact/result"]
   }],
-  "skills": ["flat array of all skills, properly spelled and formatted"],
-  "skillCategories": [{ "category": "Category Name", "items": ["Skill1", "Skill2"] }],
-  "achievements": ["Award or milestone as a complete short sentence"],
-  "languages": [{ "name": "string", "level": "Native|Fluent|Intermediate|Basic" }],
+  "skills": ["flat array of all skills combined"],
+  "skillCategories": [{ "category": "Programming Languages|Frameworks & Libraries|Tools & Platforms|Networking & Systems|Soft Skills", "items": ["Skill1", "Skill2"] }],
+  "achievements": ["Complete sentence describing award, placement, or volunteering"],
+  "languages": [{ "name": "string", "level": "Native|Fluent|Professional|Intermediate|Basic" }],
   "certifications": ["Certification Name | Issuer | Year"]
 }`;
 }

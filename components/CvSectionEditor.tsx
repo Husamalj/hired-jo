@@ -82,7 +82,6 @@ export function CvSectionEditor({ cv, onCvUpdated }: Props) {
       <div className="flex items-center gap-2">
         <Wand2 size={18} className="text-yellow-300" />
         <h2 className="font-display text-lg font-bold text-white">AI Section Editor</h2>
-        <span className="ml-auto text-xs text-white/30 border border-white/10 rounded-full px-2 py-0.5">Premium soon</span>
       </div>
       <p className="text-white/45 text-sm">Select a section, describe what to change, and the AI will rewrite it instantly.</p>
 
