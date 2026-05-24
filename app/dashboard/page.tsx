@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -11,9 +14,19 @@ import {
 } from "lucide-react";
 import { DashboardCharts } from "@/components/DashboardCharts";
 import { Navbar } from "@/components/Navbar";
-import jobs from "@/data/jobs.json";
+import type { Job } from "@/lib/types";
 
 export default function DashboardPage() {
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/live-jobs")
+      .then(r => r.json())
+      .then((data: Job[]) => { setJobs(Array.isArray(data) ? data : []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
   const totalJobs = jobs.length;
   const cities = new Set(jobs.map((job) => job.city)).size;
   const sectors = new Set(jobs.map((job) => job.sector)).size;
@@ -26,10 +39,10 @@ export default function DashboardPage() {
   ).sort((a, b) => b[1] - a[1])[0];
 
   const marketStats = [
-    { label: "Tracked roles", value: totalJobs, icon: BriefcaseBusiness, detail: "Prototype sample" },
-    { label: "Cities", value: cities, icon: MapPin, detail: topCity ? `${topCity[0]} leads` : "Jordan coverage" },
-    { label: "Sectors", value: sectors, icon: BarChart3, detail: "Tech and beyond" },
-    { label: "Entry-level", value: juniorRoles, icon: Target, detail: "Junior + internship roles" },
+    { label: "Live roles", value: loading ? "…" : totalJobs, icon: BriefcaseBusiness, detail: "From live job boards" },
+    { label: "Cities", value: loading ? "…" : cities, icon: MapPin, detail: topCity ? `${topCity[0]} leads` : "Jordan coverage" },
+    { label: "Sectors", value: loading ? "…" : sectors, icon: BarChart3, detail: "Tech and beyond" },
+    { label: "Entry-level", value: loading ? "…" : juniorRoles, icon: Target, detail: "Junior + internship roles" },
   ];
 
   return (
@@ -72,8 +85,10 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="text-xs uppercase tracking-[0.18em] text-white/35">Market pulse</p>
-                      <p className="font-display text-3xl font-extrabold gold-text-grad mt-1">Sample</p>
-                      <p className="text-sm text-white/50">Prototype job dataset</p>
+                      <p className="font-display text-3xl font-extrabold gold-text-grad mt-1">
+                        {loading ? "…" : totalJobs.toLocaleString()}
+                      </p>
+                      <p className="text-sm text-white/50">live jobs tracked</p>
                     </div>
                     <div className="h-12 w-12 rounded-2xl gold-grad text-black flex items-center justify-center pulse-ring">
                       <TrendingUp size={23} />
@@ -82,10 +97,10 @@ export default function DashboardPage() {
                   <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
                     <div className="flex items-center gap-2 text-sm font-bold">
                       <Sparkles size={16} className="text-yellow-200" />
-                      Judge-ready insight
+                      Live market data
                     </div>
                     <p className="mt-2 text-xs leading-relaxed text-white/45">
-                      The dashboard makes Hired.jo feel local: it shows the student what the market asks for before they write or improve a CV.
+                      Charts reflect real scraped jobs from LinkedIn, Akhtaboot, Bayt, Wuzzuf and more — updated every 2 hours.
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -119,7 +134,11 @@ export default function DashboardPage() {
             ))}
           </section>
 
-          <DashboardCharts />
+          {loading ? (
+            <div className="text-center py-20 text-white/30">Loading live job data…</div>
+          ) : (
+            <DashboardCharts jobs={jobs} />
+          )}
         </div>
       </main>
     </>

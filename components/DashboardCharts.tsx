@@ -20,7 +20,7 @@ import {
   MapPin,
   Sparkles,
 } from "lucide-react";
-import jobs from "../data/jobs.json";
+import type { Job } from "@/lib/types";
 
 const COLORS = ["#F5B82E", "#5B3FC8", "#38BDF8", "#22C55E", "#F97316", "#EF4444", "#A78BFA"];
 
@@ -99,13 +99,13 @@ function CustomTooltip({ active, payload, label }: any) {
   );
 }
 
-export function DashboardCharts() {
+export function DashboardCharts({ jobs }: { jobs: Job[] }) {
   const skillCount: Record<string, number> = {};
   const cityCount: Record<string, number> = {};
   const sectorCount: Record<string, number> = {};
   const seniorityCount: Record<string, number> = {};
 
-  (jobs as any[]).forEach((job) => {
+  jobs.forEach((job) => {
     (job.skills ?? []).forEach((skill: string) => {
       skillCount[skill] = (skillCount[skill] ?? 0) + 1;
     });
@@ -131,7 +131,7 @@ export function DashboardCharts() {
     .sort((a, b) => b[1] - a[1])
     .map(([name, value]) => ({ name, value }));
 
-  const totalJobs = (jobs as any[]).length;
+  const totalJobs = jobs.length;
   const uniqueSkills = Object.keys(skillCount).length;
   const topSkill = topSkills[0];
   const top3Skills = topSkills.slice(0, 3).map((skill) => skill.name).join(", ");
@@ -139,17 +139,17 @@ export function DashboardCharts() {
 
   const topCity = cityData[0];
   const top3Cities = cityData.slice(0, 3).map((city) => city.name).join(", ");
-  const remoteJobs = (jobs as any[]).filter((job) => job.remote).length;
-  const internJobs = (jobs as any[]).filter((job) => job.seniority === "Intern").length;
+  const remoteJobs = jobs.filter((job) => job.remote).length;
+  const internJobs = jobs.filter((job) => job.seniority === "Intern").length;
 
   const topSector = sectorData[0];
-  const techJobs = (jobs as any[]).filter((job) => job.sector === "Tech").length;
+  const techJobs = jobs.filter((job) => job.sector === "Tech").length;
   const uniqueSectors = sectorData.length;
-  const avgJobsPerSector = (totalJobs / uniqueSectors).toFixed(1);
+  const avgJobsPerSector = uniqueSectors > 0 ? (totalJobs / uniqueSectors).toFixed(1) : "0";
 
   const juniorJobs = seniorityCount.Junior ?? 0;
   const entryLevel = juniorJobs + internJobs;
-  const entryPct = ((entryLevel / totalJobs) * 100).toFixed(0);
+  const entryPct = totalJobs > 0 ? ((entryLevel / totalJobs) * 100).toFixed(0) : "0";
   const seniorJobs = seniorityCount.Senior ?? 0;
   const midJobs = seniorityCount.Mid ?? 0;
 
