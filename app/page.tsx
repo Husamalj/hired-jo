@@ -125,7 +125,8 @@ function ScrollHero() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const framesRef = useRef<HTMLImageElement[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const [firstLoaded, setFirstLoaded] = useState(false);
+  const [allLoaded, setAllLoaded] = useState(false);
   const [loadCount, setLoadCount] = useState(0);
   const [progress, setProgress] = useState(0);
 
@@ -138,20 +139,23 @@ function ScrollHero() {
       img.onload = () => {
         done++;
         setLoadCount(done);
-        if (done === TOTAL_FRAMES) {
-          setLoaded(true);
+        // Show frame 0 immediately as soon as it's ready
+        if (i === 0) {
           const canvas = canvasRef.current;
           const ctx = canvas?.getContext("2d");
-          if (canvas && ctx) ctx.drawImage(images[0], 0, 0, canvas.width, canvas.height);
+          if (canvas && ctx) ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          setFirstLoaded(true);
         }
+        if (done === TOTAL_FRAMES) setAllLoaded(true);
       };
       images.push(img);
     }
     framesRef.current = images;
   }, []);
 
+  // Attach scroll listener as soon as frame 0 is ready — img?.complete guards unloaded frames
   useEffect(() => {
-    if (!loaded) return;
+    if (!firstLoaded) return;
     function onScroll() {
       const container = containerRef.current;
       const canvas = canvasRef.current;
@@ -165,7 +169,7 @@ function ScrollHero() {
     }
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, [loaded]);
+  }, [firstLoaded]);
 
   const s1 = op(progress, 0, 0.12, 0.25, 0.35);
   const s2 = op(progress, 0.32, 0.44, 0.57, 0.67);
@@ -177,13 +181,24 @@ function ScrollHero() {
         <canvas ref={canvasRef} width={1280} height={720}
           className="absolute inset-0 w-full h-full object-cover" />
 
-        {!loaded && (
+        {/* Full-screen loader only until frame 0 is ready (usually <200ms) */}
+        {!firstLoaded && (
           <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: "#0A0716" }}>
-            <div className="text-white/50 text-sm mb-3 font-display">Loading experience…</div>
-            <div className="w-48 h-1 rounded-full bg-white/10">
-              <div className="h-full rounded-full gold-grad transition-all duration-100"
+            <div className="w-48 h-0.5 rounded-full bg-white/10">
+              <div className="h-full rounded-full gold-grad transition-all duration-75"
                 style={{ width: `${(loadCount / TOTAL_FRAMES) * 100}%` }} />
             </div>
+          </div>
+        )}
+
+        {/* Small corner progress bar while remaining frames load in background */}
+        {firstLoaded && !allLoaded && (
+          <div className="absolute bottom-4 right-4 z-30 flex items-center gap-2 rounded-full bg-black/40 backdrop-blur-sm px-3 py-1.5">
+            <div className="w-20 h-0.5 rounded-full bg-white/15">
+              <div className="h-full rounded-full bg-yellow-300/60 transition-all duration-75"
+                style={{ width: `${(loadCount / TOTAL_FRAMES) * 100}%` }} />
+            </div>
+            <span className="text-[10px] text-white/30">{Math.round((loadCount / TOTAL_FRAMES) * 100)}%</span>
           </div>
         )}
 
@@ -248,7 +263,7 @@ function ScrollHero() {
           <div className="h-full gold-grad" style={{ width: `${progress * 100}%`, transition: "width 0.05s linear" }} />
         </div>
 
-        {loaded && progress < 0.03 && (
+        {firstLoaded && progress < 0.03 && (
           <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-white/40 text-sm animate-bounce">
             <span>scroll</span><span>↓</span>
           </div>
