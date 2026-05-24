@@ -56,6 +56,7 @@ interface TalentProfile {
   github_url?: string;
   portfolio_url?: string;
   avatar_url?: string;
+  cv_url?: string;
   posts?: Post[];
 }
 
@@ -210,6 +211,7 @@ export default function TalentPage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [existingProfile, setExistingProfile] = useState<TalentProfile | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [cvUrl, setCvUrl] = useState<string | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPost, setNewPost] = useState("");
   const [postMedia, setPostMedia] = useState<{ url: string; type: "image" | "video" } | null>(null);
@@ -234,6 +236,7 @@ export default function TalentPage() {
         if (profile) {
           setExistingProfile(profile);
           setAvatarUrl(profile.avatar_url ?? null);
+          setCvUrl((profile as any).cv_url ?? null);
           setForm({
             alias: profile.alias ?? "",
             email: profile.email ?? "",
@@ -297,9 +300,19 @@ export default function TalentPage() {
 
   async function handleCvUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !user) return;
     setUploadingCv(true);
     try {
+      // Upload the raw file to storage so it can be shown on the profile
+      const ext = file.name.split(".").pop();
+      const cvPath = `cvs/${user.id}.${ext}`;
+      const { error: storageErr } = await sb.storage.from("talent-media").upload(cvPath, file, { upsert: true });
+      if (!storageErr) {
+        const { data: { publicUrl } } = sb.storage.from("talent-media").getPublicUrl(cvPath);
+        setCvUrl(publicUrl);
+      }
+
+      // Parse fields for auto-fill
       const formData = new FormData();
       formData.append("file", file);
       const res = await fetch("/api/parse-cv", { method: "POST", body: formData });
@@ -361,6 +374,7 @@ export default function TalentPage() {
       github_url: form.github_url,
       portfolio_url: form.portfolio_url,
       avatar_url: avatarUrl,
+      cv_url: cvUrl,
       posts,
     };
     const res = await fetch("/api/talent", {

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
-import { MapPin, GraduationCap, Mail, Globe, ExternalLink, Link2, GitFork, ArrowLeft, Camera } from "lucide-react";
+import { MapPin, GraduationCap, Mail, Globe, ExternalLink, Link2, GitFork, ArrowLeft, Camera, FileDown } from "lucide-react";
 import Link from "next/link";
 
 interface Post {
@@ -31,6 +31,7 @@ interface TalentProfile {
   github_url?: string;
   portfolio_url?: string;
   avatar_url?: string;
+  cv_url?: string;
   posts?: Post[];
 }
 
@@ -207,6 +208,42 @@ export default function TalentProfilePage() {
                   <span key={s} className="text-sm px-3 py-1.5 rounded-full bg-black/30 border border-white/10 text-white/65">{s}</span>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* CV */}
+          {profile.cv_url && (
+            <div className="mt-4 rounded-2xl border border-white/8 bg-white/[0.03] p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xs font-bold text-white/30 uppercase tracking-wider">Curriculum Vitae</h2>
+                <a
+                  href={profile.cv_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-yellow-200 hover:text-yellow-100 hover:underline"
+                >
+                  <FileDown size={13} /> Download CV
+                </a>
+              </div>
+              {profile.cv_url.toLowerCase().endsWith(".pdf") ? (
+                <iframe
+                  src={profile.cv_url}
+                  className="w-full rounded-xl border border-white/10"
+                  style={{ height: 600 }}
+                  title="CV"
+                />
+              ) : (
+                <a
+                  href={profile.cv_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/70 hover:text-white hover:border-white/20 transition"
+                >
+                  <FileDown size={16} className="text-yellow-200" />
+                  View uploaded CV
+                </a>
+              )}
             </div>
           )}
 
