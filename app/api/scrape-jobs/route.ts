@@ -393,6 +393,13 @@ const SCRAPERS: Record<string, () => Promise<Job[]>> = {
   linkedin_fintech2:     () => scrapeLinkedIn("Jordan", "digital banking blockchain crypto"),
   linkedin_cs:           () => scrapeLinkedIn("Jordan", "customer service support"),
   linkedin_ops:          () => scrapeLinkedIn("Jordan", "operations logistics supply chain"),
+  linkedin_research:     () => scrapeLinkedIn("Jordan", "research assistant lab technician laboratory"),
+  linkedin_research2:    () => scrapeLinkedIn("Jordan", "research analyst clinical researcher scientist"),
+  linkedin_content:      () => scrapeLinkedIn("Jordan", "content writer copywriter journalist media"),
+  linkedin_pm:           () => scrapeLinkedIn("Jordan", "product manager project coordinator"),
+  linkedin_civil:        () => scrapeLinkedIn("Jordan", "civil engineer construction architect"),
+  linkedin_ae_research:  () => scrapeLinkedIn("UAE", "research assistant lab technician scientist"),
+  linkedin_sa_research:  () => scrapeLinkedIn("Saudi Arabia", "research assistant lab technician scientist"),
 
   // Non-tech sector keyword searches — UAE (FinTech & Legal strong in UAE)
   linkedin_ae_marketing: () => scrapeLinkedIn("UAE", "marketing"),

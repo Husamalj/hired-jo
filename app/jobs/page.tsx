@@ -381,6 +381,28 @@ function JobsPageInner() {
                 <div className="text-xs text-white/35">{liveSourceCount} sources / refreshes every 2 hours</div>
               </div>
 
+              {/* Quick keyword chips */}
+              <div className="flex flex-wrap gap-2 mb-1">
+                {[
+                  "Research Assistant", "Lab Technician", "Data Analyst", "Graphic Designer",
+                  "Marketing Coordinator", "HR Specialist", "Sales Executive", "Financial Analyst",
+                  "Civil Engineer", "Customer Service", "Legal Advisor", "Pharmacist",
+                  "Content Writer", "Product Manager", "UI/UX Designer", "Network Engineer",
+                ].map(kw => (
+                  <button
+                    key={kw}
+                    onClick={() => setSearch(search === kw ? "" : kw)}
+                    className={`text-xs px-3 py-1.5 rounded-full border transition font-medium ${
+                      search === kw
+                        ? "border-yellow-400/50 bg-yellow-400/15 text-yellow-300"
+                        : "border-white/10 bg-white/5 text-white/50 hover:text-white hover:border-white/25"
+                    }`}
+                  >
+                    {kw}
+                  </button>
+                ))}
+              </div>
+
               <div className="grid min-w-0 lg:grid-cols-[minmax(0,1.4fr)_auto] gap-3 items-center">
                 <label className="relative block">
                   <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/35" />
