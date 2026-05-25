@@ -144,10 +144,13 @@ async function scrapeFor9a(): Promise<Job[]> {
 // Bayt structure: <li data-js-job data-job-id="..."> ... <h2><a href="/en/<country>/jobs/SLUG-ID/">TITLE</a></h2>
 //   ... <a href="/en/company/...">COMPANY</a> ... <span>CITY</span>, <span>COUNTRY</span>
 //   ... data-automation-jobActiveDate="UNIX_TIMESTAMP"
-async function scrapeBayt(country: "Jordan" | "UAE" | "Saudi Arabia"): Promise<Job[]> {
+async function scrapeBayt(country: "Jordan" | "UAE" | "Saudi Arabia", keyword = ""): Promise<Job[]> {
   const slug = country === "Jordan" ? "jordan" : country === "UAE" ? "uae" : "saudi-arabia";
+  const url = keyword
+    ? `https://www.bayt.com/en/${slug}/jobs/?q=${encodeURIComponent(keyword)}`
+    : `https://www.bayt.com/en/${slug}/jobs/`;
   try {
-    const res = await fetch(`https://www.bayt.com/en/${slug}/jobs/`, {
+    const res = await fetch(url, {
       headers: {
         "User-Agent": UA,
         Accept: "text/html,application/xhtml+xml",
@@ -393,13 +396,18 @@ const SCRAPERS: Record<string, () => Promise<Job[]>> = {
   linkedin_fintech2:     () => scrapeLinkedIn("Jordan", "digital banking blockchain crypto"),
   linkedin_cs:           () => scrapeLinkedIn("Jordan", "customer service support"),
   linkedin_ops:          () => scrapeLinkedIn("Jordan", "operations logistics supply chain"),
-  linkedin_research:     () => scrapeLinkedIn("Jordan", "research assistant lab technician laboratory"),
-  linkedin_research2:    () => scrapeLinkedIn("Jordan", "research analyst clinical researcher scientist"),
-  linkedin_content:      () => scrapeLinkedIn("Jordan", "content writer copywriter journalist media"),
   linkedin_pm:           () => scrapeLinkedIn("Jordan", "product manager project coordinator"),
-  linkedin_civil:        () => scrapeLinkedIn("Jordan", "civil engineer construction architect"),
-  linkedin_ae_research:  () => scrapeLinkedIn("UAE", "research assistant lab technician scientist"),
-  linkedin_sa_research:  () => scrapeLinkedIn("Saudi Arabia", "research assistant lab technician scientist"),
+  // Bayt keyword searches for categories LinkedIn blocks
+  bayt_research:         () => scrapeBayt("Jordan", "research assistant"),
+  bayt_lab:              () => scrapeBayt("Jordan", "lab technician laboratory"),
+  bayt_content:          () => scrapeBayt("Jordan", "content writer copywriter"),
+  bayt_civil:            () => scrapeBayt("Jordan", "civil engineer"),
+  bayt_ops:              () => scrapeBayt("Jordan", "logistics supply chain"),
+  bayt_hr:               () => scrapeBayt("Jordan", "human resources recruiter"),
+  bayt_fintech:          () => scrapeBayt("Jordan", "fintech financial technology"),
+  bayt_ae_research:      () => scrapeBayt("UAE", "research assistant lab technician"),
+  bayt_ae_civil:         () => scrapeBayt("UAE", "civil engineer construction"),
+  bayt_sa_research:      () => scrapeBayt("Saudi Arabia", "research assistant lab technician"),
 
   // Non-tech sector keyword searches — UAE (FinTech & Legal strong in UAE)
   linkedin_ae_marketing: () => scrapeLinkedIn("UAE", "marketing"),
