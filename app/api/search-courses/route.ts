@@ -14,9 +14,11 @@ export async function GET(req: Request) {
 
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-  const prompt = `Find exactly ${need} real online courses about "${q}".
+  const prompt = `You are a course search engine. Find exactly ${need} real online LEARNING COURSES that teach the skill or topic: "${q}".
+These must be courses where students learn "${q}" as a professional or academic skill (e.g. programming, design, marketing, engineering, etc.).
+Do NOT return courses about unrelated topics. The topic "${q}" is the exact subject students want to study.
 Include courses from YouTube, Udemy, Coursera, and freeCodeCamp.
-Include at least 2 Arabic-language courses if they exist for this topic.
+Include at least 2 Arabic-language courses that teach "${q}" in Arabic, if they exist.
 Return ONLY a valid JSON array, no markdown fences, no explanation:
 [
   {
@@ -29,14 +31,15 @@ Return ONLY a valid JSON array, no markdown fences, no explanation:
   }
 ]
 Rules:
+- Every course MUST be about learning "${q}" — reject anything off-topic.
 - Use real URLs that actually exist.
 - YouTube: use https://www.youtube.com/watch?v=VIDEO_ID format.
 - Udemy: use https://www.udemy.com/course/COURSE_SLUG/ format.
 - Coursera: use https://www.coursera.org/learn/COURSE-SLUG format.
-- Do NOT invent URLs. If unsure of exact URL, use a search URL:
-  YouTube: https://www.youtube.com/results?search_query=QUERY+course
-  Udemy: https://www.udemy.com/courses/search/?q=QUERY
-  Coursera: https://www.coursera.org/search?query=QUERY`;
+- If unsure of exact URL, use a search URL instead:
+  YouTube: https://www.youtube.com/results?search_query=${encodeURIComponent(q)}+course
+  Udemy: https://www.udemy.com/courses/search/?q=${encodeURIComponent(q)}
+  Coursera: https://www.coursera.org/search?query=${encodeURIComponent(q)}`;
 
   try {
     const result = await model.generateContent(prompt);

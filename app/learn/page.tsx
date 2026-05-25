@@ -381,17 +381,20 @@ export default function LearnPage() {
   const freeCourses = merged.filter((r) => r.free);
   const paidCourses = merged.filter((r) => !r.free);
 
-  // Fetch online courses
+  // Fetch online courses — capture translated q and need at effect-run time to avoid stale closure
   useEffect(() => {
     if (!rawQ) { setOnlineCourses([]); return; }
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    // Snapshot values NOW (at effect run time, not 600ms later)
+    const translatedQ = q; // already translated from Arabic if needed
+    const localCount = localResources.length;
     debounceRef.current = setTimeout(async () => {
-      const need = Math.max(0, 10 - localResources.length);
+      const need = Math.max(0, 10 - localCount);
       if (need === 0) { setOnlineCourses([]); return; }
       setOnlineLoading(true);
       setOnlineCourses([]);
       try {
-        const res = await fetch(`/api/search-courses?q=${encodeURIComponent(apiQ)}&need=${need}`);
+        const res = await fetch(`/api/search-courses?q=${encodeURIComponent(translatedQ)}&need=${need}`);
         const data = await res.json();
         if (Array.isArray(data)) setOnlineCourses(data);
       } catch { /* silent */ }
@@ -634,7 +637,7 @@ export default function LearnPage() {
                   {onlineLoading && (
                     <div className="flex items-center gap-2 text-sm text-white/40 py-3 animate-pulse">
                       <Sparkles size={15} className="text-yellow-300" />
-                      Searching YouTube, Udemy &amp; Coursera for "{apiQ}"…
+                      Searching YouTube, Udemy &amp; Coursera for "{q}"…
                     </div>
                   )}
 
