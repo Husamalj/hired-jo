@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     const { data, error } = await sb.from("talent_profiles").select("*").eq("user_id", userId).maybeSingle();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     if (!data) return NextResponse.json(null);
-    const { data: sub } = await sb.from("user_subscriptions").select("status").eq("user_id", userId).eq("status", "active").maybeSingle();
+    const { data: sub } = await sb.from("user_subscriptions").select("status").eq("user_id", userId).eq("status", "active").eq("tier", "hired").maybeSingle();
     return NextResponse.json({ ...data, is_hired_subscriber: !!sub });
   }
 
@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
   const userIds = (data ?? []).map((p: any) => p.user_id);
   let subscriberSet = new Set<string>();
   if (userIds.length > 0) {
-    const { data: subs } = await sb.from("user_subscriptions").select("user_id").eq("status", "active").in("user_id", userIds);
+    const { data: subs } = await sb.from("user_subscriptions").select("user_id").eq("status", "active").eq("tier", "hired").in("user_id", userIds);
     subscriberSet = new Set((subs ?? []).map((s: any) => s.user_id));
   }
   const enriched = (data ?? []).map((p: any) => ({ ...p, is_hired_subscriber: subscriberSet.has(p.user_id) }));

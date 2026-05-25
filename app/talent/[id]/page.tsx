@@ -211,7 +211,7 @@ export default function TalentProfilePage() {
                 <h1 className="text-2xl font-extrabold text-white">{profile.alias}</h1>
                 {profile.is_hired_subscriber && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-yellow-400/15 border border-yellow-400/30 px-2.5 py-1 text-xs font-bold text-yellow-300">
-                    ⚡ Hired Pro
+                    👑 Hired
                   </span>
                 )}
               </div>

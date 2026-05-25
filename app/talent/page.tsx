@@ -91,7 +91,7 @@ function ProfileCard({ p, onExpand, expanded }: { p: TalentProfile; onExpand: ()
             <div className="flex items-center gap-1.5 flex-wrap">
               <p className="font-bold text-white truncate">{p.alias}</p>
               {p.is_hired_subscriber && (
-                <span className="inline-flex items-center gap-0.5 rounded-full bg-yellow-400/15 border border-yellow-400/30 px-2 py-0.5 text-[10px] font-bold text-yellow-300 shrink-0">⚡ Pro</span>
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-yellow-400/15 border border-yellow-400/30 px-2 py-0.5 text-[10px] font-bold text-yellow-300 shrink-0">👑 Hired</span>
               )}
             </div>
             <p className="text-xs text-white/40 flex items-center gap-1 mt-0.5">
@@ -769,7 +769,7 @@ export default function TalentPage() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-bold text-white text-sm truncate">{p.alias}</p>
                           {p.is_hired_subscriber && (
-                            <span className="inline-flex items-center gap-0.5 rounded-full bg-yellow-400/15 border border-yellow-400/30 px-2 py-0.5 text-[10px] font-bold text-yellow-300 shrink-0">⚡ Pro</span>
+                            <span className="inline-flex items-center gap-0.5 rounded-full bg-yellow-400/15 border border-yellow-400/30 px-2 py-0.5 text-[10px] font-bold text-yellow-300 shrink-0">👑 Hired</span>
                           )}
                         </div>
                         <p className="text-xs text-white/40 truncate">{p.field}{p.country ? ` · ${p.country}` : ""}</p>
