@@ -457,8 +457,26 @@ export default function LearnPage() {
                     </span>
                   </div>
 
-                  {displayResources.length === 0 && (
-                    <p className="text-white/35 text-sm py-6 text-center">No courses match "{search}".</p>
+                  {displayResources.length === 0 && q && (
+                    <div className="space-y-3 py-2">
+                      <p className="text-white/40 text-sm text-center">No local courses match "{search}" — search online:</p>
+                      <div className="grid sm:grid-cols-3 gap-3">
+                        {[
+                          { label: "YouTube", icon: "▶", color: "border-red-400/25 bg-red-400/8 text-red-300", url: `https://www.youtube.com/results?search_query=${encodeURIComponent(search)}+course+tutorial` },
+                          { label: "Udemy", icon: "🎓", color: "border-purple-400/25 bg-purple-400/8 text-purple-300", url: `https://www.udemy.com/courses/search/?q=${encodeURIComponent(search)}&price=price-free` },
+                          { label: "Coursera", icon: "📘", color: "border-blue-400/25 bg-blue-400/8 text-blue-300", url: `https://www.coursera.org/search?query=${encodeURIComponent(search)}` },
+                        ].map(({ label, icon, color, url }) => (
+                          <a key={label} href={url} target="_blank" rel="noopener noreferrer"
+                            className={`rounded-2xl border ${color} px-4 py-4 flex items-center justify-between group hover:-translate-y-1 transition`}>
+                            <div>
+                              <p className="font-bold text-sm">{icon} {label}</p>
+                              <p className="text-xs text-white/40 mt-0.5">Search "{search}"</p>
+                            </div>
+                            <ExternalLink size={14} className="opacity-50 group-hover:opacity-100 transition" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
                   )}
                   <div className="grid md:grid-cols-2 gap-3">
                     {displayResources.map((resource) => {
@@ -514,8 +532,8 @@ export default function LearnPage() {
                     <Layers3 className="text-yellow-100/70 shrink-0" />
                   </div>
 
-                  {displayCerts.length === 0 && (
-                    <p className="text-white/35 text-sm py-6 text-center">No programs match "{search}".</p>
+                  {displayCerts.length === 0 && q && (
+                    <p className="text-white/35 text-sm py-4 text-center">No programs match "{search}".</p>
                   )}
                   <div className="grid md:grid-cols-2 gap-3">
                     {displayCerts.map((cert) => (

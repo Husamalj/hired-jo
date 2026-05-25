@@ -298,5 +298,48 @@
     "hours": 15,
     "free": true,
     "language": "EN"
-  }
+  },
+
+  { "id":"lr-031","skill":"Google Analytics","title":"Google Analytics 4 Full Course","provider":"YouTube","url":"https://www.youtube.com/watch?v=d5_tFRW7h1k","hours":3,"free":true,"language":"EN" },
+  { "id":"lr-032","skill":"Google Analytics","title":"دورة جوجل أناليتيكس 4 بالعربي","provider":"Udemy","url":"https://www.udemy.com/courses/search/?q=google+analytics+%D8%B9%D8%B1%D8%A8%D9%8A&price=price-free","hours":4,"free":false,"language":"AR" },
+  { "id":"lr-033","skill":"SEO","title":"SEO Full Course — Rank #1 on Google","provider":"YouTube","url":"https://www.youtube.com/watch?v=xsVTqzratPs","hours":4,"free":true,"language":"EN" },
+  { "id":"lr-034","skill":"SEO","title":"دورة السيو العربية الشاملة","provider":"Udemy","url":"https://www.udemy.com/courses/search/?q=SEO+%D8%B9%D8%B1%D8%A8%D9%8A&price=price-free","hours":6,"free":false,"language":"AR" },
+  { "id":"lr-035","skill":"Social Media Management","title":"Social Media Marketing — Full Course","provider":"Coursera","url":"https://www.coursera.org/learn/social-media-marketing-specialization","hours":10,"free":true,"language":"EN" },
+  { "id":"lr-036","skill":"Social Media Management","title":"دورة إدارة السوشيال ميديا","provider":"Udemy","url":"https://www.udemy.com/courses/search/?q=%D8%B3%D9%88%D8%B4%D9%8A%D8%A7%D9%84+%D9%85%D9%8A%D8%AF%D9%8A%D8%A7&price=price-free","hours":5,"free":false,"language":"AR" },
+  { "id":"lr-037","skill":"Content Strategy","title":"Content Marketing — Attract & Engage Customers","provider":"Coursera","url":"https://www.coursera.org/learn/content-marketing","hours":8,"free":true,"language":"EN" },
+  { "id":"lr-038","skill":"Copywriting","title":"Copywriting for Beginners — Full Course","provider":"YouTube","url":"https://www.youtube.com/watch?v=dfe5iSbv5zI","hours":3,"free":true,"language":"EN" },
+  { "id":"lr-039","skill":"Google Ads","title":"Google Ads Tutorial for Beginners 2024","provider":"YouTube","url":"https://www.youtube.com/watch?v=7ZECjZGe0tc","hours":3,"free":true,"language":"EN" },
+  { "id":"lr-040","skill":"Meta Ads","title":"Facebook & Instagram Ads Complete Guide","provider":"YouTube","url":"https://www.youtube.com/watch?v=HXFB4wF07Do","hours":4,"free":true,"language":"EN" },
+  { "id":"lr-041","skill":"Email Marketing","title":"Email Marketing Full Course — Mailchimp","provider":"YouTube","url":"https://www.youtube.com/watch?v=0KqMi8zBNHw","hours":2,"free":true,"language":"EN" },
+  { "id":"lr-042","skill":"HubSpot","title":"HubSpot CRM Tutorial for Beginners","provider":"YouTube","url":"https://www.youtube.com/watch?v=oCQdFKGqzj4","hours":2,"free":true,"language":"EN" },
+
+  { "id":"lr-043","skill":"Adobe Photoshop","title":"Photoshop for Beginners — Full Course","provider":"YouTube","url":"https://www.youtube.com/watch?v=IyR_uYsRdPs","hours":5,"free":true,"language":"EN" },
+  { "id":"lr-044","skill":"Adobe Photoshop","title":"دورة الفوتوشوب من الصفر","provider":"Udemy","url":"https://www.udemy.com/courses/search/?q=%D9%81%D9%88%D8%AA%D9%88%D8%B4%D9%88%D8%A8&price=price-free","hours":4,"free":false,"language":"AR" },
+  { "id":"lr-045","skill":"Adobe Premiere Pro","title":"Adobe Premiere Pro Full Course — Video Editing","provider":"YouTube","url":"https://www.youtube.com/watch?v=u716iWmKsew","hours":6,"free":true,"language":"EN" },
+  { "id":"lr-046","skill":"Video Editing","title":"Video Editing Masterclass — Premiere Pro","provider":"Udemy","url":"https://www.udemy.com/courses/search/?q=video+editing&price=price-free","hours":5,"free":false,"language":"EN" },
+  { "id":"lr-047","skill":"Canva","title":"Canva Tutorial for Beginners — Full Course","provider":"YouTube","url":"https://www.youtube.com/watch?v=9eAYBRLW5N4","hours":2,"free":true,"language":"EN" },
+  { "id":"lr-048","skill":"Brand Identity","title":"Brand Identity Design — Complete Course","provider":"Coursera","url":"https://www.coursera.org/learn/brand-management","hours":12,"free":true,"language":"EN" },
+  { "id":"lr-049","skill":"After Effects","title":"After Effects Tutorial for Beginners","provider":"YouTube","url":"https://www.youtube.com/watch?v=vZW9oDQCDIU","hours":4,"free":true,"language":"EN" },
+  { "id":"lr-050","skill":"Adobe Lightroom","title":"Lightroom Classic Full Course for Beginners","provider":"YouTube","url":"https://www.youtube.com/watch?v=g3bZqJMrFMY","hours":3,"free":true,"language":"EN" },
+
+  { "id":"lr-051","skill":"Legal Research","title":"Introduction to International Law","provider":"Coursera","url":"https://www.coursera.org/learn/international-law","hours":8,"free":true,"language":"EN" },
+  { "id":"lr-052","skill":"Legal Writing","title":"Introduction to English Common Law","provider":"Coursera","url":"https://www.coursera.org/learn/intro-english-common-law","hours":10,"free":true,"language":"EN" },
+  { "id":"lr-053","skill":"Compliance","title":"Corporate Governance & Compliance","provider":"Coursera","url":"https://www.coursera.org/learn/corporate-compliance","hours":8,"free":true,"language":"EN" },
+  { "id":"lr-054","skill":"Contract Drafting","title":"Contract Law — From Trust to Promise","provider":"Coursera","url":"https://www.coursera.org/learn/contracts","hours":12,"free":true,"language":"EN" },
+  { "id":"lr-055","skill":"Negotiation","title":"Successful Negotiation — Essential Strategies","provider":"Coursera","url":"https://www.coursera.org/learn/negotiation","hours":10,"free":true,"language":"EN" },
+
+  { "id":"lr-056","skill":"Instructional Design","title":"Instructional Design Foundations","provider":"Coursera","url":"https://www.coursera.org/learn/instructional-design","hours":12,"free":true,"language":"EN" },
+  { "id":"lr-057","skill":"Curriculum Design","title":"Curriculum Development & Design","provider":"Coursera","url":"https://www.coursera.org/learn/curriculum-development","hours":10,"free":true,"language":"EN" },
+  { "id":"lr-058","skill":"Google Classroom","title":"Google Classroom Tutorial for Teachers 2024","provider":"YouTube","url":"https://www.youtube.com/watch?v=NK5JT6YTIIU","hours":2,"free":true,"language":"EN" },
+  { "id":"lr-059","skill":"Public Speaking","title":"Dynamic Public Speaking — Full Course","provider":"Coursera","url":"https://www.coursera.org/specializations/public-speaking","hours":16,"free":true,"language":"EN" },
+  { "id":"lr-060","skill":"Presentation Skills","title":"Presentation Skills & Storytelling","provider":"Coursera","url":"https://www.coursera.org/learn/present-like-a-professional","hours":8,"free":true,"language":"EN" },
+
+  { "id":"lr-061","skill":"AutoCAD","title":"AutoCAD 2024 Tutorial for Beginners — Full Course","provider":"YouTube","url":"https://www.youtube.com/watch?v=e-nQBuafQWI","hours":8,"free":true,"language":"EN" },
+  { "id":"lr-062","skill":"AutoCAD","title":"دورة أوتوكاد من الصفر للاحتراف","provider":"Udemy","url":"https://www.udemy.com/courses/search/?q=%D8%A7%D9%88%D8%AA%D9%88%D9%83%D8%A7%D8%AF&price=price-free","hours":6,"free":false,"language":"AR" },
+  { "id":"lr-063","skill":"Project Management","title":"Google Project Management Certificate","provider":"Coursera","url":"https://www.coursera.org/professional-certificates/google-project-management","hours":180,"free":false,"language":"EN" },
+  { "id":"lr-064","skill":"Project Management","title":"دورة إدارة المشاريع PMP بالعربي","provider":"Udemy","url":"https://www.udemy.com/courses/search/?q=%D8%A5%D8%AF%D8%A7%D8%B1%D8%A9+%D9%85%D8%B4%D8%A7%D8%B1%D9%8A%D8%B9&price=price-free","hours":8,"free":false,"language":"AR" },
+  { "id":"lr-065","skill":"Revit","title":"Revit Architecture Full Course for Beginners","provider":"YouTube","url":"https://www.youtube.com/watch?v=bI4kCKO0fME","hours":6,"free":true,"language":"EN" },
+  { "id":"lr-066","skill":"SolidWorks","title":"SolidWorks Tutorial for Beginners","provider":"YouTube","url":"https://www.youtube.com/watch?v=rJL8jVfQmqs","hours":4,"free":true,"language":"EN" },
+  { "id":"lr-067","skill":"BIM","title":"BIM Fundamentals for Engineers","provider":"Coursera","url":"https://www.coursera.org/learn/bim","hours":15,"free":true,"language":"EN" },
+  { "id":"lr-068","skill":"MATLAB","title":"MATLAB Onramp — Free Official Course","provider":"YouTube","url":"https://www.youtube.com/watch?v=T_ekAD7U-wU","hours":4,"free":true,"language":"EN" }
 ]
