@@ -237,9 +237,11 @@ function JobsPageInner() {
 
       if (search) {
         const words = search.toLowerCase().trim().split(/\s+/).filter(Boolean);
-        const haystack = `${j.title} ${j.company} ${j.sector} ${j.description ?? ""}`.toLowerCase();
-        // All words must appear somewhere in the haystack (fuzzy word-level AND)
-        if (!words.every(w => haystack.includes(w))) return false;
+        // Always search title + company + sector
+        const titleHaystack = `${j.title} ${j.company} ${j.sector}`.toLowerCase();
+        // Only include description for longer words to avoid false matches
+        const fullHaystack = `${titleHaystack} ${j.description ?? ""}`.toLowerCase();
+        if (!words.every(w => w.length <= 3 ? titleHaystack.includes(w) : fullHaystack.includes(w))) return false;
       }
       return true;
     });
@@ -387,7 +389,7 @@ function JobsPageInner() {
               <div className="flex flex-wrap gap-2 mb-1">
                 {[
                   { label: "Research Assistant", q: "research" },
-                  { label: "Lab Technician", q: "lab" },
+                  { label: "Lab Technician", q: "laboratory" },
                   { label: "Data Analyst", q: "data analyst" },
                   { label: "Graphic Designer", q: "graphic" },
                   { label: "Marketing", q: "marketing" },
