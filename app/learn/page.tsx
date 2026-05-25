@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -204,6 +204,9 @@ function languageLabel(language: string) {
 export default function LearnPage() {
   const [cv, setCv] = useState<CV | null>(null);
   const [search, setSearch] = useState("");
+  const [onlineCourses, setOnlineCourses] = useState<Resource[]>([]);
+  const [onlineLoading, setOnlineLoading] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setCv(loadCv());
@@ -243,7 +246,7 @@ export default function LearnPage() {
   const allDisplayResources = cv ? [...gapResources, ...otherResources] : resources;
 
   const q = search.toLowerCase().trim();
-  const displayResources = q
+  const localResources = q
     ? allDisplayResources.filter((r) =>
         r.title.toLowerCase().includes(q) ||
         r.skill.toLowerCase().includes(q) ||
@@ -258,6 +261,36 @@ export default function LearnPage() {
         c.description.toLowerCase().includes(q)
       )
     : certs;
+
+  // Merge local + online, deduplicate by title
+  const displayResources: (Resource & { fromInternet?: boolean })[] = q
+    ? [
+        ...localResources,
+        ...onlineCourses.filter(
+          (o) => !localResources.some((l) => l.title.toLowerCase() === o.title.toLowerCase())
+        ),
+      ]
+    : allDisplayResources;
+
+  // Fetch online courses via Gemini when local results < 10
+  useEffect(() => {
+    if (!q) { setOnlineCourses([]); return; }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      const need = Math.max(0, 10 - localResources.length);
+      if (need === 0) { setOnlineCourses([]); return; }
+      setOnlineLoading(true);
+      setOnlineCourses([]);
+      try {
+        const res = await fetch(`/api/search-courses?q=${encodeURIComponent(search)}&need=${need}`);
+        const data = await res.json();
+        if (Array.isArray(data)) setOnlineCourses(data);
+      } catch { /* silent */ }
+      finally { setOnlineLoading(false); }
+    }, 600);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q]);
   const totalHours = allDisplayResources.reduce((sum, resource) => sum + resource.hours, 0);
 
   const roadmapStats = [
@@ -457,26 +490,14 @@ export default function LearnPage() {
                     </span>
                   </div>
 
-                  {displayResources.length === 0 && q && (
-                    <div className="space-y-3 py-2">
-                      <p className="text-white/40 text-sm text-center">No local courses match "{search}" — search online:</p>
-                      <div className="grid sm:grid-cols-3 gap-3">
-                        {[
-                          { label: "YouTube", icon: "▶", color: "border-red-400/25 bg-red-400/8 text-red-300", url: `https://www.youtube.com/results?search_query=${encodeURIComponent(search)}+course+tutorial` },
-                          { label: "Udemy", icon: "🎓", color: "border-purple-400/25 bg-purple-400/8 text-purple-300", url: `https://www.udemy.com/courses/search/?q=${encodeURIComponent(search)}&price=price-free` },
-                          { label: "Coursera", icon: "📘", color: "border-blue-400/25 bg-blue-400/8 text-blue-300", url: `https://www.coursera.org/search?query=${encodeURIComponent(search)}` },
-                        ].map(({ label, icon, color, url }) => (
-                          <a key={label} href={url} target="_blank" rel="noopener noreferrer"
-                            className={`rounded-2xl border ${color} px-4 py-4 flex items-center justify-between group hover:-translate-y-1 transition`}>
-                            <div>
-                              <p className="font-bold text-sm">{icon} {label}</p>
-                              <p className="text-xs text-white/40 mt-0.5">Search "{search}"</p>
-                            </div>
-                            <ExternalLink size={14} className="opacity-50 group-hover:opacity-100 transition" />
-                          </a>
-                        ))}
-                      </div>
+                  {onlineLoading && (
+                    <div className="flex items-center gap-2 text-sm text-white/40 py-3 animate-pulse">
+                      <Sparkles size={15} className="text-yellow-300" />
+                      Searching YouTube, Udemy &amp; Coursera for "{search}"…
                     </div>
+                  )}
+                  {!onlineLoading && displayResources.length === 0 && q && (
+                    <p className="text-white/35 text-sm py-4 text-center">No courses found for "{search}".</p>
                   )}
                   <div className="grid md:grid-cols-2 gap-3">
                     {displayResources.map((resource) => {
