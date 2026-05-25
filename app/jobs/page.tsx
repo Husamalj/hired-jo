@@ -236,8 +236,10 @@ function JobsPageInner() {
       }
 
       if (search) {
-        const q = search.toLowerCase();
-        if (!j.title.toLowerCase().includes(q) && !j.company.toLowerCase().includes(q)) return false;
+        const words = search.toLowerCase().trim().split(/\s+/).filter(Boolean);
+        const haystack = `${j.title} ${j.company} ${j.sector} ${j.description ?? ""}`.toLowerCase();
+        // All words must appear somewhere in the haystack (fuzzy word-level AND)
+        if (!words.every(w => haystack.includes(w))) return false;
       }
       return true;
     });
@@ -384,21 +386,33 @@ function JobsPageInner() {
               {/* Quick keyword chips */}
               <div className="flex flex-wrap gap-2 mb-1">
                 {[
-                  "Research Assistant", "Lab Technician", "Data Analyst", "Graphic Designer",
-                  "Marketing Coordinator", "HR Specialist", "Sales Executive", "Financial Analyst",
-                  "Civil Engineer", "Customer Service", "Legal Advisor", "Pharmacist",
-                  "Content Writer", "Product Manager", "UI/UX Designer", "Network Engineer",
-                ].map(kw => (
+                  { label: "Research Assistant", q: "research" },
+                  { label: "Lab Technician", q: "lab" },
+                  { label: "Data Analyst", q: "data analyst" },
+                  { label: "Graphic Designer", q: "graphic" },
+                  { label: "Marketing", q: "marketing" },
+                  { label: "HR Specialist", q: "human resources" },
+                  { label: "Sales", q: "sales" },
+                  { label: "Financial Analyst", q: "financial" },
+                  { label: "Civil Engineer", q: "civil" },
+                  { label: "Customer Service", q: "customer" },
+                  { label: "Legal", q: "legal" },
+                  { label: "Pharmacist", q: "pharma" },
+                  { label: "Content Writer", q: "content" },
+                  { label: "Product Manager", q: "product manager" },
+                  { label: "UI/UX Designer", q: "designer" },
+                  { label: "Network Engineer", q: "network" },
+                ].map(({ label, q: kw }) => (
                   <button
                     key={kw}
                     onClick={() => setSearch(search === kw ? "" : kw)}
-                    className={`text-xs px-3 py-1.5 rounded-full border transition font-medium ${
+                    className={`text-xs px-3 py-1.5 rounded-full border transition font-medium whitespace-nowrap ${
                       search === kw
                         ? "border-yellow-400/50 bg-yellow-400/15 text-yellow-300"
                         : "border-white/10 bg-white/5 text-white/50 hover:text-white hover:border-white/25"
                     }`}
                   >
-                    {kw}
+                    {label}
                   </button>
                 ))}
               </div>
