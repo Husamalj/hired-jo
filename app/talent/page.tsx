@@ -57,6 +57,8 @@ interface TalentProfile {
   portfolio_url?: string;
   avatar_url?: string;
   cv_url?: string;
+  stars?: number;
+  is_hired_subscriber?: boolean;
   posts?: Post[];
 }
 
@@ -86,7 +88,12 @@ function ProfileCard({ p, onExpand, expanded }: { p: TalentProfile; onExpand: ()
         <div className="flex items-start gap-3">
           <Avatar name={p.alias || "?"} avatarUrl={p.avatar_url} size={46} />
           <div className="flex-1 min-w-0">
-            <p className="font-bold text-white truncate">{p.alias}</p>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <p className="font-bold text-white truncate">{p.alias}</p>
+              {p.is_hired_subscriber && (
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-yellow-400/15 border border-yellow-400/30 px-2 py-0.5 text-[10px] font-bold text-yellow-300 shrink-0">⚡ Pro</span>
+              )}
+            </div>
             <p className="text-xs text-white/40 flex items-center gap-1 mt-0.5">
               <GraduationCap size={11} />
               {p.field || "Graduate"}{p.graduation_year ? ` · ${p.graduation_year}` : ""}
@@ -134,6 +141,11 @@ function ProfileCard({ p, onExpand, expanded }: { p: TalentProfile; onExpand: ()
             </a>
           </div>
           <div className="flex items-center gap-2">
+            {(p.stars ?? 0) > 0 && (
+              <span className="text-xs text-yellow-300/70 flex items-center gap-0.5 font-semibold">
+                ★ {(p.stars ?? 0).toLocaleString()}
+              </span>
+            )}
             <Link href={`/talent/${p.user_id}`}
               className="text-xs rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-white/60 hover:text-white hover:border-white/30 transition font-medium">
               View Profile
@@ -196,7 +208,7 @@ export default function TalentPage() {
   const [user, setUser] = useState<SupaUser | null>(null);
   const [profiles, setProfiles] = useState<TalentProfile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"browse" | "my-profile">("browse");
+  const [tab, setTab] = useState<"browse" | "my-profile" | "top-starred">("browse");
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const [fieldFilter, setFieldFilter] = useState("");
@@ -426,6 +438,9 @@ export default function TalentPage() {
             </button>
             <button onClick={() => setTab("my-profile")} className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${tab === "my-profile" ? "gold-grad text-black" : "text-white/50 hover:text-white"}`}>
               {existingProfile ? "My Profile" : user ? "Create Profile" : "List Yourself"}
+            </button>
+            <button onClick={() => setTab("top-starred")} className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${tab === "top-starred" ? "gold-grad text-black" : "text-white/50 hover:text-white"}`}>
+              🏆 Top Starred
             </button>
           </div>
 
@@ -733,6 +748,41 @@ export default function TalentPage() {
                     {saving ? "Saving…" : existingProfile ? "Save Changes" : "Save & Go Live"}
                   </button>
                 </form>
+              )}
+            </div>
+          )}
+
+          {/* ── TOP STARRED ── */}
+          {tab === "top-starred" && (
+            <div className="max-w-2xl mx-auto space-y-3">
+              {[...profiles]
+                .filter(p => (p.stars ?? 0) > 0)
+                .sort((a, b) => (b.stars ?? 0) - (a.stars ?? 0))
+                .slice(0, 10)
+                .map((p, i) => {
+                  const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`;
+                  return (
+                    <div key={p.id} className="flex items-center gap-4 rounded-2xl border border-white/8 bg-white/[0.03] px-5 py-4">
+                      <span className="text-2xl w-8 text-center shrink-0">{medal}</span>
+                      <Avatar name={p.alias || "?"} avatarUrl={p.avatar_url} size={44} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-bold text-white text-sm truncate">{p.alias}</p>
+                          {p.is_hired_subscriber && (
+                            <span className="inline-flex items-center gap-0.5 rounded-full bg-yellow-400/15 border border-yellow-400/30 px-2 py-0.5 text-[10px] font-bold text-yellow-300 shrink-0">⚡ Pro</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-white/40 truncate">{p.field}{p.country ? ` · ${p.country}` : ""}</p>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="text-yellow-300 font-bold text-sm">★ {(p.stars ?? 0).toLocaleString()}</span>
+                        <Link href={`/talent/${p.user_id}`} className="text-xs text-white/40 hover:text-white border border-white/10 rounded-xl px-3 py-1.5 transition">View</Link>
+                      </div>
+                    </div>
+                  );
+                })}
+              {profiles.filter(p => (p.stars ?? 0) > 0).length === 0 && (
+                <div className="text-center py-20 text-white/30 text-sm">No stars yet — be the first to star a profile!</div>
               )}
             </div>
           )}

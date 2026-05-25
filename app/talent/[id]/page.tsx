@@ -32,6 +32,8 @@ interface TalentProfile {
   portfolio_url?: string;
   avatar_url?: string;
   cv_url?: string;
+  stars?: number;
+  is_hired_subscriber?: boolean;
   posts?: Post[];
 }
 
@@ -54,14 +56,32 @@ export default function TalentProfilePage() {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [showCv, setShowCv] = useState(false);
+  const [stars, setStars] = useState(0);
+  const [hasStarred, setHasStarred] = useState(false);
+  const [starLoading, setStarLoading] = useState(false);
   const sb = createSupabaseBrowserClient();
 
   useEffect(() => {
-    sb.auth.getUser().then(({ data }) => setCurrentUser(data.user?.id ?? null));
-    fetch(`/api/talent?userId=${id}`)
-      .then(r => r.json())
-      .then(data => { setProfile(data); setLoading(false); })
-      .catch(() => setLoading(false));
+    sb.auth.getUser().then(async ({ data }) => {
+      const uid = data.user?.id ?? null;
+      setCurrentUser(uid);
+      try {
+        const res = await fetch(`/api/talent?userId=${id}`);
+        const profile = await res.json();
+        setProfile(profile);
+        setStars(profile?.stars ?? 0);
+        setLoading(false);
+        if (uid && profile?.user_id) {
+          const { data: starRow } = await sb
+            .from("talent_stars")
+            .select("id")
+            .eq("user_id", uid)
+            .eq("starred_user_id", profile.user_id)
+            .maybeSingle();
+          setHasStarred(!!starRow);
+        }
+      } catch { setLoading(false); }
+    });
   }, [id]);
 
   async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -80,6 +100,22 @@ export default function TalentProfilePage() {
     });
     setProfile(p => p ? { ...p, avatar_url: publicUrl } : p);
     setUploadingAvatar(false);
+  }
+
+  async function handleStar() {
+    if (!currentUser) { location.href = `/auth/login?next=/talent/${id}`; return; }
+    setStarLoading(true);
+    const res = await fetch("/api/talent/star", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ targetUserId: profile?.user_id }),
+    });
+    if (res.ok) {
+      const { starred, stars: newCount } = await res.json();
+      setHasStarred(starred);
+      setStars(newCount);
+    }
+    setStarLoading(false);
   }
 
   if (loading) return (
@@ -145,14 +181,24 @@ export default function TalentProfilePage() {
                     </label>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap justify-end">
                   {profile.cv_url && (
-                    <button
-                      onClick={() => setShowCv(true)}
+                    <button onClick={() => setShowCv(true)}
                       className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-bold text-white hover:bg-white/10 transition">
                       <FileDown size={14} /> View CV
                     </button>
                   )}
+                  <button
+                    onClick={handleStar}
+                    disabled={starLoading}
+                    className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-bold transition disabled:opacity-50 ${
+                      hasStarred
+                        ? "border-yellow-400/40 bg-yellow-400/10 text-yellow-300"
+                        : "border-white/15 bg-white/5 text-white hover:bg-white/10"
+                    }`}
+                  >
+                    {hasStarred ? "★" : "☆"} {stars.toLocaleString()}
+                  </button>
                   <a href={`mailto:${profile.email}`}
                     className="inline-flex items-center gap-2 rounded-xl gold-grad px-4 py-2 text-sm font-bold text-black">
                     <Mail size={14} /> Contact
@@ -161,7 +207,14 @@ export default function TalentProfilePage() {
               </div>
 
               {/* Name + meta */}
-              <h1 className="text-2xl font-extrabold text-white">{profile.alias}</h1>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-2xl font-extrabold text-white">{profile.alias}</h1>
+                {profile.is_hired_subscriber && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-yellow-400/15 border border-yellow-400/30 px-2.5 py-1 text-xs font-bold text-yellow-300">
+                    ⚡ Hired Pro
+                  </span>
+                )}
+              </div>
               <p className="text-white/55 text-sm mt-1">{profile.field}{profile.graduation_year ? ` · Class of ${profile.graduation_year}` : ""}</p>
               <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-white/35">
                 {(profile.city || profile.country) && (
