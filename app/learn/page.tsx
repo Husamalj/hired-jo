@@ -13,6 +13,7 @@ import {
   Layers3,
   Lightbulb,
   Route,
+  Search,
   Sparkles,
   Target,
   Timer,
@@ -202,6 +203,7 @@ function languageLabel(language: string) {
 
 export default function LearnPage() {
   const [cv, setCv] = useState<CV | null>(null);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     setCv(loadCv());
@@ -238,8 +240,25 @@ export default function LearnPage() {
 
   const gapResources = resources.filter((resource) => gapSkills.includes(resource.skill.toLowerCase()));
   const otherResources = resources.filter((resource) => !gapSkills.includes(resource.skill.toLowerCase()));
-  const displayResources = cv ? [...gapResources, ...otherResources] : resources;
-  const totalHours = displayResources.reduce((sum, resource) => sum + resource.hours, 0);
+  const allDisplayResources = cv ? [...gapResources, ...otherResources] : resources;
+
+  const q = search.toLowerCase().trim();
+  const displayResources = q
+    ? allDisplayResources.filter((r) =>
+        r.title.toLowerCase().includes(q) ||
+        r.skill.toLowerCase().includes(q) ||
+        r.provider.toLowerCase().includes(q)
+      )
+    : allDisplayResources;
+  const displayCerts = q
+    ? certs.filter((c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.provider.toLowerCase().includes(q) ||
+        c.fields.some((f) => f.toLowerCase().includes(q)) ||
+        c.description.toLowerCase().includes(q)
+      )
+    : certs;
+  const totalHours = allDisplayResources.reduce((sum, resource) => sum + resource.hours, 0);
 
   const roadmapStats = [
     { label: "Skill targets", value: gapSkills.length || resources.length, icon: Target },
@@ -406,6 +425,25 @@ export default function LearnPage() {
             </aside>
 
             <div className="space-y-5">
+              {/* Search bar */}
+              <label className="relative flex items-center">
+                <Search size={17} className="absolute left-4 text-white/35 pointer-events-none" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search courses, skills, providers…"
+                  className="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-white/[0.045] border border-white/10 outline-none text-sm text-white placeholder:text-white/30 transition hover:border-white/20 focus:border-yellow-300/45"
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch("")}
+                    className="absolute right-4 text-white/30 hover:text-white transition text-xs"
+                  >
+                    Clear
+                  </button>
+                )}
+              </label>
+
               <section className="glass rounded-[28px] p-5 md:p-6 relative overflow-hidden">
                 <div className="absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
                 <div className="relative">
@@ -419,6 +457,9 @@ export default function LearnPage() {
                     </span>
                   </div>
 
+                  {displayResources.length === 0 && (
+                    <p className="text-white/35 text-sm py-6 text-center">No courses match "{search}".</p>
+                  )}
                   <div className="grid md:grid-cols-2 gap-3">
                     {displayResources.map((resource) => {
                       const isGap = gapSkills.includes(resource.skill.toLowerCase());
@@ -473,8 +514,11 @@ export default function LearnPage() {
                     <Layers3 className="text-yellow-100/70 shrink-0" />
                   </div>
 
+                  {displayCerts.length === 0 && (
+                    <p className="text-white/35 text-sm py-6 text-center">No programs match "{search}".</p>
+                  )}
                   <div className="grid md:grid-cols-2 gap-3">
-                    {certs.map((cert) => (
+                    {displayCerts.map((cert) => (
                       <a
                         key={cert.id}
                         href={cert.url}
